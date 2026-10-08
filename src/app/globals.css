@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Dizayn tokenləri (Claude Design → tokens.json).
+   Rənglər yalnız burada dəyişdirilir; Tailwind sinifləri bunlara bağlıdır.
+   Tünd rejim bu mərhələdə yoxdur.
+   ============================================================ */
+:root {
+  color-scheme: light;
+
+  --navy-900: #1f3864;
+  --navy-700: #2e4e86;
+  --navy-500: #3d63b8;
+  --navy-200: #c7d3e8;
+  --navy-100: #e7edf6;
+  --navy-050: #f2f5fa;
+  --coral-700: #a8381f;
+  --coral-600: #c8452a;
+  --coral-500: #ff7f5c;
+  --coral-100: #ffebe4;
+  --bg: #f7f9fc;
+  --surface: #ffffff;
+  --ink: #142240;
+  --ink-muted: #4b5873;
+  --ink-placeholder: #626f88; /* A2: 4,45 → 5,06 (ağ üzərində) */
+  --line: #dde4ef;
+  --control-border: #7d8ba5;
+  --grid-line: rgba(31, 56, 100, 0.055);
+  --success-700: #146c41; /* A2: 4,64 → 5,61 (success-100 üzərində) */
+  --success-100: #e2f3ea;
+  --danger-700: #b42318;
+  --danger-100: #fdecea;
+  --warning-700: #8a5a00;
+  --warning-100: #fff4d6;
+  --on-navy-muted: #dce3f0;
+  /* A2: boş proqres treki və halqa fonla ≥ 3:1 (control-border ilə eyni, 3,44:1) */
+  --track-edge: #7d8ba5;
+}
+
+@theme inline {
+  --color-navy-900: var(--navy-900);
+  --color-navy-700: var(--navy-700);
+  --color-navy-500: var(--navy-500);
+  --color-navy-200: var(--navy-200);
+  --color-navy-100: var(--navy-100);
+  --color-navy-050: var(--navy-050);
+  --color-coral-700: var(--coral-700);
+  --color-coral-600: var(--coral-600);
+  --color-coral-500: var(--coral-500);
+  --color-coral-100: var(--coral-100);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-placeholder: var(--ink-placeholder);
+  --color-line: var(--line);
+  --color-control-border: var(--control-border);
+  --color-grid-line: var(--grid-line);
+  --color-success-700: var(--success-700);
+  --color-success-100: var(--success-100);
+  --color-danger-700: var(--danger-700);
+  --color-danger-100: var(--danger-100);
+  --color-warning-700: var(--warning-700);
+  --color-warning-100: var(--warning-100);
+  --color-on-navy-muted: var(--on-navy-muted);
+  --color-track-edge: var(--track-edge);
+
+  --font-display: var(--font-manrope), "Segoe UI", system-ui, sans-serif;
+  --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
+}
+
+@theme {
+  /* Dizaynın 720 / 1024 px kəsimləri */
+  --breakpoint-md: 45rem;
+  --breakpoint-lg: 64rem;
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgba(20, 34, 64, 0.06), 0 6px 20px rgba(20, 34, 64, 0.06);
+  --shadow-raised: 0 2px 4px rgba(20, 34, 64, 0.08), 0 16px 40px rgba(20, 34, 64, 0.12);
+
+  --container-content: 1120px;
+
+  /* Tipoqrafiya (tokens.json → type) */
+  --text-display: 36px;
+  --text-display--line-height: 40px;
+  --text-display--letter-spacing: -0.02em;
+  --text-display-lg: 56px;
+  --text-display-lg--line-height: 60px;
+  --text-h2: 26px;
+  --text-h2--line-height: 32px;
+  --text-h2--letter-spacing: -0.01em;
+  --text-h2-lg: 36px;
+  --text-h2-lg--line-height: 42px;
+  --text-h3: 19px;
+  --text-h3--line-height: 26px;
+  --text-lead: 18px;
+  --text-lead--line-height: 28px;
+  --text-body: 16px;
+  --text-body--line-height: 24px;
+  --text-label: 15px;
+  --text-label--line-height: 20px;
+  --text-small: 14px;
+  --text-small--line-height: 20px;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-bg text-body text-ink font-sans antialiased;
+  }
+  :focus-visible {
+    outline: 3px solid var(--navy-500);
+    outline-offset: 2px;
+  }
+  /* Mətn daxilindəki sinifsiz linklər (preflight-ın `a`-sından güclü olmalıdır) */
+  a:not([class]) {
+    color: var(--navy-500);
+    font-weight: 600;
+    text-underline-offset: 3px;
+    text-decoration: underline;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Kvadrat-dəftər fonu (24px addım) */
+@utility bg-notebook {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}

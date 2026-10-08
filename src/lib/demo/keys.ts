@@ -1,0 +1,181 @@
+import "server-only";
+import type { Letter } from "./content";
+
+// DEMO CAVAB AÇARLARI — yalnız serverdə. Brauzerə yalnız cavabdan sonra
+// `correct` + həll qaytarılır (TZ, qayda 3). Düsturlar LaTeX ($…$), KaTeX ilə render olunur.
+
+export const DAILY_KEYS: Record<string, { answer: Letter; steps: string[] }> = {
+  t1: {
+    answer: "C",
+    steps: ["$\\sin 30^\\circ = \\frac{1}{2}$, $\\cos 60^\\circ = \\frac{1}{2}$.", "Cəm: $\\frac{1}{2} + \\frac{1}{2} =$ **1**."],
+  },
+  t2: {
+    answer: "A",
+    steps: ["Əsas triqonometrik eynilik istənilən $\\alpha$ üçün doğrudur.", "$\\sin^2\\alpha + \\cos^2\\alpha =$ **1**."],
+  },
+  t3: {
+    answer: "B",
+    steps: [
+      "$\\cos^2\\alpha = 1 - \\sin^2\\alpha = 1 - \\frac{9}{25} = \\frac{16}{25}$.",
+      "$\\alpha$ iti bucaqdır, ona görə $\\cos\\alpha > 0$.",
+      "$\\cos\\alpha =$ **$\\frac{4}{5}$**.",
+    ],
+  },
+  t4: {
+    answer: "D",
+    steps: ["$2\\sin x \\cdot \\cos x = \\sin 2x$.", "$2\\sin 15^\\circ \\cdot \\cos 15^\\circ = \\sin 30^\\circ =$ **$\\frac{1}{2}$**."],
+  },
+  t5: {
+    answer: "C",
+    steps: ["$\\cos 2\\alpha = 1 - 2\\sin^2\\alpha$.", "$1 - 2 \\cdot \\left(\\frac{1}{2}\\right)^2 = 1 - \\frac{1}{2} =$ **$\\frac{1}{2}$**."],
+  },
+  l1: { answer: "B", steps: ["$\\log_2 8 = x \\Leftrightarrow 2^x = 8$.", "$2^3 = 8$, deməli $x =$ **3**."] },
+  l2: { answer: "D", steps: ["$3^x = 81$.", "$3^4 = 81$, deməli cavab **4**."] },
+  l3: { answer: "C", steps: ["$\\lg 1000 = \\log_{10} 1000$.", "$10^3 = 1000$, deməli cavab **3**."] },
+  l4: { answer: "D", steps: ["Tərifə görə $x = 2^5$.", "$x =$ **32**."] },
+  l5: {
+    answer: "B",
+    steps: ["Eyni əsaslı loqarifmlərin cəmi: $\\log_6 (4 \\cdot 9) = \\log_6 36$.", "$6^2 = 36$, deməli cavab **2**."],
+  },
+  s1: { answer: "C", steps: ["Kubun həcmi $V = a^3$.", "$V = 3^3 =$ **27 sm³**."] },
+  s2: { answer: "D", steps: ["Kubun 6 üzü var, hər birinin sahəsi $a^2$.", "$S = 6 \\cdot 2^2 =$ **24 sm²**."] },
+  s3: { answer: "A", steps: ["$V = a \\cdot b \\cdot c$.", "$V = 2 \\cdot 3 \\cdot 4 =$ **24 sm³**."] },
+  s4: { answer: "C", steps: ["Silindrin həcmi $V = \\pi R^2 h$.", "$V = \\pi \\cdot 3^2 \\cdot 5 =$ **$45\\pi$ sm³**."] },
+  s5: { answer: "C", steps: ["$V = \\frac{4}{3}\\pi R^3 = \\frac{4}{3}\\pi \\cdot 27$.", "$V =$ **$36\\pi$ sm³**."] },
+  f1: { answer: "B", steps: ["15% = 0,15.", "$80 \\cdot 0{,}15 =$ **12**."] },
+  f2: {
+    answer: "C",
+    steps: [
+      "İlk qiymət 100 olsun.",
+      "Artım: $100 \\cdot 1{,}45 = 145$.",
+      "Azalma: $145 \\cdot 0{,}8 = 116$.",
+      "Dəyişiklik: $116 - 100 =$ **16%**.",
+    ],
+  },
+  f3: { answer: "B", steps: ["Azalma: $250 - 200 = 50$ manat.", "$\\frac{50}{250} = 0{,}2 =$ **20%**."] },
+  f4: {
+    answer: "B",
+    steps: ["$A = 1{,}25 \\cdot B$, deməli $B = \\frac{A}{1{,}25} = 0{,}8 \\cdot A$.", "$B$ ədədi $A$-dan **20%** kiçikdir."],
+  },
+  f5: { answer: "C", steps: ["Mürəkkəb faiz: $S = 1000 \\cdot 1{,}1^2$.", "$S = 1000 \\cdot 1{,}21 =$ **1210 manat**."] },
+  t6: { answer: "C", steps: ["$\\operatorname{tg} 45^\\circ = 1$, $\\cos 0^\\circ = 1$.", "Cəm: $1 + 1 =$ **2**."] },
+  t7: {
+    answer: "B",
+    steps: ["$\\sin(180^\\circ - \\alpha) = \\sin\\alpha$.", "$\\sin 150^\\circ = \\sin 30^\\circ =$ **$\\frac{1}{2}$**."],
+  },
+  t8: {
+    answer: "C",
+    steps: ["$\\cos(180^\\circ - \\alpha) = -\\cos\\alpha$.", "$\\cos 120^\\circ = -\\cos 60^\\circ =$ **$-\\frac{1}{2}$**."],
+  },
+  t9: { answer: "C", steps: ["Vahid çevrədə $\\sin x = 1$ yalnız bir nöqtədə olur.", "$x =$ **$90^\\circ$**."] },
+  t10: {
+    answer: "C",
+    steps: ["$\\operatorname{tg}\\alpha \\cdot \\operatorname{ctg}\\alpha = 1$.", "$\\operatorname{ctg}\\alpha = \\frac{1}{2}$, cavab **$\\frac{1}{2}$**."],
+  },
+  l6: { answer: "A", steps: ["Fərq: $\\log_2 \\frac{48}{3} = \\log_2 16$.", "$2^4 = 16$, deməli cavab **4**."] },
+  l7: { answer: "B", steps: ["$5^x = \\frac{1}{25} = 5^{-2}$.", "$x =$ **$-2$**."] },
+  l8: { answer: "B", steps: ["Əsas loqarifmik eynilik: $a^{\\log_a b} = b$.", "$3^{\\log_3 7} =$ **7**."] },
+  l9: { answer: "C", steps: ["Tərifə görə $x - 2 = 3^2 = 9$.", "$x =$ **11** (yoxlama: $x - 2 > 0$)."] },
+  l10: { answer: "B", steps: ["$16 = 2^4$, deməli $x + 1 = 4$.", "$x =$ **3**."] },
+  s6: { answer: "A", steps: ["$a^3 = 64$.", "$a = \\sqrt[3]{64} =$ **4 sm**."] },
+  s7: { answer: "A", steps: ["Konusun həcmi $V = \\frac{1}{3}\\pi R^2 h$.", "$V = \\frac{1}{3}\\pi \\cdot 9 \\cdot 4 =$ **$12\\pi$ sm³**."] },
+  s8: { answer: "B", steps: ["Yan səth: $S = 2\\pi R h$.", "$S = 2\\pi \\cdot 2 \\cdot 5 =$ **$20\\pi$ sm²**."] },
+  s9: { answer: "C", steps: ["$S = 4\\pi R^2 = 4\\pi \\cdot 25$.", "$S =$ **$100\\pi$ sm²**."] },
+  s10: { answer: "B", steps: ["$d = \\sqrt{a^2 + b^2 + c^2}$.", "$d = \\sqrt{4 + 9 + 36} = \\sqrt{49} =$ **7 sm**."] },
+  f6: { answer: "B", steps: ["$0{,}3 \\cdot x = 45$.", "$x = 45 : 0{,}3 =$ **150**."] },
+  f7: { answer: "C", steps: ["Tənasübün əsas xassəsi: $4x = 12 \\cdot 5$.", "$x = \\frac{60}{4} =$ **15**."] },
+  f8: { answer: "C", steps: ["Cəmi $2 + 3 = 5$ hissə, bir hissə $60 : 5 = 12$ manat.", "Böyük pay: $3 \\cdot 12 =$ **36 manat**."] },
+  f9: {
+    answer: "C",
+    steps: ["İlk qiymət 100 olsun: $100 \\cdot 1{,}2 = 120$.", "$120 \\cdot 0{,}8 = 96$.", "Qiymət **4% azaldı**."],
+  },
+  f10: { answer: "C", steps: ["Artım: $50 - 40 = 10$ manat.", "$\\frac{10}{40} = 0{,}25 =$ **25%**."] },
+  fn1: { answer: "B", steps: ["$x = 2$ qiymətini yerinə yazırıq.", "$f(2) = 3 \\cdot 2 - 1 =$ **5**."] },
+  fn2: { answer: "C", steps: ["$f(-1) = (-1)^2 - 2 \\cdot (-1)$.", "$1 + 2 =$ **3**."] },
+  fn3: { answer: "D", steps: ["$Oy$ oxunda $x = 0$.", "$y = 2 \\cdot 0 - 4 =$ **$-4$**."] },
+  fn4: { answer: "B", steps: ["Nöqtənin koordinatlarını yazırıq: $7 = 2k + 1$.", "$2k = 6$, $k =$ **3**."] },
+  fn5: { answer: "C", steps: ["Təpənin absisi $x_0 = -\\frac{b}{2a}$.", "$x_0 = \\frac{6}{2} =$ **3**."] },
+  fn6: { answer: "A", steps: ["Viyet teoremi: $x_1 + x_2 = -\\frac{b}{a}$.", "$x_1 + x_2 =$ **5** ($x_1 = 2$, $x_2 = 3$)."] },
+  fn7: { answer: "B", steps: ["Kök altındakı ifadə mənfi ola bilməz: $x - 3 \\ge 0$.", "Təyin oblastı: **$x \\ge 3$**."] },
+  fn8: { answer: "A", steps: ["Kəsrin məxrəci sıfır ola bilməz: $x + 2 \\ne 0$.", "Funksiya **$x = -2$** olduqda təyin olunmayıb."] },
+  fn9: { answer: "C", steps: ["$f(3) = 2^3 = 8$, $f(1) = 2^1 = 2$.", "$8 - 2 =$ **6**."] },
+  fn10: { answer: "B", steps: ["Təpə: $x_0 = -\\frac{4}{2 \\cdot (-1)} = 2$.", "$y(2) = -4 + 8 =$ **4**."] },
+  u1: { answer: "B", steps: ["Üçbucağın bucaqlarının cəmi $180^\\circ$-dir.", "$180^\\circ - 45^\\circ - 75^\\circ =$ **$60^\\circ$**."] },
+  u2: { answer: "C", steps: ["Oturacaq bucaqları bərabərdir: $2x + 40^\\circ = 180^\\circ$.", "$x =$ **$70^\\circ$**."] },
+  u3: { answer: "A", steps: ["$c^2 = 5^2 + 12^2 = 25 + 144 = 169$.", "$c =$ **13**."] },
+  u4: { answer: "C", steps: ["$b^2 = 10^2 - 6^2 = 100 - 36 = 64$.", "$b =$ **8**."] },
+  u5: { answer: "B", steps: ["Düzbucaqlı üçbucağın sahəsi: $S = \\frac{1}{2}ab$.", "$S = \\frac{1}{2} \\cdot 6 \\cdot 9 =$ **27**."] },
+  u6: { answer: "A", steps: ["$S = \\frac{1}{2}ab\\sin\\gamma$.", "$S = \\frac{1}{2} \\cdot 8 \\cdot 5 \\cdot \\frac{1}{2} =$ **10**."] },
+  u7: { answer: "C", steps: ["Bərabərtərəfli üçbucaqda $h = \\frac{a\\sqrt{3}}{2}$.", "$h = \\frac{4\\sqrt{3}}{2} =$ **$2\\sqrt{3}$**."] },
+  u8: { answer: "A", steps: ["Orta xətt paralel tərəfin yarısına bərabərdir.", "$14 : 2 =$ **7**."] },
+  u9: {
+    answer: "A",
+    steps: [
+      "$c^2 = a^2 + b^2 - 2ab\\cos\\gamma$.",
+      "$c^2 = 9 + 25 - 2 \\cdot 3 \\cdot 5 \\cdot \\left(-\\frac{1}{2}\\right) = 49$.",
+      "$c =$ **7**.",
+    ],
+  },
+  u10: {
+    answer: "C",
+    steps: ["Xarici bucaq ona qonşu olmayan iki daxili bucağın cəminə bərabərdir.", "$110^\\circ - 40^\\circ =$ **$70^\\circ$**."],
+  },
+  a1: { answer: "B", steps: ["$a_n = a_1 + (n - 1)d$.", "$a_6 = 5 + 5 \\cdot 3 =$ **20**."] },
+  a2: { answer: "B", steps: ["$a_7 - a_3 = 4d$.", "$4d = 12$, $d =$ **3**."] },
+  a3: { answer: "B", steps: ["$S_n = \\frac{a_1 + a_n}{2} \\cdot n$.", "$S_{10} = \\frac{2 + 20}{2} \\cdot 10 =$ **110**."] },
+  a4: { answer: "B", steps: ["Bu, $a_1 = 1$, $a_{50} = 50$ olan ədədi silsilədir.", "$S = \\frac{1 + 50}{2} \\cdot 50 =$ **1275**."] },
+  a5: { answer: "C", steps: ["$b_n = b_1 \\cdot q^{n-1}$.", "$b_5 = 3 \\cdot 2^4 =$ **48**."] },
+  a6: { answer: "B", steps: ["$q = \\frac{b_2}{b_1}$.", "$q = \\frac{27}{81} =$ **$\\frac{1}{3}$**."] },
+  a7: { answer: "B", steps: ["$S_n = \\frac{b_1(q^n - 1)}{q - 1}$.", "$S_5 = \\frac{2^5 - 1}{2 - 1} =$ **31**."] },
+  a8: { answer: "D", steps: ["$S = \\frac{b_1}{1 - q}$.", "$S = \\frac{6}{1 - \\frac{1}{2}} =$ **12**."] },
+  a9: { answer: "C", steps: ["$40 + (n - 1) \\cdot (-3) = 1$.", "$n - 1 = 13$, $n =$ **14**."] },
+  a10: { answer: "B", steps: ["$n = 5$ yazırıq.", "$a_5 = 5^2 - 1 =$ **24**."] },
+};
+
+/** Qapalı — hərf, kodlaşdırılan — ədəd, yazılı — nümunə cavab (əl ilə yoxlanılır). */
+export const EXAM_KEYS: Record<number, { answer: string; steps: string[] }> = {
+  1: { answer: "C", steps: DAILY_KEYS.f2.steps },
+  2: { answer: "C", steps: DAILY_KEYS.f5.steps },
+  3: { answer: "D", steps: ["$f(4) = 2 \\cdot 4 + 3 =$ **11**."] },
+  4: { answer: "C", steps: ["Təpənin absisi $x_0 = -\\frac{b}{2a} = \\frac{4}{2} =$ **2**."] },
+  5: { answer: "A", steps: ["$3x - 6 = 0 \\Rightarrow x =$ **2**."] },
+  6: { answer: "B", steps: DAILY_KEYS.t3.steps },
+  7: { answer: "D", steps: DAILY_KEYS.t4.steps },
+  8: { answer: "B", steps: ["Üçbucağın bucaqlarının cəmi $180^\\circ$-dir.", "$180^\\circ - 50^\\circ - 60^\\circ =$ **$70^\\circ$**."] },
+  9: { answer: "C", steps: ["$c^2 = 6^2 + 8^2 = 36 + 64 = 100$.", "$c =$ **10**."] },
+  10: { answer: "D", steps: DAILY_KEYS.l2.steps },
+  11: { answer: "B", steps: DAILY_KEYS.l5.steps },
+  12: { answer: "B", steps: ["$a_n = a_1 + (n - 1)d$.", "$a_{10} = 3 + 9 \\cdot 4 =$ **39**."] },
+  13: { answer: "C", steps: ["$b_n = b_1 \\cdot q^{n-1}$.", "$b_4 = 2 \\cdot 3^3 =$ **54**."] },
+  14: { answer: "42", steps: ["$120 \\cdot 0{,}35 =$ **42**."] },
+  15: { answer: "14", steps: ["$f(7) = 49 - 35 =$ **14**."] },
+  16: { answer: "30", steps: ["$S = \\frac{1}{2} \\cdot a \\cdot h = \\frac{1}{2} \\cdot 10 \\cdot 6 =$ **30**."] },
+  17: { answer: "100", steps: ["$S_n = \\frac{n}{2}\\left(2a_1 + (n - 1)d\\right)$.", "$S_{10} = 5 \\cdot (2 + 18) =$ **100**."] },
+  18: { answer: "2", steps: ["$\\sin^2 37^\\circ + \\cos^2 37^\\circ = 1$, $\\operatorname{tg} 45^\\circ = 1$.", "$1 + 1 =$ **2**."] },
+  19: { answer: "200", steps: ["$x \\cdot 1{,}1 \\cdot 1{,}1 = 242$.", "$x = \\frac{242}{1{,}21} =$ **200 manat**."] },
+  20: { answer: "$-4$", steps: ["Təpənin absisi $x_0 = \\frac{6}{2} = 3$.", "$f(3) = 9 - 18 + 5 =$ **$-4$**."] },
+  21: {
+    answer: "$0{,}96$",
+    steps: ["$\\sin\\alpha = \\sqrt{1 - 0{,}36} = 0{,}8$ (iti bucaq).", "$\\sin 2\\alpha = 2 \\cdot 0{,}8 \\cdot 0{,}6 =$ **$0{,}96$**."],
+  },
+  22: { answer: "30", steps: ["İkinci katet: $\\sqrt{13^2 - 5^2} = \\sqrt{144} = 12$.", "$S = \\frac{1}{2} \\cdot 5 \\cdot 12 =$ **30**."] },
+  23: {
+    answer: "$\\frac{2}{7}$",
+    steps: ["Ən böyük tərəf 9-dur.", "$\\cos\\gamma = \\frac{7^2 + 8^2 - 9^2}{2 \\cdot 7 \\cdot 8} = \\frac{32}{112} =$ **$\\frac{2}{7}$**."],
+  },
+  24: {
+    answer: "3",
+    steps: [
+      "Təyin oblastı: $x > 1$.",
+      "$\\log_2\\left((x - 1)(x + 1)\\right) = 3 \\Rightarrow x^2 - 1 = 8 \\Rightarrow x = \\pm 3$.",
+      "$x > 1$ olduğundan **$x = 3$**.",
+    ],
+  },
+  25: {
+    answer: "$b_1 = 2,\\ q = 3$",
+    steps: [
+      "$\\frac{b_5}{b_2} = q^3 = \\frac{162}{6} = 27 \\Rightarrow q = 3$.",
+      "$b_1 = \\frac{b_2}{q} = \\frac{6}{3} = 2$. Cavab: **$b_1 = 2,\\ q = 3$**.",
+    ],
+  },
+};
