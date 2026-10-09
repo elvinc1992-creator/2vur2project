@@ -14,7 +14,6 @@ import { Tag, h1Class, h3Class } from "@/components/ui/display";
 import { EmptyState } from "@/components/ui/empty-art";
 import { az } from "@/content/az";
 import { db } from "@/db";
-import { hasPaidAccess } from "@/lib/demo/logic";
 import { hasPlanData, personalByTopic } from "@/lib/demo/personal";
 import { initials } from "@/lib/demo/session";
 import { getDemoState } from "@/lib/demo/state";
@@ -39,8 +38,9 @@ export default async function StatsPage(props: PageProps<"/statistika">) {
     db.all<{ id: number; slug: string }>(sql`select id, slug from topics`),
   ]);
   const topicIds = new Map(topicRows.map((r) => [String(r.slug), Number(r.id)]));
-  const personal = state ? personalByTopic(state) : new Map();
-  const access = !state ? "anon" : hasPaidAccess(state) ? "paid" : "free";
+  const personal = state ? await personalByTopic(state) : new Map();
+  // Statistika bütün planlarda (Free daxil) tam açıqdır — yalnız qonaq üçün məhdudlaşır.
+  const access = !state ? "anon" : "paid";
   const query = toQuery(filters);
   const kindLabel = filters.kind === "all" ? null : t.filters.kinds[filters.kind].toLocaleLowerCase("az");
 

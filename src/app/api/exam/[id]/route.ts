@@ -2,7 +2,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { EXAM_QUESTIONS } from "@/lib/demo/content";
 import { finalizeAttempt, pauseAttempt, saveAnswer, tickAttempt, toggleFlag } from "@/lib/demo/exam-session";
-import { getDemoState, saveDemoState } from "@/lib/demo/state";
+import { updateDemoState } from "@/lib/demo/state";
 
 // Sınaq prosesinin tez-tez çağırılan əməliyyatları (siqnal, fasilə, cavab, işarə, vaxt bitdi).
 // Route Handler — server action kimi bütün səhifəni yenidən render etmir; sendBeacon da buraya göndərir.
@@ -26,26 +26,20 @@ export async function POST(req: Request, ctx: RouteContext<"/api/exam/[id]">) {
   if (!parsed.success) return Response.json({ error: "input" }, { status: 400 });
 
   const { id } = await ctx.params;
-  const state = await getDemoState(session.user.id);
   const cmd = parsed.data;
-  let result: unknown;
-  switch (cmd.op) {
-    case "tick":
-      result = tickAttempt(state, id);
-      break;
-    case "pause":
-      result = pauseAttempt(state, id);
-      break;
-    case "save":
-      result = saveAnswer(state, id, cmd.n, cmd.value);
-      break;
-    case "flag":
-      result = { ok: toggleFlag(state, id, cmd.n) };
-      break;
-    case "timeout":
-      result = { answered: state.attempts[id] ? finalizeAttempt(state, id, true) : Object.keys(state.results[id]?.answers ?? {}).length };
-      break;
-  }
-  await saveDemoState(state);
+  const result = await updateDemoState(session.user.id, (state) => {
+    switch (cmd.op) {
+      case "tick":
+        return tickAttempt(state, id);
+      case "pause":
+        return pauseAttempt(state, id);
+      case "save":
+        return saveAnswer(state, id, cmd.n, cmd.value);
+      case "flag":
+        return { ok: toggleFlag(state, id, cmd.n) };
+      case "timeout":
+        return { answered: state.attempts[id] ? finalizeAttempt(state, id, true) : Object.keys(state.results[id]?.answers ?? {}).length };
+    }
+  });
   return Response.json(result ?? null);
 }

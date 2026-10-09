@@ -9,6 +9,7 @@ import { RESET_TOKEN_TTL_MS, VERIFY_TOKEN_TTL_MS, generateToken, hashToken } fro
 
 /** Köhnə linkləri ləğv edir, yenisini yaradıb məktubla göndərir. */
 export async function sendVerificationEmail(user: Pick<User, "id" | "email" | "name">) {
+  if (!user.email) return;
   const token = generateToken();
   await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, user.id));
   await db.insert(emailVerificationTokens).values({
@@ -45,6 +46,8 @@ export async function verifyEmailToken(token: string): Promise<VerifyResult> {
 }
 
 export async function sendPasswordResetEmail(user: Pick<User, "id" | "email" | "name">) {
+  // E-poçtu olmayan hesaba (qeydiyyatda soruşulmur) bərpa linki göndərilmir.
+  if (!user.email) return;
   const token = generateToken();
   await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
   await db.insert(passwordResetTokens).values({

@@ -82,7 +82,7 @@ async function loginErrorState(code: LoginErrorCode, identifier: string): Promis
       return { status: "error", formError: e.googleOnly };
     case "unverified": {
       const user = await findUserByIdentifier(identifier);
-      if (user) {
+      if (user?.email) {
         await setPendingEmail(user.email);
         const rl = await rateLimit(`verify-resend:${user.id}`, 1, RESEND_COOLDOWN_S * 1000);
         if (rl.ok) await sendVerificationEmail(user);
@@ -99,11 +99,11 @@ async function loginErrorState(code: LoginErrorCode, identifier: string): Promis
 export async function registerAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = registerSchema.safeParse({
     name: str(formData, "name"),
+    surname: str(formData, "surname"),
+    fatherName: str(formData, "fatherName"),
     username: str(formData, "username"),
-    email: str(formData, "email"),
     password: str(formData, "password"),
     grade: str(formData, "grade"),
-    targetExam: str(formData, "targetExam"),
     terms: str(formData, "terms"),
   });
   if (!parsed.success) return { status: "error", fieldErrors: fieldErrors(parsed.error) };
@@ -116,51 +116,32 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
   const rl = await rateLimit(`register:ip:${ip}`, 10, HOUR);
   if (!rl.ok) return limited(rl.retryAfterMs);
 
-  const [byEmail, byUsername] = await Promise.all([
-    db.query.users.findFirst({ where: eq(users.email, data.email) }),
-    db.query.users.findFirst({ where: eq(users.username, data.username) }),
-  ]);
-  if (byEmail?.emailVerifiedAt) {
-    return { status: "error", fieldErrors: { email: e.emailTaken }, notice: "email_taken" };
-  }
-  if (byUsername && byUsername.id !== byEmail?.id) {
+  if (await db.query.users.findFirst({ where: eq(users.username, data.username), columns: { id: true } })) {
     return { status: "error", fieldErrors: { username: e.usernameTaken } };
   }
 
-  const values = {
-    name: data.name,
-    username: data.username,
-    email: data.email,
-    passwordHash: await hashPassword(data.password),
-    grade: data.grade,
-    targetExam: data.targetExam,
-    termsAcceptedAt: new Date(),
-  };
-
-  let user: { id: string; email: string; name: string } | undefined;
+  // E-poçt və telefon qeydiyyatda soruşulmur — istəyə bağlı, profildə əlavə edilir.
   try {
-    // Təsdiqlənməmiş köhnə qeydiyyat varsa, onu yeniləyirik: e-poçtu yalnız poçtun sahibi təsdiqləyə bilər.
-    [user] = byEmail
-      ? await db.update(users).set(values).where(eq(users.id, byEmail.id)).returning()
-      : await db.insert(users).values(values).returning();
+    await db.insert(users).values({
+      name: data.name,
+      surname: data.surname,
+      fatherName: data.fatherName,
+      username: data.username,
+      passwordHash: await hashPassword(data.password),
+      grade: data.grade,
+      termsAcceptedAt: new Date(),
+    });
   } catch (error) {
-    const msg = String((error as { cause?: unknown })?.cause ?? error);
-    if (msg.includes("users.username")) {
+    if (String((error as { cause?: unknown })?.cause ?? error).includes("users.username")) {
       return { status: "error", fieldErrors: { username: e.usernameTaken } };
-    }
-    if (msg.includes("users.email")) {
-      return { status: "error", fieldErrors: { email: e.emailTaken }, notice: "email_taken" };
     }
     throw error;
   }
-  if (!user) return { status: "error", formError: e.generic };
 
-  await rateLimit(`verify-resend:${user.id}`, 1, RESEND_COOLDOWN_S * 1000);
-  await sendVerificationEmail(user);
-  await setPendingEmail(user.email);
-  redirect("/email-tesdiqi");
+  // Qeydiyyatdan sonra birbaşa daxil olur (NEXT_REDIRECT atılır).
+  await signIn("credentials", { identifier: data.username, password: data.password, redirectTo: "/panel" });
+  return { status: "idle" };
 }
-
 /* ---------------- Təsdiq linkini yenidən göndər ---------------- */
 
 export async function resendVerificationAction(_prev: FormState): Promise<FormState> {
@@ -252,6 +233,13 @@ export async function resetPasswordAction(_prev: FormState, formData: FormData):
     db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, consumed.userId)),
   ]);
   redirect("/daxil-ol?reset=1");
+}
+
+/* ---------------- Google ilə giriş ---------------- */
+
+export async function googleSignInAction(formData: FormData) {
+  // Google-a yönləndirir (NEXT_REDIRECT); qayıdanda hesab tapılır və ya yaradılır (auth.ts → signIn callback).
+  await signIn("google", { redirectTo: safeRedirect(str(formData, "next")) });
 }
 
 /* ---------------- Çıxış ---------------- */

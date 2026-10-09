@@ -5,9 +5,10 @@ import { ClockIcon, ListIcon } from "@/components/icons";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, FormatBar, Tag, h1Class, h3Class } from "@/components/ui/display";
 import { az } from "@/content/az";
-import { startExamAction } from "@/lib/demo/actions";
-import { EXAMS, EXAM_FORMAT, EXAM_QUESTIONS, PRICE_PLACEHOLDER } from "@/lib/demo/content";
-import { answeredCount, examStatus, remainingMs } from "@/lib/demo/logic";
+import { claimExamAction, startExamAction } from "@/lib/demo/actions";
+import { EXAMS, EXAM_FORMAT, EXAM_QUESTIONS } from "@/lib/demo/content";
+import { answeredCount, examStatus, formatDate, remainingMs } from "@/lib/demo/logic";
+import { EXAM_PRICE, examQuota } from "@/lib/demo/plans";
 import { initials, requireDemo } from "@/lib/demo/session";
 import { cn } from "@/lib/cn";
 
@@ -17,9 +18,11 @@ const FILTERS = ["all", "owned", "new"] as const;
 type Filter = (typeof FILTERS)[number];
 
 export default async function StorePage(props: PageProps<"/sinaqlar">) {
-  const { f } = await props.searchParams;
+  const sp = await props.searchParams;
+  const f = sp.f;
   const filter: Filter = FILTERS.includes(f as Filter) ? (f as Filter) : "all";
   const { user, state } = await requireDemo("/sinaqlar");
+  const quota = examQuota(state);
   const t = az.app.store;
   const total = EXAM_QUESTIONS.length;
   const { closed, coded, written } = EXAM_FORMAT;
@@ -52,6 +55,25 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
           ))}
         </nav>
 
+        <Card tone={quota.kind === "all" || quota.left > 0 ? "tint" : "flat"} className="grid gap-2">
+          <p className="m-0 font-semibold text-navy-900">
+            {quota.kind === "all"
+              ? t.quotaAll
+              : quota.left > 0
+                ? t.quotaLeft(quota.kind)
+                : t.quotaUsed(quota.kind, formatDate(quota.resetsAt))}
+          </p>
+          {quota.kind !== "all" && (
+            <p className="m-0 text-small text-ink-muted">
+              {t.quotaUpgrade(quota.kind)}{" "}
+              <Link href="/odenis" className="font-semibold text-navy-500 underline underline-offset-3">
+                {t.upgrade}
+              </Link>
+            </p>
+          )}
+          {sp.kvota === "0" && <p className="m-0 text-small font-semibold text-danger-700">{t.quotaEmpty}</p>}
+        </Card>
+
         {exams.length === 0 && <p className="text-ink-muted">{t.empty}</p>}
         <div className="grid gap-4 md:grid-cols-2">
           {exams.map((e) => {
@@ -66,7 +88,7 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
                   </div>
                   {e.status === "in_progress" && <Tag tone="warning">{t.inProgress}</Tag>}
                   {e.status === "expired" && <Tag tone="danger">{t.expired}</Tag>}
-                  {e.status === "locked" && <Tag className="tabular">{PRICE_PLACEHOLDER}</Tag>}
+                  {e.status === "locked" && <Tag className="tabular">{EXAM_PRICE}</Tag>}
                   {e.status === "done" && <Tag tone="solid">{t.score(result.score)}</Tag>}
                   {e.status === "purchased" && <Tag tone="success">{t.owned}</Tag>}
                 </div>
@@ -97,11 +119,18 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
                     {t.result}
                   </ButtonLink>
                 )}
-                {e.status === "locked" && (
-                  <ButtonLink href={`/odenis?exam=${e.id}`} variant="primary" block>
-                    {t.buy(PRICE_PLACEHOLDER)}
-                  </ButtonLink>
-                )}
+                {e.status === "locked" &&
+                  (quota.kind !== "all" && quota.left > 0 ? (
+                    <form action={claimExamAction.bind(null, e.id)}>
+                      <Button type="submit" block>
+                        {t.claim(quota.kind)}
+                      </Button>
+                    </form>
+                  ) : (
+                    <ButtonLink href={`/odenis?exam=${e.id}`} variant="secondary" block>
+                      {t.buy(EXAM_PRICE)}
+                    </ButtonLink>
+                  ))}
                 {e.status === "done" && (
                   <ButtonLink href={`/sinaq/${e.id}/netice`} variant="secondary" block>
                     {t.result}

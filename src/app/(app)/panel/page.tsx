@@ -6,7 +6,8 @@ import { Page, Topbar } from "@/components/app/topbar";
 import { CalcIcon, CapIcon, ChevronIcon, ClockIcon, FlameIcon, LockIcon, RetryIcon } from "@/components/icons";
 import { Card, Meter, Ring, Tag, Week, h1Class, h3Class, listClass } from "@/components/ui/display";
 import { az } from "@/content/az";
-import { EXAMS, EXAM_QUESTIONS, PROGRESS_TOPIC, TOPICS } from "@/lib/demo/content";
+import { EXAMS, EXAM_QUESTIONS } from "@/lib/demo/content";
+import { requireDaily } from "@/lib/demo/daily";
 import {
   answeredCount,
   dailyOverview,
@@ -20,7 +21,8 @@ import {
   streakInfo,
   typeProgress,
 } from "@/lib/demo/logic";
-import { initials, requireDemo } from "@/lib/demo/session";
+import { canUseRepetitor, hasFullDaily, PLANS, tierOf } from "@/lib/demo/plans";
+import { initials } from "@/lib/demo/session";
 import { tutorOf } from "@/lib/repetitor/progress";
 import { listMistakes } from "@/lib/review/mistakes";
 import { practicePool } from "@/lib/review/pool";
@@ -29,18 +31,22 @@ import { listRepetitorTopics } from "@/lib/repetitor/source";
 export const metadata: Metadata = { title: az.app.panel.title };
 
 export default async function PanelPage() {
-  const { user, state } = await requireDemo("/panel");
+  const { user, state, ctx } = await requireDaily("/panel");
   const t = az.app.panel;
   const days = daysLeft(state.sub.periodEnd);
-  const daily = dailyOverview(state);
+  const daily = dailyOverview(state, ctx);
   const plan = planStatus(state);
-  const paid = plan !== "free";
+  const paid = hasFullDaily(state);
+  const tierName = PLANS[tierOf(state)].name;
+  const tutorOpen = canUseRepetitor(state);
   const left = daily.total - daily.done;
   const streak = streakInfo(state);
   const tutorTotal = (await listRepetitorTopics()).reduce((s, x) => s + x.questions.length, 0);
   const tutorDone = Object.values(tutorOf(state)).filter((p) => p.a).length;
   const activeMistakes = (await listMistakes(state, await practicePool())).filter((m) => !m.fixed).length;
-  const progress = typeProgress(state, PROGRESS_TOPIC);
+  // Tiplər üzrə proqres — bu günün ilk mövzusu üzrə.
+  const progressTopic = ctx.topics[0];
+  const progress = progressTopic ? typeProgress(state, ctx, progressTopic.slug) : [];
 
   // Vaxtı bitmiş sınaq "Davam et"-də göstərilmir.
   const inProgressId = Object.keys(state.attempts).find((id) => examStatus(state, id) === "in_progress");
@@ -67,8 +73,8 @@ export default async function PanelPage() {
                 {plan === "free"
                   ? az.app.sub.free
                   : plan === "active"
-                    ? az.app.sub.activeLong(days)
-                    : az.app.sub.canceledLong(days)}
+                    ? az.app.sub.activeLong(days, tierName)
+                    : az.app.sub.canceledLong(days, tierName)}
               </Tag>
               <h1 className={h1Class}>{t.hello(user.name ?? "")}</h1>
               <p className="text-ink-muted">
@@ -147,7 +153,7 @@ export default async function PanelPage() {
                       </span>
                       <ChevronIcon className="size-5 flex-none text-ink-muted" />
                     </span>
-                    <DailyStrip items={dailyPager(state, x.topic)} />
+                    <DailyStrip items={dailyPager(state, ctx, x.topic)} />
                   </Link>
                 ))}
               </div>
@@ -158,7 +164,7 @@ export default async function PanelPage() {
                 <h2 className={h3Class} id="tp">
                   {t.typesTitle}
                 </h2>
-                <Tag>{TOPICS[PROGRESS_TOPIC].name}</Tag>
+                {progressTopic && <Tag>{progressTopic.name}</Tag>}
               </div>
               {progress.map((it) => (
                 <div key={it.type} className="grid gap-1.5">
@@ -189,8 +195,8 @@ export default async function PanelPage() {
               <span className="min-w-0 flex-1">
                 <b className="block font-display text-lg leading-6 font-extrabold text-navy-900">{az.app.tutor.title}</b>
                 <span className="flex items-center gap-1.5 text-small text-ink-muted">
-                  {!paid && <LockIcon className="size-4 flex-none" />}
-                  {paid ? az.app.tutor.panelPaid(tutorDone, tutorTotal) : az.app.tutor.panelFree}
+                  {!tutorOpen && <LockIcon className="size-4 flex-none" />}
+                  {tutorOpen ? az.app.tutor.panelPaid(tutorDone, tutorTotal) : az.app.tutor.panelFree}
                 </span>
               </span>
               <ChevronIcon className="size-5 flex-none text-ink-muted" />

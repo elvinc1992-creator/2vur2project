@@ -3,12 +3,13 @@ import { createClient } from "@libsql/client";
 import { loadEnvConfig } from "@next/env";
 import { hash } from "@node-rs/argon2";
 import { expect, test, type Page } from "@playwright/test";
+import { fixDaily } from "./daily-fixture";
 
 // Səhvlərim: səhv cavablar toplanır, "Səhvlərimi təkrar et" — həmin suallar + oxşar suallar.
 test.describe.configure({ mode: "serial" });
 
 const stamp = Date.now();
-const user = { email: `e2e+mis${stamp}@example.test`, password: "Sevda2026x" };
+const user = { id: crypto.randomUUID(), email: `e2e+mis${stamp}@example.test`, password: "Sevda2026x" };
 
 test.beforeAll(async () => {
   loadEnvConfig(process.cwd());
@@ -18,9 +19,11 @@ test.beforeAll(async () => {
     sql: `insert into users (id, email, username, name, password_hash, role, grade, target_exam,
             email_verified_at, terms_accepted_at, created_at, updated_at)
           values (?, ?, ?, 'Sevda', ?, 'student', 11, 'both', ?, ?, ?, ?)`,
-    args: [crypto.randomUUID(), user.email, `e2e_m${stamp % 1e9}`, await hash(user.password), now, now, now, now],
+    args: [user.id, user.email, `e2e_m${stamp % 1e9}`, await hash(user.password), now, now, now, now],
   });
   db.close();
+  // Günün sualları təsadüfidir — testdə sabit dəst (faiz: f1, f3, f2…).
+  await fixDaily(user.id);
 });
 
 async function login(page: Page) {
@@ -46,31 +49,31 @@ async function answer(page: Page, letter: string, value: string) {
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
 }
 
-test("pulsuz: səhv → Səhvlərim → təkrar → düzəldildi", async ({ page }) => {
+test("Free: səhv → Səhvlərim → təkrar → düzəldildi", async ({ page }) => {
   await login(page);
   await page.goto("/sehvlerim");
   await expect(page.getByRole("heading", { name: "Hələ səhvin yoxdur" })).toBeVisible();
 
-  // Günün sualı (faiz/1, düzgün: B · 12) — səhv cavab
-  await page.goto("/gunun-suallari/faiz/1");
+  // Günün sualı (faiz/1 = f1, düzgün: B · 12) — səhv cavab
+  await page.goto("/gunun-suallari/faiz-nisbet-tenasub/1");
   await answer(page, "A", "10");
   await expect(page.getByText("Bu sual Səhvlərim bölməsinə əlavə olundu.")).toBeVisible();
   await page.getByRole("link", { name: "Səhvlərimə bax" }).click();
   await expect(page).toHaveURL(/\/sehvlerim$/);
 
-  const card = page.getByRole("article", { name: "Faiz və nisbət: Sadə və mürəkkəb faiz" });
+  const card = page.getByRole("article", { name: "Faiz. Nisbət. Tənasüb: Sadə və mürəkkəb faiz" });
   await expect(card).toContainText("Sənin cavabın");
   await expect(card).toContainText("Düzgün cavab");
   await expect(card.locator("dd").first()).toContainText("A · 10");
   await expect(card.locator("dd").last()).toContainText("B · 12");
-  await expect(page.getByText(/Pulsuz planda oxşar suallar yalnız açıq suallardan/)).toBeVisible();
+  await expect(page.getByText(/Free planda təkrar yalnız öz səhvlərindən ibarətdir/)).toBeVisible();
   expect(await axe(page)).toEqual([]);
 
   // Paneldə kart
   await page.goto("/panel");
   await expect(page.getByRole("link", { name: /Səhvlərim.*1 səhv təkrar gözləyir/ })).toBeVisible();
 
-  // Təkrar: yalnız həmin sual (pulsuz planda oxşar açıq sual yoxdur)
+  // Təkrar: yalnız həmin sual (Free planda oxşar sual yoxdur)
   await page.goto("/sehvlerim");
   await page.getByRole("button", { name: "Səhvlərimi təkrar et" }).click();
   await expect(page).toHaveURL(/\/sehvlerim\/tekrar\/1$/);
@@ -86,14 +89,14 @@ test("pulsuz: səhv → Səhvlərim → təkrar → düzəldildi", async ({ page
   await expect(page.getByText("Bütün səhvlər düzəldilib!")).toBeVisible();
 });
 
-test("abunə: səhv + oxşar suallar; oxşara səhv cavab da Səhvlərimə düşür", async ({ page }) => {
+test("Pro: səhv + oxşar suallar; oxşara səhv cavab da Səhvlərimə düşür", async ({ page }) => {
   await login(page);
   await page.goto("/odenis");
   await page.getByRole("button", { name: /ödə/ }).click();
   await expect(page).toHaveURL(/\/odenis\/ugurlu\?r=/);
 
-  // faiz/2 (Ardıcıl faiz artımı, düzgün: C · 16%) — səhv
-  await page.goto("/gunun-suallari/faiz/2");
+  // faiz/3 = f2 (Ardıcıl faiz artımı, düzgün: C · 16%) — Pro ilə açılır; səhv
+  await page.goto("/gunun-suallari/faiz-nisbet-tenasub/3");
   await answer(page, "A", "12%");
   await expect(page.getByText("Yanlışdır. Düzgün cavab: C")).toBeVisible();
   await page.goto("/sehvlerim");
@@ -119,7 +122,7 @@ test("abunə: səhv + oxşar suallar; oxşara səhv cavab da Səhvlərimə düş
   await page.goto("/sehvlerim");
   await expect(page.getByRole("link", { name: "Təkrara davam et · 2/3" })).toHaveAttribute("href", "/sehvlerim/tekrar/3");
   // Oxşara verilən səhv cavab — "Təkrar" mənbəli yeni səhv
-  await expect(page.getByRole("article", { name: "Faiz və nisbət: Ardıcıl faiz artımı" }).filter({ hasText: "Təkrar" })).toBeVisible();
+  await expect(page.getByRole("article", { name: "Faiz. Nisbət. Tənasüb: Ardıcıl faiz artımı" }).filter({ hasText: "Təkrar" })).toBeVisible();
 
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });

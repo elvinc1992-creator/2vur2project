@@ -2,6 +2,7 @@ import { createClient } from "@libsql/client";
 import { loadEnvConfig } from "@next/env";
 import { hash } from "@node-rs/argon2";
 import { expect, test, type Page } from "@playwright/test";
+import { FIXED_DAILY, fixDaily } from "./daily-fixture";
 
 test.describe.configure({ mode: "serial" });
 
@@ -36,6 +37,18 @@ async function login(page: Page) {
 let authCookies: Awaited<ReturnType<import("@playwright/test").BrowserContext["cookies"]>> = [];
 
 test.beforeEach(async ({ page, context }) => {
+  // Vəziyyət bazada saxlanılır — hər test sıfırdan başlasın.
+  const db = createClient({ url: process.env.TURSO_DATABASE_URL!, authToken: process.env.TURSO_AUTH_TOKEN });
+  await db.batch(
+    [
+      { sql: "delete from user_state where user_id = ?", args: [userId] },
+      { sql: "delete from user_answers where user_id = ?", args: [userId] },
+    ],
+    "write",
+  );
+  db.close();
+  // Günün sualları təsadüfidir — testdə sabit dəst.
+  await fixDaily(userId);
   if (!authCookies.length) {
     await login(page);
     authCookies = (await context.cookies()).filter((c) => c.name.includes("authjs"));
@@ -58,7 +71,7 @@ async function buyAndStart(page: Page, id: string) {
   await expect(page).toHaveURL(new RegExp(`/sinaq/${id}$`));
 }
 
-/** Mock ödəniş: aylıq abunə (yeni istifadəçi pulsuz planda başlayır). */
+/** Mock ödəniş: Pro plan (yeni istifadəçi Free planda başlayır). */
 async function subscribe(page: Page) {
   await page.goto("/odenis");
   await page.getByRole("button", { name: /ödə/ }).click();
@@ -72,24 +85,17 @@ async function finishExam(page: Page, id: string) {
   await expect(page).toHaveURL(new RegExp(`/sinaq/${id}/netice$`));
 }
 
-const DAILY_TOPICS = [
-  "Triqonometriya",
-  "Loqarifmlər",
-  "Fəza fiqurları",
-  "Faiz və nisbət",
-  "Funksiyalar",
-  "Üçbucaqlar",
-  "Ardıcıllıqlar",
-];
+const DAILY_TOPICS = FIXED_DAILY.map((x) => x.name);
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-test("panel: sıfırdan başlayır, pulsuz plan — hər mövzudan 1 sual", async ({ page }) => {
+test("panel: sıfırdan başlayır, Free plan — günün hər mövzusundan 2 sual", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Salam, Nigar!" })).toBeVisible();
-  await expect(page.getByText("Pulsuz plan").first()).toBeVisible();
-  await expect(page.getByText("0 / 70")).toBeVisible();
-  await expect(page.getByText("Pulsuz planda bu gün 7 sual açıqdır, daha 63 sual abunə ilə açılır.")).toBeVisible();
-  await expect(page.getByText("Günün sualları abunə ilə tam açılır")).toBeVisible();
+  await expect(page.getByText("Free plan").first()).toBeVisible();
+  await expect(page.getByText("0 / 20")).toBeVisible();
+  await expect(page.getByText("Free planda bu gün 8 sual açıqdır, daha 12 sual Pro planı ilə açılır.")).toBeVisible();
+  await expect(page.getByText("Günün sualları Pro planı ilə tam açılır")).toBeVisible();
   for (const topic of DAILY_TOPICS) {
-    await expect(page.getByRole("link", { name: new RegExp(`${topic}.*1 pulsuz · 9 kilidli`) })).toBeVisible();
+    await expect(page.getByRole("link", { name: new RegExp(`${esc(topic)}.*2 açıq · 3 kilidli`) })).toBeVisible();
   }
   await expect(page.getByText("0 gün ardıcıl")).toBeVisible();
   await expect(page.getByText("0 tamamlanıb · 0 yarımçıq")).toBeVisible();
@@ -100,7 +106,7 @@ test("panel: sıfırdan başlayır, pulsuz plan — hər mövzudan 1 sual", asyn
 test("günün sualı: düzgün və yanlış cavab, proqres artır", async ({ page }) => {
   await page.getByRole("link", { name: /Triqonometriya/ }).first().click();
   await expect(page).toHaveURL(/\/gunun-suallari\/triqonometriya\/1$/);
-  await expect(page.getByRole("heading", { name: "Günün sualı: Triqonometriya, 1 / 10" })).toBeAttached();
+  await expect(page.getByRole("heading", { name: "Günün sualı: Triqonometriya, 1 / 5" })).toBeAttached();
 
   // Cavab seçilməyib — yoxla düyməsi deaktivdir.
   await expect(page.getByRole("button", { name: "Cavabı yoxla" })).toHaveAttribute("aria-disabled", "true");
@@ -110,61 +116,59 @@ test("günün sualı: düzgün və yanlış cavab, proqres artır", async ({ pag
   await expect(page.getByText("Bu tipdə düzgün cavabların: 1 / 1.")).toBeVisible();
   await expect(page.getByText("Qısa həll")).toBeVisible();
 
-  // Pulsuz plan: növbəti — başqa mövzunun pulsuz sualı (2-ci sual kilidlidir)
+  // Free plan: 2-ci sual da açıqdır
   await page.getByRole("link", { name: "Növbəti sual" }).click();
-  await expect(page).toHaveURL(/\/gunun-suallari\/loqarifm\/1$/);
-
-  // Abunədən sonra 2-ci sual açılır
-  await subscribe(page);
-  await page.goto("/gunun-suallari/triqonometriya/2");
+  await expect(page).toHaveURL(/\/gunun-suallari\/triqonometriya\/2$/);
   await pick(page, "B", "0");
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
   await expect(page.getByText("Yanlışdır. Düzgün cavab: A")).toBeVisible();
+  // 3-cü sual kilidlidir → növbəti başqa mövzunun açıq sualı
+  await page.getByRole("link", { name: "Növbəti sual" }).click();
+  await expect(page).toHaveURL(/\/gunun-suallari\/loqarifm-ustlu-tenlik-berabersizlik\/1$/);
 
   await page.goto("/panel");
-  await expect(page.getByText("2 / 70")).toBeVisible();
+  await expect(page.getByText("2 / 20")).toBeVisible();
   await expect(page.getByText("1 gün ardıcıl")).toBeVisible();
 });
 
-test("pulsuz plan: kilidli sualın mətni və variantları serverdən gəlmir, abunə hamısını açır", async ({ page }) => {
-  // İcmal: 7 mövzu, hər birində 10 sual — 1 açıq, 9 kilidli
+test("Free plan: kilidli sualın mətni və variantları serverdən gəlmir, Pro hamısını açır", async ({ page }) => {
+  // İcmal: 4 mövzu, hər birində 5 sual — 2 açıq, 3 kilidli
   await page.goto("/gunun-suallari");
   await expect(page.getByRole("heading", { level: 1, name: "Günün sualları" })).toBeVisible();
-  await expect(page.getByText("Pulsuz planda hər mövzudan 1 sual açıqdır. Qalan 63 sual abunə ilə açılır.")).toBeVisible();
+  await expect(page.getByText("Free planda hər mövzudan 2 sual açıqdır. Qalan 12 sual Pro planı ilə açılır.")).toBeVisible();
   for (const topic of DAILY_TOPICS) {
     const pager = page.getByRole("navigation", { name: `${topic}: suallar` });
-    await expect(pager.getByRole("link")).toHaveCount(10);
-    await expect(pager.getByRole("link", { name: /kilidli/ })).toHaveCount(9);
+    await expect(pager.getByRole("link")).toHaveCount(5);
+    await expect(pager.getByRole("link", { name: /kilidli/ })).toHaveCount(3);
     await expect(pager.getByRole("link", { name: "Sual 1, açıq" })).toBeVisible();
   }
 
   // Kilidli sual: paywall, variant yoxdur, mətn HTML-də yoxdur
-  await page.getByRole("navigation", { name: "Faiz və nisbət: suallar" }).getByRole("link", { name: /^Sual 2,/ }).click();
-  await expect(page).toHaveURL(/\/gunun-suallari\/faiz\/2$/);
-  await expect(page.getByRole("heading", { name: "Bu sual abunə ilə açılır", exact: true })).toBeVisible();
+  await page.getByRole("navigation", { name: "Faiz. Nisbət. Tənasüb: suallar" }).getByRole("link", { name: /^Sual 3,/ }).click();
+  await expect(page).toHaveURL(/\/gunun-suallari\/faiz-nisbet-tenasub\/3$/);
+  await expect(page.getByRole("heading", { name: "Bu sual Pro planı ilə açılır", exact: true })).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Abunə ol" })).toHaveAttribute("href", "/odenis");
-  const locked = await (await page.request.get("/gunun-suallari/faiz/2")).text();
+  await expect(page.getByRole("link", { name: "Pro planına keç" })).toHaveAttribute("href", "/odenis?plan=pro");
+  const locked = await (await page.request.get("/gunun-suallari/faiz-nisbet-tenasub/3")).text();
   expect(locked).not.toContain("45% artırıldı");
   expect(locked).not.toContain("səh.146 №11–15");
 
-  // Abunə → bütün 70 sual açıqdır
+  // Pro → bütün 20 sual açıqdır
   await subscribe(page);
   await page.goto("/gunun-suallari");
-  await expect(page.getByText("Bu gün 7 mövzu üzrə 70 sual. Hər mövzuda 10 sual.")).toBeVisible();
+  await expect(page.getByText("Bu gün sual bankından təsadüfi 4 mövzu üzrə 20 sual. Sabah yeni mövzular gələcək.")).toBeVisible();
   await expect(page.getByRole("link", { name: /kilidli/ })).toHaveCount(0);
-  await page.goto("/gunun-suallari/faiz/2");
+  await page.goto("/gunun-suallari/faiz-nisbet-tenasub/3");
   await expect(page.getByText("45% artırıldı")).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(5);
 });
 
 test("günün sualı: cavab açarı HTML-də yoxdur", async ({ page }) => {
-  const html = await (await page.request.get("/gunun-suallari/feza/1")).text();
+  const html = await (await page.request.get("/gunun-suallari/stereometriya/1")).text();
   expect(html).toContain("Tili 3 sm olan kubun");
   expect(html).not.toContain("Kubun həcmi");
   expect(html).not.toMatch(/"answer":"[A-E]"/);
 });
-
 test("kodlaşdırılan cavab: icazəsiz simvol daxil edilmir, xəta göstərilir", async ({ page }) => {
   await buyAndStart(page, "3");
   await page.getByRole("button", { name: /^Sual 15,/ }).click();
@@ -223,7 +227,8 @@ test("cavabı silmək: sınaqda, cavab vərəqində, kodlaşdırılanda, günün
   await page.getByRole("button", { name: "Cavabı sil" }).click();
   await expect(page.getByLabel("Variant C: 16%")).not.toBeChecked();
   await expect(cell1).toHaveAccessibleName("Sual 1, boş");
-  await page.waitForTimeout(400);
+  // Sorğular növbə ilə bazaya yazılır — hamısı bitənə qədər gözləyirik.
+  await page.waitForLoadState("networkidle");
   await page.reload();
   await expect(page.getByRole("button", { name: /^Sual 1,/ })).toHaveAccessibleName("Sual 1, boş");
 
@@ -250,16 +255,17 @@ test("cavabı silmək: sınaqda, cavab vərəqində, kodlaşdırılanda, günün
   await expect(page.getByText("0 / 25 cavablanıb")).toBeVisible();
 
   // Günün sualı: yoxlamadan əvvəl seçimi silmək olar
-  await page.goto("/gunun-suallari/faiz/1");
+  await page.goto("/gunun-suallari/faiz-nisbet-tenasub/1");
   await pick(page, "B", "12");
   await page.getByRole("button", { name: "Seçimi sil" }).click();
   await expect(page.getByLabel("Variant B: 12")).not.toBeChecked();
   await expect(page.getByRole("button", { name: "Cavabı yoxla" })).toHaveAttribute("aria-disabled", "true");
 });
 
-/** Demo vəziyyətini (kuki) birbaşa qurur — 90 dəqiqə gözləmədən vaxtın bitməsini yoxlamaq üçün. */
-async function setDemo(page: Page, attempt: Record<string, unknown>) {
+/** İstifadəçi vəziyyətini bazada birbaşa qurur — 90 dəqiqə gözləmədən vaxtın bitməsini yoxlamaq üçün. */
+async function setDemo(attempt: Record<string, unknown>) {
   const state = {
+    v: 3,
     uid: userId,
     daily: {},
     purchased: ["1"],
@@ -268,16 +274,13 @@ async function setDemo(page: Page, attempt: Record<string, unknown>) {
     sub: { status: "active", periodEnd: "2099-01-01" },
     payments: [],
   };
-  await page.context().addCookies([
-    {
-      name: "demo_v3",
-      value: Buffer.from(JSON.stringify(state)).toString("base64url"),
-      domain: "localhost",
-      path: "/",
-      httpOnly: true,
-      sameSite: "Lax",
-    },
-  ]);
+  const db = createClient({ url: process.env.TURSO_DATABASE_URL!, authToken: process.env.TURSO_AUTH_TOKEN });
+  await db.execute({
+    sql: `insert into user_state (user_id, data, updated_at) values (?, ?, ?)
+          on conflict(user_id) do update set data = excluded.data, updated_at = excluded.updated_at`,
+    args: [userId, JSON.stringify(state), Date.now()],
+  });
+  db.close();
 }
 
 const toSec = (t: string) => t.split(":").reduce((s, x) => s * 60 + Number(x), 0);
@@ -303,7 +306,7 @@ test("sayğac: sınaq səhifəsindən çıxanda vaxt dayanır, qayıdanda davam 
 });
 
 test("sayğac: vaxt səhifədə bitəndə sınaq avtomatik bitir və bağlanır", async ({ page }) => {
-  await setDemo(page, { startedAt: Date.now() - 100_000, elapsedMs: 90 * 60_000 - 3_000, lastSeenAt: null });
+  await setDemo({ startedAt: Date.now() - 100_000, elapsedMs: 90 * 60_000 - 3_000, lastSeenAt: null });
   await page.goto("/sinaq/1");
   await expect(page.getByRole("heading", { name: "Sınaq vaxtı bitdi" })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Cavabladığın 1 sual avtomatik göndərildi.")).toBeVisible();
@@ -316,7 +319,7 @@ test("sayğac: vaxt səhifədə bitəndə sınaq avtomatik bitir və bağlanır"
 });
 
 test("sayğac: vaxtı bitmiş sınaq aktiv deyil — davam etmək olmur", async ({ page }) => {
-  await setDemo(page, { startedAt: Date.now() - 200_000, elapsedMs: 90 * 60_000, lastSeenAt: null });
+  await setDemo({ startedAt: Date.now() - 200_000, elapsedMs: 90 * 60_000, lastSeenAt: null });
   await page.goto("/panel");
   await expect(page.getByText("Sınaq · yarımçıq")).toHaveCount(0);
   await page.goto("/sinaqlar");
@@ -330,15 +333,14 @@ test("sayğac: vaxtı bitmiş sınaq aktiv deyil — davam etmək olmur", async 
   await expect(page).toHaveURL(/\/sinaq\/1\/netice$/);
 });
 
-test("sınaq: satın al → başla → cavabla → yenilə → bitir → nəticə; açar sızmır", async ({ page }) => {
+test("sınaq: Free — ayın sınağını seç → başla → cavabla → yenilə → bitir → nəticə; açar sızmır", async ({ page }) => {
   await page.goto("/sinaqlar");
   await expect(page.getByRole("article")).toHaveCount(4);
-  await expect(page.getByRole("link", { name: /Satın al/ })).toHaveCount(4);
-  await page.getByRole("link", { name: /Satın al/ }).first().click();
-  await expect(page).toHaveURL(/\/odenis\?exam=1$/);
-  await page.getByRole("button", { name: /ödə/ }).click();
-  await expect(page.getByRole("heading", { name: "Ödəniş uğurludur" })).toBeVisible();
-  await page.getByRole("button", { name: "Sınağa başla" }).click();
+  await expect(page.getByText("Bu ay 1 pulsuz sınaq seçə bilərsən.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Bu ayın sınağı kimi seç" })).toHaveCount(4);
+  await page.getByRole("button", { name: "Bu ayın sınağı kimi seç" }).first().click();
+  await expect(page).toHaveURL(/\/sinaq\/1$/);
+  await page.getByRole("button", { name: "Başla" }).click();
   await expect(page).toHaveURL(/\/sinaq\/1$/);
 
   // Sayğac server vaxtından: 90 dəqiqə
@@ -381,6 +383,9 @@ test("sınaq: satın al → başla → cavabla → yenilə → bitir → nətic�
 
   await page.goto("/sinaqlar");
   await expect(page.getByText("Bal: 8")).toBeVisible();
+  // Ayın kvotası istifadə olunub — qalanları yalnız alına bilər (3 AZN)
+  await expect(page.getByText(/Bu ayın sınağını seçmisən/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Satın al · 3 AZN" })).toHaveCount(3);
   await page.goto("/panel");
   await expect(page.getByText("1 tamamlanıb · 0 yarımçıq")).toBeVisible();
 });
@@ -388,8 +393,8 @@ test("sınaq: satın al → başla → cavabla → yenilə → bitir → nətic�
 test("abunəni ləğv et və bərpa et", async ({ page }) => {
   await page.goto("/profil");
   await expect(page.getByText("Hələ ödəniş yoxdur.")).toBeVisible();
-  await page.getByRole("link", { name: "Abunə ol" }).click();
-  await expect(page).toHaveURL(/\/odenis$/);
+  await page.getByRole("link", { name: "Pro · 6.90 AZN / ay" }).click();
+  await expect(page).toHaveURL(/\/odenis\?plan=pro$/);
   await subscribe(page);
   await page.goto("/profil");
   await expect(page.getByText("Nigar").first()).toBeVisible();
@@ -399,8 +404,17 @@ test("abunəni ləğv et və bərpa et", async ({ page }) => {
   await expect(page).toHaveURL(/\/profil\/abune-legv-edildi$/);
   await expect(page.getByRole("heading", { name: "Abunə ləğv edildi" })).toBeVisible();
 
+  await expect(page.getByText(/Free plana keçdin/)).toBeVisible();
+
+  // Ləğvdən dərhal sonra — Free plan (abunəliklərdə də, paneldə də)
+  await page.goto("/abunelikler");
+  await expect(page.getByRole("region", { name: "Free" }).getByText("Cari plan")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Pro" }).getByText("Cari plan")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Pro-ya keç" })).toBeVisible();
   await page.goto("/panel");
-  await expect(page.getByText(/Abunən .*-də bitir/)).toBeVisible();
+  await expect(page.getByText("Free plan").first()).toBeVisible();
+  await page.goto("/profil");
+  await expect(page.getByRole("button", { name: "Abunəni ləğv et" })).toHaveCount(0);
 
   await page.goto("/profil/abune-legv-edildi");
   await page.getByRole("button", { name: "Fikrimi dəyişdim — bərpa et" }).click();
@@ -408,21 +422,49 @@ test("abunəni ləğv et və bərpa et", async ({ page }) => {
   await expect(page.getByText("Aktiv", { exact: true })).toBeVisible();
 });
 
+test("abunəliklər: menyuda; Free — Pro/Premium təklifi, Pro — yalnız idarə", async ({ page }) => {
+  await page.getByRole("link", { name: "Abunəliklər" }).first().click();
+  await expect(page).toHaveURL(/\/abunelikler$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Abunəliklər" })).toBeVisible();
+  const free = page.getByRole("region", { name: "Free" });
+  await expect(free.getByText("Cari plan")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Pro" })).toContainText("6.90 AZN / ay");
+  await expect(page.getByRole("region", { name: "Premium" })).toContainText("12.90 AZN / ay");
+  await expect(page.getByRole("link", { name: "Pro-ya keç" })).toHaveAttribute("href", "/odenis?plan=pro");
+  await expect(page.getByRole("link", { name: "Premium-a keç" })).toHaveAttribute("href", "/odenis?plan=premium");
+  await expect(page.getByText("Plandan əlavə tək sınaq almaq da olar — 3 AZN.")).toBeVisible();
+  // Desktop-da Pro və Premium düymələri bir xətdə (xüsusiyyət sayı fərqli olsa da)
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const proBtn = await page.getByRole("link", { name: "Pro-ya keç" }).boundingBox();
+  const premBtn = await page.getByRole("link", { name: "Premium-a keç" }).boundingBox();
+  expect(Math.abs(proBtn!.y - premBtn!.y)).toBeLessThan(2);
+  await page.screenshot({ path: "screenshots/abunelikler-1280.png", fullPage: true });
+
+  await subscribe(page);
+  await page.goto("/abunelikler");
+  await expect(page.getByRole("region", { name: "Pro" }).getByText("Cari plan")).toBeVisible();
+  await expect(page.getByRole("link", { name: /keç$/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Abunəni idarə et" })).toHaveAttribute("href", "/profil");
+  // Profildə də plan dəyişmə yoxdur — yalnız ləğv
+  await page.goto("/profil");
+  await expect(page.getByRole("button", { name: "Abunəni ləğv et" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /keç$/ })).toHaveCount(0);
+});
 test("demo sıfırlama hər şeyi sıfıra qaytarır", async ({ page }) => {
-  await page.goto("/gunun-suallari/faiz/1");
+  await page.goto("/gunun-suallari/faiz-nisbet-tenasub/1");
   await pick(page, "B", "12");
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
   await expect(page.getByText("Düzgündür!")).toBeVisible();
   await page.goto("/panel");
-  await expect(page.getByText("1 / 70")).toBeVisible();
+  await expect(page.getByText("1 / 20")).toBeVisible();
 
   await page.goto("/profil");
   await page.getByRole("button", { name: "Demo məlumatlarını sıfırla" }).click();
   await expect(page).toHaveURL(/\/panel$/);
-  await expect(page.getByText("0 / 70")).toBeVisible();
+  // Sıfırlamadan sonra bu günün dəsti yenidən (təsadüfi) seçilir
 });
 
-const PAGES = ["/panel", "/gunun-suallari", "/gunun-suallari/faiz/2", "/sinaqlar", "/sinaq/2", "/sinaq/1/netice", "/profil", "/odenis?exam=3", "/statistika"];
+const PAGES = ["/panel", "/gunun-suallari", "/gunun-suallari/faiz-nisbet-tenasub/3", "/sinaqlar", "/sinaq/2", "/sinaq/1/netice", "/profil", "/odenis?exam=3", "/statistika", "/abunelikler"];
 
 test("tətbiq: üfüqi sürüşmə yoxdur + ekran şəkilləri", async ({ page }) => {
   // 50+ səhifə açılışı (5 en × 9 səhifə) və ekran görüntüləri — standart 60 s azdır.

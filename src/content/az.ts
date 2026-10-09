@@ -22,6 +22,8 @@ export const az = {
     refund: "Geri qaytarma",
   },
   authAside: {
+    signedInAs: (email: string) => `Hazırda ${email} hesabındasan. Başqa hesabla daxil olsan və ya yeni hesab yaratsan, bu hesabdan çıxılacaq.`,
+    signOut: "Çıxış et",
     tags: (questions: string, topics: string, pct: string) => [`${questions} sual`, `${topics} mövzu`, `${pct} toplularda`],
     login: {
       title: "Xoş gəldin!",
@@ -54,8 +56,10 @@ export const az = {
     title: "Qeydiyyat",
     google: "Google ilə qeydiyyatdan keç",
     name: "Ad",
+    surname: "Soyad",
+    fatherName: "Ata adı",
     username: "İstifadəçi adı",
-    usernameHint: "Hərf, rəqəm və “_”. Başqaları görəcək.",
+    usernameHint: "Unikal: hərf, rəqəm və “_”.",
     email: "E-poçt",
     password: "Şifrə",
     strengthLabel: "Şifrənin gücü",
@@ -133,6 +137,15 @@ export const az = {
     required: "Bu sahəni doldur.",
     nameRequired: "Adını yaz.",
     nameTooLong: "Ad 60 simvoldan uzun olmasın.",
+    phoneInvalid: "Nömrə +994 ilə və 9 rəqəmlə olsun. Məs.: +994 50 123 45 67",
+    codeInvalid: "Kod 6 rəqəmdən ibarətdir.",
+    codeWrong: "Kod yanlışdır.",
+    codeExpired: "Kodun vaxtı bitib və ya cəhd sayı keçib. Yeni kod istə.",
+    phoneTaken: "Bu nömrə başqa hesabda istifadə olunur.",
+    surnameRequired: "Soyadını yaz.",
+    surnameTooLong: "Soyad 60 simvoldan uzun olmasın.",
+    fatherNameRequired: "Ata adını yaz.",
+    fatherNameTooLong: "Ata adı 60 simvoldan uzun olmasın.",
     emailInvalid: "E-poçt düzgün deyil. Məs.: ad@mail.az",
     usernameInvalid: "3–20 simvol: kiçik hərf, rəqəm və “_”.",
     usernameTaken: "Bu istifadəçi adı tutulub. Başqasını seç.",
@@ -159,6 +172,9 @@ export const az = {
     verifySubject: `${brand.name}: e-poçtunu təsdiqlə`,
     verifyText: (name: string, url: string) =>
       `Salam, ${name}!\n\nHesabını aktiv etmək üçün linkə kliklə:\n${url}\n\nLink 24 saat işləyir. Qeydiyyatdan keçməmisənsə, bu məktubu nəzərə alma.`,
+    codeSubject: (code: string) => `${brand.name}: təsdiq kodu ${code}`,
+    codeText: (name: string, code: string) =>
+      `Salam, ${name}!\n\nE-poçtunu təsdiqləmək üçün kod: ${code}\n\nKod 10 dəqiqə işləyir. Bunu sən istəməmisənsə, bu məktubu nəzərə alma.`,
     resetSubject: `${brand.name}: şifrə bərpası`,
     resetText: (name: string, url: string) =>
       `Salam, ${name}!\n\nŞifrəni yeniləmək üçün linkə kliklə:\n${url}\n\nLink 30 dəqiqə işləyir və bir dəfə istifadə olunur. Bunu sən istəməmisənsə, heç nə etmə — şifrən dəyişməyəcək.`,

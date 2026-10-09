@@ -72,7 +72,7 @@ export function DailyPager({ items, label }: { items: PagerItem[]; label: string
   );
 }
 
-/** Pulsuz plan: günün sualları abunə ilə tam açılır (dizayn: Paywall, pulsuz istifadəçi). */
+/** Free plan: günün sualları Pro planı ilə tam açılır (dizayn: Paywall). */
 export function DailyUpsell({ locked, className }: { locked: number; className?: string }) {
   const t = az.app.daily;
   return (
@@ -86,7 +86,7 @@ export function DailyUpsell({ locked, className }: { locked: number; className?:
           <p className="text-small text-ink-muted">{t.upsellText(locked)}</p>
         </div>
       </div>
-      <ButtonLink href="/odenis" variant="navy" size="sm" className="justify-self-start">
+      <ButtonLink href="/odenis?plan=pro" variant="navy" size="sm" className="justify-self-start">
         {t.subscribe}
       </ButtonLink>
     </div>

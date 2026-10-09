@@ -3,12 +3,13 @@ import { createClient } from "@libsql/client";
 import { loadEnvConfig } from "@next/env";
 import { hash } from "@node-rs/argon2";
 import { expect, test, type Page } from "@playwright/test";
+import { fixDaily } from "./daily-fixture";
 
 // C3: Sınaq, Nəticə, Profil (və Statistika) səhifələrində kritik və ciddi axe pozuntusu = 0.
 test.describe.configure({ mode: "serial" });
 
 const stamp = Date.now();
-const user = { email: `e2e+a11y${stamp}@example.test`, password: "Lale2026x" };
+const user = { id: crypto.randomUUID(), email: `e2e+a11y${stamp}@example.test`, password: "Lale2026x" };
 
 test.beforeAll(async () => {
   loadEnvConfig(process.cwd());
@@ -18,9 +19,10 @@ test.beforeAll(async () => {
     sql: `insert into users (id, email, username, name, password_hash, role, grade, target_exam,
             email_verified_at, terms_accepted_at, created_at, updated_at)
           values (?, ?, ?, 'Lalə', ?, 'student', 11, 'both', ?, ?, ?, ?)`,
-    args: [crypto.randomUUID(), user.email, `e2e_x${stamp % 1e9}`, await hash(user.password), now, now, now, now],
+    args: [user.id, user.email, `e2e_x${stamp % 1e9}`, await hash(user.password), now, now, now, now],
   });
   db.close();
+  await fixDaily(user.id);
 });
 
 async function login(page: Page) {
@@ -61,8 +63,8 @@ test("axe: sınaq, nəticə, profil, statistika", async ({ page, browser }) => {
     "/statistika/stereometriya",
     "/panel",
     "/gunun-suallari",
-    "/gunun-suallari/faiz/1",
-    "/gunun-suallari/faiz/2",
+    "/gunun-suallari/faiz-nisbet-tenasub/1",
+    "/gunun-suallari/faiz-nisbet-tenasub/3",
   ]) {
     await page.goto(p);
     results[p] = await axe(page);

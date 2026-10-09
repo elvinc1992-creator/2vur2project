@@ -1,31 +1,39 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DailyPager } from "@/components/app/daily";
 import { Page, Topbar } from "@/components/app/topbar";
 import { ArrowIcon, CheckCircleIcon, CheckIcon, InfoIcon, LockIcon } from "@/components/icons";
 import { TopicIcon } from "@/components/landing/topic-icon";
+import { Alert } from "@/components/ui/alert";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, Tag, h1Class, h3Class } from "@/components/ui/display";
-import { EmptyState } from "@/components/ui/empty-art";
 import { az } from "@/content/az";
-import { hasPaidAccess } from "@/lib/demo/logic";
+import { cn } from "@/lib/cn";
+import { formatDate } from "@/lib/demo/logic";
+import { canUseRepetitor } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
-import { nextRepetitorHref, repetitorPager, topicProgress, tutorOf } from "@/lib/repetitor/progress";
-import { listRepetitorTopics, REPETITOR_HIT_RATE } from "@/lib/repetitor/source";
+import { DEFAULT_DAYS, type ExamView, type LessonView } from "@/lib/repetitor/plan";
+import { tutorContext } from "@/lib/repetitor/progress";
+import { listAllRepetitorTopics, REPETITOR_HIT_RATE } from "@/lib/repetitor/source";
+import { PlanForm } from "./plan-form";
 
 export const metadata: Metadata = { title: az.app.tutor.title };
 
-/** Onlayn repetitor: abunəçilər üçün mövzular və suallar; pulsuz planda — kilid (serverdə). */
-export default async function RepetitorPage() {
+const t = az.app.tutor;
+// Uzun mövzu adı düyməni ekrandan çıxarmasın.
+const wrapBtn = "max-w-full py-2 text-left whitespace-normal! leading-5!";
+
+/** Onlayn repetitor (Pro): həftəlik qrafik → mövzular sıra ilə açılır; hər 2 mövzudan sonra sınaq. */
+export default async function RepetitorPage(props: PageProps<"/onlayn-repetitor">) {
   const { state } = await requireDemo("/onlayn-repetitor");
-  const t = az.app.tutor;
-  const topics = await listRepetitorTopics();
-  const total = topics.reduce((s, x) => s + x.questions.length, 0);
+  const sp = await props.searchParams;
+  const allTopics = await listAllRepetitorTopics();
+  const soon = allTopics.filter((x) => !x.questions.length);
 
-  if (!hasPaidAccess(state)) return <Locked topics={topics.map((x) => ({ slug: x.slug, name: x.name, n: x.questions.length }))} />;
+  if (!canUseRepetitor(state)) return <Locked topics={allTopics.map((x) => ({ slug: x.slug, name: x.name, n: x.questions.length }))} />;
 
-  const progress = Object.values(tutorOf(state)).filter((p) => p.a);
-  const next = nextRepetitorHref(state, topics);
+  const { view } = await tutorContext(state);
+  const plan = state.tutorPlan;
+  const emptyError = sp.qrafik === "bos" ? t.planEmpty : undefined;
 
   return (
     <>
@@ -36,65 +44,65 @@ export default async function RepetitorPage() {
             {t.highChance} · ~{REPETITOR_HIT_RATE}%
           </Tag>
           <h1 className={h1Class}>{t.title}</h1>
-          <p className="max-w-[46rem] text-ink-muted">{t.lead(REPETITOR_HIT_RATE)}</p>
+          <p className="max-w-[46rem] text-ink-muted">{t.planText}</p>
         </div>
 
-        <dl className="m-0 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {(
-            [
-              [total, t.statQuestions],
-              [topics.length, t.statTopics],
-              [progress.length, t.statAnswered],
-              [progress.filter((p) => p.ok).length, t.statCorrect],
-            ] as const
-          ).map(([v, label]) => (
-            <div key={label} className="grid gap-0.5 rounded-lg border border-line bg-white px-4 py-3">
-              <dt className="order-2 text-small text-ink-muted">{label}</dt>
-              <dd className="order-1 m-0 font-display text-2xl leading-8 font-extrabold text-navy-900 tabular">{v}</dd>
-            </div>
-          ))}
-        </dl>
-
-        {next ? (
-          <ButtonLink href={next} block className="md:w-auto md:justify-self-start">
-            {t.continue}
-            <ArrowIcon className="size-[22px]" />
-          </ButtonLink>
+        {!plan || !view ? (
+          <Card as="section" aria-labelledby="plan-title" className="grid gap-4">
+            <h2 id="plan-title" className={h3Class}>
+              {t.planTitle}
+            </h2>
+            <p className="text-small text-ink-muted">{t.planSuggest}</p>
+            {emptyError && <Alert tone="danger">{emptyError}</Alert>}
+            <PlanForm defaultDays={DEFAULT_DAYS} submitLabel={t.planSave} />
+          </Card>
         ) : (
-          <EmptyState tone="success" icon={<CheckCircleIcon />} title={t.allDoneTitle}>
-            {t.allDoneText}
-          </EmptyState>
+          <>
+            <Summary view={view} days={plan.days} />
+            <details className="group rounded-lg border border-line bg-white px-4 py-3">
+              <summary className="cursor-pointer font-semibold text-navy-900">{t.planChange}</summary>
+              <div className="grid gap-3 pt-3">
+                <p className="text-small text-ink-muted">{t.planChangeNote}</p>
+                {emptyError && <Alert tone="danger">{emptyError}</Alert>}
+                <PlanForm defaultDays={plan.days} submitLabel={t.planSave} />
+              </div>
+            </details>
+
+            <section aria-labelledby="curriculum" className="grid gap-3">
+              <h2 id="curriculum" className={h3Class}>
+                {t.curriculumTitle}
+              </h2>
+              <ol className="m-0 grid list-none gap-2 p-0">
+                {view.lessons.map((l) => (
+                  <LessonRows key={`${l.topic}-${l.part}`} lesson={l} doneTopic={view.doneTopics.has(l.topic)}>
+                    {view.exams
+                      .filter((e) => e.afterLesson === l.index)
+                      .map((e) => (
+                        <ExamRow key={e.n} exam={e} />
+                      ))}
+                  </LessonRows>
+                ))}
+              </ol>
+            </section>
+          </>
         )}
 
-        <ul className="m-0 grid list-none gap-3 p-0 lg:grid-cols-2">
-          {topics.map((x) => {
-            const p = topicProgress(state, x);
-            return (
-              <li key={x.slug}>
-                <Card as="section" aria-labelledby={`rt-${x.slug}`} className="grid h-full gap-4">
-                  <div className="flex items-center gap-3">
-                    <span className="grid size-10 flex-none place-items-center rounded-[12px] bg-navy-100 text-navy-900">
-                      <TopicIcon name={x.name} className="size-[22px]" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <h2 id={`rt-${x.slug}`} className={h3Class}>
-                        {x.name}
-                      </h2>
-                      <p className="text-small text-ink-muted">{t.topicProgress(p.done, p.total, p.ok)}</p>
-                    </div>
-                  </div>
-                  <DailyPager items={repetitorPager(state, x)} label={t.pagerLabel(x.name)} />
-                  <Link
-                    href={`/statistika/${x.slug}`}
-                    className="justify-self-start text-small font-semibold text-navy-500 underline underline-offset-3"
-                  >
-                    {t.topicStats}
-                  </Link>
-                </Card>
-              </li>
-            );
-          })}
-        </ul>
+        {soon.length > 0 && (
+          <section aria-labelledby="tutor-soon" className="grid gap-2">
+            <h2 id="tutor-soon" className="text-caption font-bold tracking-[0.06em] text-ink-muted uppercase">
+              {t.soonTitle}
+            </h2>
+            <p className="text-small text-ink-muted">{t.soonText}</p>
+            <ul className="m-0 grid list-none gap-2 p-0 md:grid-cols-2">
+              {soon.map((x) => (
+                <li key={x.slug} className="flex items-center gap-3 rounded-lg border border-line bg-white px-4 py-2.5">
+                  <TopicIcon name={x.name} className="size-5 flex-none text-ink-muted" />
+                  <span className="min-w-0 flex-1 text-[15px] text-navy-900">{x.name}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <p className="flex items-start gap-2 rounded-lg border border-dashed border-navy-200 bg-white px-4 py-3 text-small text-ink-muted">
           <InfoIcon className="mt-px size-[18px] flex-none text-navy-500" />
@@ -105,9 +113,129 @@ export default async function RepetitorPage() {
   );
 }
 
+function Summary({ view, days }: { view: NonNullable<Awaited<ReturnType<typeof tutorContext>>["view"]>; days: number[] }) {
+  const topics = new Set(view.lessons.map((l) => l.topic));
+  const next = view.lessons.find((l) => l.status === "locked");
+  const current = view.lessons.find((l) => l.status === "open");
+  const openExam = view.exams.find((e) => e.status === "open");
+  return (
+    <Card tone="navy" className="grid grid-cols-[minmax(0,1fr)] gap-3">
+      <p className="m-0 font-semibold text-white">{t.planSummary(days.map((d) => t.weekdays[d - 1]).join(", "))}</p>
+      <p className="m-0 text-small text-on-navy-muted">
+        {t.planProgress(view.doneTopics.size, topics.size)} ·{" "}
+        {next?.date ? t.planNext(formatDate(next.date)) : t.planAllOpen}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {openExam && (
+          <ButtonLink href={`/onlayn-repetitor/sinaq/${openExam.n}`} size="sm" className={wrapBtn}>
+            {t.examStart}: {t.examTitle(openExam.n)}
+            <ArrowIcon className="size-5" />
+          </ButtonLink>
+        )}
+        {current && (
+          <ButtonLink
+            href={`/onlayn-repetitor/${current.topic}`}
+            size="sm"
+            className={wrapBtn}
+            variant={openExam ? "secondary" : "primary"}
+          >
+            {current.done ? t.lessonContinue : t.lessonStart}: {current.topicName}
+            <ArrowIcon className="size-5" />
+          </ButtonLink>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function LessonRows({ lesson: l, doneTopic, children }: { lesson: LessonView; doneTopic: boolean; children?: React.ReactNode }) {
+  const locked = l.status === "locked";
+  const done = l.status === "done";
+  return (
+    <>
+      <li>
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-lg border px-4 py-3",
+            done ? "border-success-700/30 bg-success-100" : locked ? "border-line bg-navy-050" : "border-navy-200 bg-white",
+          )}
+        >
+          <span
+            className={cn(
+              "grid size-9 flex-none place-items-center rounded-full font-bold tabular",
+              done ? "bg-success-700 text-white" : locked ? "bg-white text-ink-muted" : "bg-navy-900 text-white",
+            )}
+            aria-hidden="true"
+          >
+            {done ? <CheckIcon className="size-5" /> : locked ? <LockIcon className="size-4" /> : l.index + 1}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="m-0 font-semibold text-navy-900">
+              {l.topicName}
+              {l.parts > 1 && <span className="font-normal text-ink-muted"> · {t.lessonPart(l.part, l.parts)}</span>}
+              {doneTopic && l.part === l.parts && (
+                <CheckCircleIcon className="ml-1.5 inline size-[18px] align-[-3px] text-success-700" aria-label={t.topicDone} />
+              )}
+            </p>
+            <p className="m-0 text-small text-ink-muted">
+              {done ? t.lessonDone : locked ? t.lessonLocked(l.date ? formatDate(l.date) : null) : t.lessonOpen} ·{" "}
+              {t.lessonQuestions(l.done, l.questionIds.length)}
+            </p>
+          </div>
+          {!locked && (
+            <Link
+              href={`/onlayn-repetitor/${l.topic}`}
+              className="flex-none text-small font-bold text-navy-500 underline underline-offset-3"
+            >
+              {done ? t.lessonReview : l.done ? t.lessonContinue : t.lessonStart}
+              <span className="sr-only">: {l.topicName}</span>
+            </Link>
+          )}
+        </div>
+      </li>
+      {children}
+    </>
+  );
+}
+
+function ExamRow({ exam: e }: { exam: ExamView }) {
+  const [a, b] = e.topics;
+  return (
+    <li>
+      <div
+        className={cn(
+          "flex items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3",
+          e.status === "locked" ? "border-line bg-white" : "border-coral-500 bg-coral-100/40",
+        )}
+      >
+        <span className="grid size-9 flex-none place-items-center rounded-full bg-coral-600 text-white" aria-hidden="true">
+          {e.status === "done" ? <CheckIcon className="size-5" /> : e.status === "locked" ? <LockIcon className="size-4" /> : "★"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="m-0 font-semibold text-navy-900">
+            {t.examTitle(e.n)} · {t.examQuestions(e.questionIds.length)}
+          </p>
+          <p className="m-0 text-small text-ink-muted">
+            {t.examOf(a.name, b.name)} ·{" "}
+            {e.status === "done" ? t.examResult(e.correct ?? 0, e.questionIds.length) : e.status === "open" ? t.examOpen : t.examLocked}
+          </p>
+        </div>
+        {e.status !== "locked" && (
+          <Link
+            href={`/onlayn-repetitor/sinaq/${e.n}`}
+            className="flex-none text-small font-bold text-navy-500 underline underline-offset-3"
+          >
+            {e.status === "done" ? t.lessonReview : t.examStart}
+            <span className="sr-only">: {t.examTitle(e.n)}</span>
+          </Link>
+        )}
+      </div>
+    </li>
+  );
+}
+
 /** Pulsuz plan: nə açılacağı + mövzuların adı (sual mətni göndərilmir). */
 function Locked({ topics }: { topics: Array<{ slug: string; name: string; n: number }> }) {
-  const t = az.app.tutor;
   return (
     <>
       <Topbar title={t.title} back="/panel" />
@@ -150,7 +278,7 @@ function Locked({ topics }: { topics: Array<{ slug: string; name: string; n: num
                 <span className="min-w-0 flex-1 font-semibold text-navy-900">{x.name}</span>
                 <span className="flex items-center gap-1.5 text-small text-ink-muted">
                   <LockIcon className="size-4" />
-                  {t.topicCount(x.n)}
+                  {x.n ? t.topicCount(x.n) : t.soonTitle}
                 </span>
               </li>
             ))}

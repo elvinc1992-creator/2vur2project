@@ -6,10 +6,10 @@ import { ChartIcon } from "@/components/icons";
 import { Freq, Tag } from "@/components/ui/display";
 import { QuestionCard } from "@/components/ui/question";
 import { az } from "@/content/az";
-import { hasPaidAccess } from "@/lib/demo/logic";
+import { canUseRepetitor } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
-import { nextRepetitorHref, repetitorPager, tutorOf } from "@/lib/repetitor/progress";
-import { getRepetitorKey, getRepetitorTopic, listRepetitorTopics } from "@/lib/repetitor/source";
+import { nextRepetitorHref, repetitorPager, tutorContext, tutorOf } from "@/lib/repetitor/progress";
+import { getRepetitorKey, getRepetitorTopic } from "@/lib/repetitor/source";
 import { TutorAnswer } from "./tutor-answer";
 
 export const metadata: Metadata = { title: az.app.tutor.question };
@@ -22,12 +22,15 @@ export default async function RepetitorQuestionPage(props: PageProps<"/onlayn-re
 
   const { state } = await requireDemo(`/onlayn-repetitor/${movzu}/${n}`);
   // Giriş serverdə: abunə yoxdursa, sualın mətni səhifəyə düşmür.
-  if (!hasPaidAccess(state)) redirect("/onlayn-repetitor");
+  if (!canUseRepetitor(state)) redirect("/onlayn-repetitor");
+  // Qrafikə görə hələ açılmamış dərsin sualı göstərilmir.
+  const ctx = await tutorContext(state);
+  if (!ctx.isOpen(q.id)) redirect(`/onlayn-repetitor/${movzu}`);
 
   const t = az.app.tutor;
   const key = (await getRepetitorKey(q.id))!;
   const p = tutorOf(state)[q.id];
-  const pager = repetitorPager(state, topic, q.id);
+  const pager = repetitorPager(state, topic, q.id, ctx.isOpen);
   const done = pager.filter((s) => s.status !== "open").length;
   // Cavab və izah yalnız cavabdan sonra, ipucu — yalnız istənibsə brauzerə gedir.
   const initial = p?.a
@@ -37,7 +40,7 @@ export default async function RepetitorQuestionPage(props: PageProps<"/onlayn-re
         answer: key.answer,
         steps: key.steps,
         hintUsed: Boolean(p.hint),
-        nextHref: nextRepetitorHref(state, await listRepetitorTopics(), q),
+        nextHref: nextRepetitorHref(state, ctx.topics, q, ctx.isOpen),
       }
     : null;
 

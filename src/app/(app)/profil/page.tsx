@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { logoutAction } from "@/app/(auth)/actions";
@@ -8,13 +8,15 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, KeyValues, Tag, eyebrowClass, listClass } from "@/components/ui/display";
 import { az } from "@/content/az";
 import { db } from "@/db";
-import { users } from "@/db/schema";
-import { resetDemoAction, resumeSubscriptionAction, toggleFreePlanAction } from "@/lib/demo/actions";
-import { CARD_LABEL, PRICE_PLACEHOLDER } from "@/lib/demo/content";
+import { oauthAccounts, users } from "@/db/schema";
+import { resetDemoAction } from "@/lib/demo/actions";
+import { CARD_LABEL } from "@/lib/demo/content";
 import { addDays, formatDate } from "@/lib/demo/logic";
+import { PLANS, priceOf } from "@/lib/demo/plans";
 import { initials, requireDemo } from "@/lib/demo/session";
 import { cn } from "@/lib/cn";
 import { CancelSubscription } from "./cancel-subscription";
+import { EmailForm, PhoneForm } from "./contact-forms";
 
 export const metadata: Metadata = { title: az.app.profile.title };
 
@@ -22,10 +24,15 @@ export default async function ProfilePage() {
   const { user, state } = await requireDemo("/profil");
   // Profil məlumatları — real, DB-dən.
   const me = await db.query.users.findFirst({ where: eq(users.id, user.id) });
+  const googleLinked = Boolean(
+    await db.query.oauthAccounts.findFirst({
+      where: and(eq(oauthAccounts.userId, user.id), eq(oauthAccounts.provider, "google")),
+    }),
+  );
   const t = az.app.profile;
   const target = me?.targetExam ? t.targets[me.targetExam] : "—";
   const active = state.sub.status === "active";
-  const none = state.sub.status === "none";
+  const paidTier = state.sub.tier ?? "premium";
 
   return (
     <>
@@ -54,14 +61,7 @@ export default async function ProfilePage() {
                   <span>
                     <span className="text-small text-ink-muted">{t.name}</span>
                     <br />
-                    {me?.name}
-                  </span>
-                </div>
-                <div>
-                  <span className="min-w-0 break-all">
-                    <span className="text-small text-ink-muted">{t.email}</span>
-                    <br />
-                    {me?.email}
+                    {[me?.name, me?.surname, me?.fatherName ? `(${me.fatherName})` : null].filter(Boolean).join(" ")}
                   </span>
                 </div>
                 <div>
@@ -90,6 +90,22 @@ export default async function ProfilePage() {
               </div>
             </section>
 
+            <section className="grid gap-2" aria-labelledby="p-contacts">
+              <h2 id="p-contacts" className={eyebrowClass}>
+                {t.contacts}
+              </h2>
+              <Card className="grid gap-5">
+                {/* key: təsdiqdən sonra (yeni e-poçt) forma sıfırdan qurulur. */}
+                <EmailForm
+                  key={`${me?.email ?? ""}:${Boolean(me?.emailVerifiedAt)}`}
+                  email={me?.email ?? null}
+                  verified={Boolean(me?.email && me.emailVerifiedAt)}
+                />
+                <hr className="m-0 border-0 border-t border-line" />
+                <PhoneForm phone={me?.phone ?? null} />
+              </Card>
+            </section>
+
             <section className="grid gap-2" aria-labelledby="p-sec">
               <h2 id="p-sec" className={eyebrowClass}>
                 {t.sections.security}
@@ -110,10 +126,10 @@ export default async function ProfilePage() {
                     <span>
                       {t.google}
                       <br />
-                      <span className="text-small text-ink-muted">{t.googleNone}</span>
+                      <span className="text-small text-ink-muted">{googleLinked ? me?.email : t.googleNone}</span>
                     </span>
                   </span>
-                  <Tag tone="lock">{t.googleSoon}</Tag>
+                  <Tag tone={googleLinked ? "success" : "lock"}>{googleLinked ? t.googleLinked : t.googleNotLinked}</Tag>
                 </div>
               </div>
             </section>
@@ -124,45 +140,42 @@ export default async function ProfilePage() {
               <h2 id="p-sub" className={eyebrowClass}>
                 {t.sections.subscription}
               </h2>
-              {none ? (
+              {/* Abunə yoxdursa və ya ləğv edilibsə — Free plan (Pro/Premium təklifi). */}
+              {!active ? (
                 <Card className="grid gap-4">
                   <div className="flex items-center justify-between gap-3">
-                    <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{t.noSub}</b>
+                    <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{PLANS.free.name}</b>
                     <Tag tone="lock">{az.app.sub.free}</Tag>
                   </div>
-                  <p className="text-small text-ink-muted">{t.noSubText}</p>
-                  <ButtonLink href="/odenis" variant="navy" size="sm" className="justify-self-start">
-                    {t.subscribe}
-                  </ButtonLink>
+                  <ul className="m-0 grid list-none gap-1 p-0 text-small text-ink">
+                    {az.app.payment.planFeatures.free.map((f) => (
+                      <li key={f}>· {f}</li>
+                    ))}
+                  </ul>
+                  <div className="flex flex-wrap gap-2">
+                    <ButtonLink href="/odenis?plan=pro" variant="navy" size="sm">
+                      {PLANS.pro.name} · {az.app.payment.perMonth(priceOf("pro"))}
+                    </ButtonLink>
+                    <ButtonLink href="/odenis?plan=premium" variant="secondary" size="sm">
+                      {PLANS.premium.name} · {az.app.payment.perMonth(priceOf("premium"))}
+                    </ButtonLink>
+                  </div>
                 </Card>
               ) : (
                 <Card className="grid gap-4">
                   <div className="flex items-center justify-between gap-3">
-                    <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{t.plan}</b>
-                    <Tag tone={active ? "success" : "warning"}>{active ? t.active : t.canceled}</Tag>
+                    <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{t.plan} · {PLANS[paidTier].name}</b>
+                    <Tag tone="success">{t.active}</Tag>
                   </div>
                   <KeyValues
                     rows={[
-                      active
-                        ? [t.nextPayment, formatDate(addDays(state.sub.periodEnd, 1))]
-                        : [t.accessUntil, formatDate(state.sub.periodEnd)],
-                      [t.amount, PRICE_PLACEHOLDER],
+                      [t.nextPayment, formatDate(addDays(state.sub.periodEnd, 1))],
+                      [t.amount, az.app.payment.perMonth(priceOf(paidTier))],
                       [t.method, CARD_LABEL],
                     ]}
                   />
                   <div className="flex flex-wrap items-center gap-3">
-                    <Button type="button" variant="secondary" size="sm" disabled>
-                      {t.changeMethod}
-                    </Button>
-                    {active ? (
-                      <CancelSubscription periodEnd={formatDate(state.sub.periodEnd)} />
-                    ) : (
-                      <form action={resumeSubscriptionAction}>
-                        <Button type="submit" size="sm">
-                          {t.resume}
-                        </Button>
-                      </form>
-                    )}
+                    <CancelSubscription />
                   </div>
                 </Card>
               )}
@@ -186,36 +199,13 @@ export default async function ProfilePage() {
                       <span className="text-small text-ink-muted tabular">{formatDate(p.date)}</span>
                     </span>
                     <span className="flex items-center gap-2">
-                      <b className="text-small">{PRICE_PLACEHOLDER}</b>
+                      <b className="text-small">{p.amount ?? "—"}</b>
                       <ReceiptIcon />
                       <span className="sr-only">{t.receiptSr}</span>
                     </span>
                   </Link>
                 ))}
               </div>
-            </section>
-
-            <section className="grid gap-2" aria-labelledby="p-demo">
-              <h2 id="p-demo" className={eyebrowClass}>
-                {az.app.demo.badge}
-              </h2>
-              <form
-                action={toggleFreePlanAction}
-                className="flex items-center justify-between gap-3 rounded-lg border border-line bg-white p-4"
-              >
-                <span className="grid gap-0.5">
-                  <span className="font-semibold text-ink">{az.app.demo.freePlan}</span>
-                  <span className="text-small text-ink-muted">{az.app.demo.freePlanHint}</span>
-                </span>
-                <Button
-                  type="submit"
-                  variant={state.free ? "navy" : "secondary"}
-                  size="sm"
-                  aria-pressed={Boolean(state.free)}
-                >
-                  {state.free ? az.app.demo.on : az.app.demo.off}
-                </Button>
-              </form>
             </section>
 
             <form action={logoutAction}>

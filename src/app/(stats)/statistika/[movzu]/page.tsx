@@ -10,7 +10,6 @@ import { ButtonLink } from "@/components/ui/button";
 import { Tag, h1Class, h3Class } from "@/components/ui/display";
 import { az } from "@/content/az";
 import { MATCH_LEVELS } from "@/db/schema";
-import { hasPaidAccess } from "@/lib/demo/logic";
 import { personalByTopic } from "@/lib/demo/personal";
 import { initials } from "@/lib/demo/session";
 import { getDemoState } from "@/lib/demo/state";
@@ -44,8 +43,9 @@ export default async function TopicStatsPage(props: PageProps<"/statistika/[movz
   const backQuery = toQuery(parseFilters(sp, await getFilterOptions()));
   const session = await auth();
   const state = session?.user?.id ? await getDemoState(session.user.id) : null;
-  const paid = state ? hasPaidAccess(state) : false;
-  const mine = state ? personalByTopic(state).get(topic.name) : undefined;
+  // Statistika bütün planlarda açıqdır (Free daxil).
+  const paid = Boolean(state);
+  const mine = state ? (await personalByTopic(state)).get(topic.name) : undefined;
   const t = az.app.stats.detail;
 
   // Pulsuz/qonaq üçün limit serverdə — qalan istinadlar brauzerə getmir.

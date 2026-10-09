@@ -4,24 +4,38 @@ import { loadEnvConfig } from "@next/env";
 import { hash } from "@node-rs/argon2";
 import { expect, test, type Page } from "@playwright/test";
 
-// Onlayn repetitor: yalnız abunəçilər üçün (serverdə yoxlanılır), ipucu → cavab → izah → növbəti.
+// Onlayn repetitor (Pro): həftəlik qrafik → mövzular sıra ilə açılır → ✓ → hər 2 mövzudan sonra sınaq.
 test.describe.configure({ mode: "serial" });
 
 const stamp = Date.now();
-const user = { email: `e2e+rep${stamp}@example.test`, password: "Rena2026x" };
+const user = { id: crypto.randomUUID(), email: `e2e+rep${stamp}@example.test`, password: "Rena2026x" };
+
+const connect = () => {
+  loadEnvConfig(process.cwd());
+  return createClient({ url: process.env.TURSO_DATABASE_URL!, authToken: process.env.TURSO_AUTH_TOKEN });
+};
 
 test.beforeAll(async () => {
-  loadEnvConfig(process.cwd());
-  const db = createClient({ url: process.env.TURSO_DATABASE_URL!, authToken: process.env.TURSO_AUTH_TOKEN });
+  const db = connect();
   const now = Date.now();
   await db.execute({
     sql: `insert into users (id, email, username, name, password_hash, role, grade, target_exam,
             email_verified_at, terms_accepted_at, created_at, updated_at)
           values (?, ?, ?, 'Rena', ?, 'student', 11, 'both', ?, ?, ?, ?)`,
-    args: [crypto.randomUUID(), user.email, `e2e_r${stamp % 1e9}`, await hash(user.password), now, now, now, now],
+    args: [user.id, user.email, `e2e_r${stamp % 1e9}`, await hash(user.password), now, now, now, now],
   });
   db.close();
 });
+
+/** Bazadakı vəziyyəti dəyişir (testdə günləri gözləməmək üçün). */
+async function patchState(fn: (s: Record<string, unknown>) => void) {
+  const db = connect();
+  const r = await db.execute({ sql: "select data from user_state where user_id = ?", args: [user.id] });
+  const s = JSON.parse(String(r.rows[0].data));
+  fn(s);
+  await db.execute({ sql: "update user_state set data = ? where user_id = ?", args: [JSON.stringify(s), user.id] });
+  db.close();
+}
 
 async function login(page: Page) {
   await page.goto("/daxil-ol");
@@ -41,81 +55,129 @@ async function axe(page: Page) {
 const pick = (page: Page, letter: string, value: string) =>
   page.locator(`label:has(input[aria-label="Variant ${letter}: ${value}"])`).click();
 
-test("pulsuz plan → kilid, abunə → ipucu, cavab, izah, proqres", async ({ page }) => {
+test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı mövzu", async ({ page }) => {
   await login(page);
 
-  // Panel və menyu: repetitor kilidlidir
-  await expect(page.getByRole("link", { name: /Onlayn repetitor.*Abunə ilə açılır/ })).toBeVisible();
-  await page.getByRole("navigation", { name: "Tətbiq" }).first().getByRole("link", { name: "Onlayn repetitor" }).click();
-  await expect(page).toHaveURL(/\/onlayn-repetitor$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Onlayn repetitor abunə ilə açılır" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Abunə ol" })).toHaveAttribute("href", "/odenis");
-  expect(await axe(page)).toEqual([]);
-
-  // Sual səhifəsi pulsuz planda açılmır, mətni HTML-də yoxdur
-  await page.goto("/onlayn-repetitor/stereometriya/1");
-  await expect(page).toHaveURL(/\/onlayn-repetitor$/);
+  // Pulsuz plan: kilid, bütün mövzular siyahıda
+  await page.goto("/onlayn-repetitor");
+  await expect(page.getByRole("heading", { level: 1, name: "Onlayn repetitor Premium planı ilə açılır" })).toBeVisible();
+  await expect(page.locator("#tutor-topics + ul > li")).toHaveCount(27);
   const html = await (await page.request.get("/onlayn-repetitor/stereometriya/1")).text();
   expect(html).not.toContain("Düzgün dördbucaqlı prizmanın");
 
-  // Mock abunə
-  await page.goto("/odenis");
+  // Pro repetitoru açmır — yalnız Premium
+  await page.goto("/odenis?plan=pro");
+  await page.getByRole("button", { name: /ödə/ }).click();
+  await page.goto("/onlayn-repetitor");
+  await expect(page.getByRole("heading", { level: 1, name: "Onlayn repetitor Premium planı ilə açılır" })).toBeVisible();
+  // Mock Premium abunə
+  await page.goto("/odenis?plan=premium");
   await page.getByRole("button", { name: /ödə/ }).click();
   await expect(page).toHaveURL(/\/odenis\/ugurlu\?r=/);
 
+  // Qrafik: 2-ci və 4-cü günlər təklif olunur; boş seçim qəbul olunmur
   await page.goto("/onlayn-repetitor");
-  await expect(page.getByRole("heading", { level: 1, name: "Onlayn repetitor" })).toBeVisible();
-  await expect(page.getByText(/bu sual tiplərinin təxminən 90%-i imtahanda çıxır/)).toBeVisible();
-  await expect(page.getByRole("navigation", { name: /: repetitor sualları$/ })).toHaveCount(5);
+  await expect(page.getByRole("heading", { name: "Həftəlik qrafikini seç" })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Çərşənbə axşamı" })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Cümə axşamı" })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Bazar ertəsi" })).not.toBeChecked();
+  expect(await axe(page)).toEqual([]);
+  await page.locator("label", { hasText: "Çərşənbə axşamı" }).click();
+  await page.locator("label", { hasText: "Cümə axşamı" }).click();
+  await page.getByRole("button", { name: "Qrafiki təsdiqlə" }).click();
+  await expect(page.getByText("Ən azı bir gün seç.")).toBeVisible();
+
+  // Hər gün — bu gün ilk mövzu açılır
+  for (const d of ["Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə", "Bazar"]) {
+    // input sr-only-dir — label-ə klikləyən check()
+    await page.getByRole("checkbox", { name: d, exact: true }).check({ force: true });
+  }
+  await page.getByRole("button", { name: "Qrafiki təsdiqlə" }).first().click();
+  await expect(page.getByText(/Dərs günləri: Bazar ertəsi, Çərşənbə axşamı/)).toBeVisible();
+  const plan = page.locator("#curriculum + ol");
+  await expect(plan.getByText("Stereometriya", { exact: true })).toBeVisible();
+  await expect(plan.locator("li").nth(0)).toContainText("Açıqdır");
+  await expect(plan.locator("li").nth(1)).toContainText("açılacaq");
+  await expect(plan.locator("li").nth(2)).toContainText("Sınaq 1");
+  await expect(page.getByRole("heading", { name: "Tezliklə" })).toBeVisible();
   expect(await axe(page)).toEqual([]);
 
-  // Sual: ipucu və açar cavabdan əvvəl HTML-də yoxdur
-  await page.getByRole("link", { name: "Davam et" }).click();
+  // Bağlı mövzunun sualı açılmır
+  await page.goto("/onlayn-repetitor/limit-toreme-inteqral/1");
+  await expect(page).toHaveURL(/\/onlayn-repetitor\/limit-toreme-inteqral$/);
+  await expect(page.getByText(/tarixində açılacaq/)).toBeVisible();
+
+  // İlk mövzu: nəzəriyyə → praktiki testlər
+  await page.goto("/onlayn-repetitor");
+  await page.getByRole("link", { name: /Dərsə başla: Stereometriya/ }).first().click();
+  await expect(page).toHaveURL(/\/onlayn-repetitor\/stereometriya$/);
+  await expect(page.getByRole("heading", { name: "Nəzəriyyə" })).toBeVisible();
+  await page.getByRole("link", { name: "Dərsə başla" }).click();
   await expect(page).toHaveURL(/\/onlayn-repetitor\/stereometriya\/1$/);
   const qHtml = await (await page.request.get("/onlayn-repetitor/stereometriya/1")).text();
   expect(qHtml).toContain("Düzgün dördbucaqlı prizmanın");
   expect(qHtml).not.toContain("oturacağın perimetri");
-  expect(qHtml).not.toMatch(/"answer":"[A-E]"/);
 
   await page.getByRole("button", { name: "İpucu" }).click();
-  await expect(page.getByText("Repetitorun ipucu")).toBeVisible();
   await expect(page.getByText(/oturacağın perimetri/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "İpucu" })).toBeDisabled();
-  expect(await axe(page)).toEqual([]);
-
   await pick(page, "C", "78");
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
   await expect(page.getByText("Düzgündür!")).toBeVisible();
-  await expect(page.getByText("İpucu ilə həll etdin. Növbəti dəfə ipucusuz yoxla.")).toBeVisible();
-  await expect(page.getByText("Repetitorun izahı")).toBeVisible();
   expect(await axe(page)).toEqual([]);
 
-  // Yeniləyəndə cavab, ipucu və izah qalır
-  await page.reload();
-  await expect(page.getByText("Düzgündür!")).toBeVisible();
-  await expect(page.getByText("Repetitorun ipucu")).toBeVisible();
-
-  // Növbəti — yanlış cavab
   await page.getByRole("link", { name: "Növbəti sual" }).click();
   await expect(page).toHaveURL(/\/onlayn-repetitor\/stereometriya\/2$/);
   await pick(page, "A", "144");
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
   await expect(page.getByText("Yanlışdır. Düzgün cavab: B")).toBeVisible();
+});
 
-  await page.goto("/panel");
-  await expect(page.getByRole("link", { name: /Onlayn repetitor.*2 \/ 20 sual/ })).toBeVisible();
+test("mövzular bitir → ✓, 2 mövzudan sonra 20 suallıq sınaq → nəticə", async ({ page }) => {
+  // Qrafik 3 gün əvvəl başlayıb (hər gün) → 4 dərs açıqdır; ilk iki mövzunun suallarını cavablanmış edirik.
+  const start = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
+  await patchState((s) => {
+    s.tutorPlan = { days: [1, 2, 3, 4, 5, 6, 7], start, offset: 0 };
+    // Stereometriya: 4 repetitor + 10 günün sualı (s1–s10) bankdadır.
+    const ids = ["st1", "st2", "st3", "st4", "lt1", "lt2", "lt3", "lt4", ...Array.from({ length: 10 }, (_, i) => `s${i + 1}`)];
+    s.tutor = Object.fromEntries(ids.map((id) => [id, { a: "A", ok: id === "st1" }]));
+  });
+  await login(page);
   await page.goto("/onlayn-repetitor");
-  const pager = page.getByRole("navigation", { name: "Stereometriya: repetitor sualları" });
-  await expect(pager.getByRole("link", { name: "Sual 1, düzgün" })).toBeVisible();
-  await expect(pager.getByRole("link", { name: "Sual 2, səhv" })).toBeVisible();
+  const plan = page.locator("#curriculum + ol");
+  await expect(plan.locator("li").nth(0)).toContainText("Bitib");
+  await expect(plan.locator("li").nth(1)).toContainText("Bitib");
+  await expect(plan.getByLabel("Mövzu bitib")).toHaveCount(2);
+  await expect(plan.locator("li").nth(2)).toContainText("Sınaq hazırdır");
+  await expect(page.getByText("2 / 8 mövzu bitib")).toBeVisible();
+
+  await page.getByRole("link", { name: /Sınağa başla: Sınaq 1/ }).first().click();
+  await expect(page).toHaveURL(/\/onlayn-repetitor\/sinaq\/1$/);
+  await expect(page.locator("form section")).toHaveCount(18); // 14 + 4 sual (20-dən az)
+  const exHtml = await (await page.request.get("/onlayn-repetitor/sinaq/1")).text();
+  expect(exHtml).not.toMatch(/"answer":"[A-E]"/);
+  expect(await axe(page)).toEqual([]);
+  // 1-ci sual (st1) düzgün: C; 2-ci (lt1) — yanlış seçirik; qalanları boş
+  await page.locator("form section").nth(0).locator("label", { hasText: "C)" }).click();
+  await page.locator("form section").nth(1).locator("label", { hasText: "A)" }).click();
+  await page.getByRole("button", { name: "Sınağı bitir" }).click();
+  await expect(page.getByText("Nəticə: 1 / 18")).toBeVisible();
+  await expect(page.getByText(/Səhv · düzgün cavab: [A-E]/)).toHaveCount(1);
+  await expect(page.getByText(/^Cavab verilməyib/)).toHaveCount(16);
+
+  await page.goto("/onlayn-repetitor");
+  await expect(plan.locator("li").nth(2)).toContainText("Nəticə: 1 / 18");
 });
 
 test("mobil 390: üfüqi sürüşmə yoxdur, alt menyuda Repetitor var", async ({ page }) => {
   await login(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const p of ["/onlayn-repetitor", "/onlayn-repetitor/limit-toreme-inteqral/4", "/panel"]) {
+  for (const p of ["/onlayn-repetitor", "/onlayn-repetitor/stereometriya", "/onlayn-repetitor/limit-toreme-inteqral/4", "/onlayn-repetitor/sinaq/1", "/panel"]) {
     await page.goto(p);
     expect(await page.evaluate(() => document.documentElement.scrollWidth), p).toBeLessThanOrEqual(390);
   }
+  await page.goto("/onlayn-repetitor");
+  await page.screenshot({ path: "screenshots/repetitor-plan-390.png", fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({ path: "screenshots/repetitor-plan-1280.png", fullPage: true });
   await expect(page.getByRole("navigation", { name: "Tətbiq" }).getByRole("link", { name: "Repetitor" })).toBeVisible();
 });

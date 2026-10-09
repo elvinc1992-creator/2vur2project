@@ -93,8 +93,8 @@ export default async function HomePage() {
           <Section tone="tint" labelledBy="stats-title">
             <Head eyebrow={t.stats.eyebrow} title={t.stats.title} id="stats-title" />
             <dl className="m-0 grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-              <Stat value={fmtInt(overview.questions)} label={t.stats.questions} />
-              <Stat value={fmtInt(years.length)} label={t.stats.years(years.join(", "))} />
+              <Stat value="30000+" label={t.stats.questions} />
+              <Stat value="100+" label={t.stats.years("2016–2026")} />
               <Stat value={fmtInt(overview.topics)} label={t.stats.topics} />
               <Stat value={fmtPct(overview.found2025 / overview.questions)} label={t.stats.found} />
             </dl>
@@ -205,8 +205,8 @@ export default async function HomePage() {
           </Head>
           <div className="grid gap-4 lg:grid-cols-3 lg:items-stretch">
             <PlanCard plan={t.pricing.plans.free} id="plan-free" href="/qeydiyyat" variant="secondary" />
-            <PlanCard plan={t.pricing.plans.monthly} id="plan-monthly" href="/odenis" variant="primary" featured />
-            <PlanCard plan={t.pricing.plans.exam} id="plan-exam" href="/sinaqlar" variant="secondary" />
+            <PlanCard plan={t.pricing.plans.monthly} id="plan-monthly" href="/odenis?plan=pro" variant="primary" featured />
+            <PlanCard plan={t.pricing.plans.exam} id="plan-exam" href="/odenis?plan=premium" variant="secondary" />
           </div>
         </Section>
 

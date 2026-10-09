@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { az } from "@/content/az";
-import { TARGET_EXAMS } from "@/db/schema";
 import { PASSWORD_MAX, PASSWORD_MIN, checkPassword } from "./password-policy";
 
 const e = az.errors;
@@ -36,13 +35,32 @@ export const registerSchema = z.object({
     .trim()
     .min(1, e.nameRequired)
     .max(60, e.nameTooLong),
+  surname: z
+    .string({ error: e.surnameRequired })
+    .trim()
+    .min(1, e.surnameRequired)
+    .max(60, e.surnameTooLong),
+  fatherName: z
+    .string({ error: e.fatherNameRequired })
+    .trim()
+    .min(1, e.fatherNameRequired)
+    .max(60, e.fatherNameTooLong),
   username: usernameSchema,
-  email: emailSchema,
   password: newPasswordSchema,
   grade: z.enum(["9", "10", "11"], { error: e.gradeRequired }).transform(Number),
-  targetExam: z.enum(TARGET_EXAMS, { error: e.targetRequired }),
   terms: z.literal("on", { error: e.termsRequired }),
 });
+
+/** +994 və 9 rəqəm (operator kodu + nömrə). Boşluq, tire, mötərizə qəbul olunur və silinir. */
+export const PHONE_RE = /^\+994\d{9}$/;
+
+export const phoneSchema = z
+  .string({ error: e.required })
+  .transform((v) => v.replace(/[\s\-()]/g, ""))
+  .transform((v) => (v.startsWith("994") ? `+${v}` : v.startsWith("0") ? `+994${v.slice(1)}` : v))
+  .pipe(z.string().regex(PHONE_RE, e.phoneInvalid));
+
+export const emailCodeSchema = z.string({ error: e.required }).trim().regex(/^\d{6}$/, e.codeInvalid);
 
 export const loginSchema = z.object({
   identifier: z.string({ error: e.required }).trim().toLowerCase().min(1, e.required).max(254),

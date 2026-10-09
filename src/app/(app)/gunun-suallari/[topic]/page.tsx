@@ -1,13 +1,13 @@
 import { notFound, redirect } from "next/navigation";
-import { DAILY_TOPICS, type TopicSlug } from "@/lib/demo/content";
-import { dailyByTopic, isDailyOpen } from "@/lib/demo/logic";
-import { requireDemo } from "@/lib/demo/session";
+import { requireDaily } from "@/lib/demo/daily";
+import { dailyHref, dailyTopic, isDailyOpen } from "@/lib/demo/logic";
 
 /** Mövzunun ilk açıq və cavabsız sualına (yoxdursa birincisinə) yönləndirir. */
 export default async function DailyTopicPage(props: PageProps<"/gunun-suallari/[topic]">) {
   const { topic } = await props.params;
-  if (!DAILY_TOPICS.includes(topic as TopicSlug)) notFound();
-  const { state } = await requireDemo(`/gunun-suallari/${topic}`);
-  const idx = dailyByTopic(topic as TopicSlug).findIndex((q) => !state.daily[q.id] && isDailyOpen(state, q));
-  redirect(`/gunun-suallari/${topic}/${idx >= 0 ? idx + 1 : 1}`);
+  const { state, ctx } = await requireDaily(`/gunun-suallari/${topic}`);
+  const x = dailyTopic(ctx, topic);
+  if (!x) notFound();
+  const idx = x.ids.findIndex((id) => !state.daily[id] && isDailyOpen(state, ctx, id));
+  redirect(dailyHref(topic, idx >= 0 ? idx + 1 : 1));
 }

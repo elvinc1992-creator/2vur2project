@@ -7,7 +7,7 @@ import { KeyValues, Tag } from "@/components/ui/display";
 import { EmptyState } from "@/components/ui/empty-art";
 import { az } from "@/content/az";
 import { startExamAction } from "@/lib/demo/actions";
-import { PRICE_PLACEHOLDER } from "@/lib/demo/content";
+
 import { addDays, examStatus, formatDate } from "@/lib/demo/logic";
 import { requireDemo } from "@/lib/demo/session";
 import { PrintButton } from "./print-button";
@@ -49,7 +49,7 @@ export default async function PaymentSuccessPage(props: PageProps<"/odenis/ugurl
           <hr className="my-1 w-full border-0 border-t border-dashed border-control-border" />
           <dl className="m-0 grid grid-cols-[1fr_auto] gap-3">
             <dt className="font-bold text-ink">{t.total}</dt>
-            <dd className="m-0 font-display text-lg leading-6 font-extrabold">{PRICE_PLACEHOLDER}</dd>
+            <dd className="m-0 font-display text-lg leading-6 font-extrabold">{p.amount ?? "—"}</dd>
           </dl>
           <PrintButton label={t.print} />
         </section>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BagIcon, CalcIcon, CapIcon, ChartIcon, HomeIcon, RetryIcon, TargetIcon, UserIcon } from "@/components/icons";
+import { BagIcon, CalcIcon, CapIcon, CardIcon, ChartIcon, HomeIcon, RetryIcon, TargetIcon, UserIcon } from "@/components/icons";
 import { az } from "@/content/az";
 import { cn } from "@/lib/cn";
 
@@ -18,6 +18,7 @@ const ITEMS = [
 const MISTAKES = { href: "/sehvlerim", match: ["/sehvlerim"], label: t.mistakes, long: t.mistakes, Icon: RetryIcon };
 const SCORE = { href: "/bal-simulyatoru", match: ["/bal-simulyatoru"], label: t.score, long: t.score, Icon: CalcIcon };
 const STATS = { href: "/statistika", match: ["/statistika"], label: t.stats, long: t.stats, Icon: ChartIcon };
+const PLANS = { href: "/abunelikler", match: ["/abunelikler", "/odenis"], label: t.plans, long: t.plans, Icon: CardIcon };
 
 function useActive() {
   const path = usePathname();
@@ -29,7 +30,7 @@ export function SideNav({ footer }: { footer?: React.ReactNode }) {
   const isActive = useActive();
   return (
     <nav aria-label={t.label} className="grid content-start gap-1">
-      {[...ITEMS, MISTAKES, SCORE, STATS].map(({ href, match, long, Icon }) => {
+      {[...ITEMS, MISTAKES, SCORE, STATS, PLANS].map(({ href, match, long, Icon }) => {
         const active = isActive(match);
         return (
           <Link

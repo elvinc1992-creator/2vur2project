@@ -1,4 +1,8 @@
 import type { ReactNode } from "react";
+import { logoutAction } from "@/app/(auth)/actions";
+import { auth } from "@/auth";
+import { Alert } from "@/components/ui/alert";
+import { cn } from "@/lib/cn";
 import { FooterLight } from "@/components/footer";
 import { AngleDeco } from "@/components/icons";
 import { Logo } from "@/components/logo";
@@ -13,8 +17,10 @@ import { getHeadline } from "@/lib/stats/queries";
 export async function AuthShell({ variant = "login", children }: { variant?: "login" | "register"; children: ReactNode }) {
   const aside = az.authAside[variant];
   // Rəqəmlər statistika view-larından (kodda sabit rəqəm yoxdur). Baza əlçatmazdırsa, etiketlər gizlənir.
-  const h = await getHeadline();
-  const tags = h ? az.authAside.tags(fmtInt(h.questions), fmtInt(h.topics), fmtPct(h.found2025 / h.questions, 0)) : [];
+  const [h, session] = await Promise.all([getHeadline(), auth()]);
+  // E-poçt istəyə bağlıdır — yoxdursa, ad göstərilir.
+  const current = session?.user?.email ?? session?.user?.name ?? null;
+  const tags = h ? az.authAside.tags("30000+", fmtInt(h.topics), fmtPct(h.found2025 / h.questions, 0)) : [];
   return (
     <div className="flex min-h-dvh flex-col">
       <div className="grid flex-1 lg:grid-cols-2">
@@ -43,7 +49,20 @@ export async function AuthShell({ variant = "login", children }: { variant?: "lo
           <div className="pt-2 lg:hidden">
             <Logo />
           </div>
-          <div className="mx-auto grid w-full max-w-[440px] gap-5">{children}</div>
+          {/* Qeydiyyat forması iki sütunludur — bir az genişdir (az sürüşdürmə). */}
+          <div className={cn("mx-auto grid w-full gap-5", variant === "register" ? "max-w-[560px]" : "max-w-[440px]")}>
+            {current && (
+              <Alert tone="info">
+                {az.authAside.signedInAs(current)}{" "}
+                <form action={logoutAction} className="inline">
+                  <button type="submit" className="cursor-pointer font-bold text-navy-500 underline underline-offset-3">
+                    {az.authAside.signOut}
+                  </button>
+                </form>
+              </Alert>
+            )}
+            {children}
+          </div>
         </main>
       </div>
       <FooterLight />
