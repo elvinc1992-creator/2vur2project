@@ -8,6 +8,7 @@ import { buttonClass } from "@/components/ui/button";
 import { brand, socialUrl } from "@/config/brand";
 import { az } from "@/content/az";
 import { cn } from "@/lib/cn";
+import { useSessionUser } from "./use-session-user";
 
 const t = az.landing.nav;
 const telegram = socialUrl(brand.telegramUrl);
@@ -18,9 +19,10 @@ const LINKS = [
   { href: "#qiymetler", label: t.pricing },
 ];
 
-/** İctimai header: desktop-da 4 link + Daxil ol + Telegram; mobil-də açılan menyu. */
+/** İctimai header: desktop-da 4 link + Daxil ol + Telegram; mobil-də açılan menyu. Daxil olmuş istifadəçiyə — \"Panelə keç\". */
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const user = useSessionUser();
   const menuId = useId();
 
   useEffect(() => {
@@ -42,10 +44,18 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Link href="/daxil-ol" className={cn(buttonClass({ variant: "ghost" }), "max-lg:hidden")}>
-            {t.login}
-          </Link>
-          <PrimaryCta className={cn(buttonClass({ variant: "primary", size: "sm" }), "max-lg:hidden")} />
+          {user ? (
+            <Link href="/panel" className={cn(buttonClass({ variant: "primary", size: "sm" }), "max-lg:hidden")}>
+              {t.toPanel}
+            </Link>
+          ) : (
+            <>
+              <Link href="/daxil-ol" className={cn(buttonClass({ variant: "ghost" }), "max-lg:hidden")}>
+                {t.login}
+              </Link>
+              <PrimaryCta className={cn(buttonClass({ variant: "primary", size: "sm" }), "max-lg:hidden")} />
+            </>
+          )}
           <button
             type="button"
             aria-expanded={open}
@@ -74,10 +84,18 @@ export function SiteHeader() {
             ))}
           </ul>
           <div className="mt-3 grid gap-2">
-            <Link href="/daxil-ol" className={buttonClass({ variant: "secondary", block: true })}>
-              {t.login}
-            </Link>
-            <PrimaryCta className={buttonClass({ variant: "primary", block: true })} />
+            {user ? (
+              <Link href="/panel" className={buttonClass({ variant: "primary", block: true })}>
+                {t.toPanel}
+              </Link>
+            ) : (
+              <>
+                <Link href="/daxil-ol" className={buttonClass({ variant: "secondary", block: true })}>
+                  {t.login}
+                </Link>
+                <PrimaryCta className={buttonClass({ variant: "primary", block: true })} />
+              </>
+            )}
           </div>
         </nav>
       )}

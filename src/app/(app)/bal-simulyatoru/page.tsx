@@ -4,21 +4,21 @@ import { Card, Meter, Placeholder, h1Class, h3Class } from "@/components/ui/disp
 import { az } from "@/content/az";
 import { requireDemo } from "@/lib/demo/session";
 import { fmtDec, fmtInt } from "@/lib/format";
-import { EXAM_QUESTION_COUNT, weeklyEstimate } from "@/lib/score/weekly";
-import { getWeeklyStats } from "@/lib/score/weekly-db";
+import { EXAM_QUESTION_COUNT, MIN_QUESTIONS, MIN_TOPICS, scoreEstimate } from "@/lib/score/estimate";
+import { getScoreStats } from "@/lib/score/estimate-db";
 
 export const metadata: Metadata = { title: az.app.score.title };
 
-/** DİM bal simulyatoru: son 7 günün cavablarına görə təxmin + əl ilə hesablama. */
+/** DİM bal simulyatoru: bütün cavablara görə təxmin (ən azı 4 fərqli mövzudan 20 sual). */
 export default async function ScoreSimulatorPage() {
   const { state } = await requireDemo("/bal-simulyatoru");
   const t = az.app.score;
-  const week = weeklyEstimate(await getWeeklyStats(state.uid));
-  const pctNum = fmtDec(week.pct, Number.isInteger(week.pct) ? 0 : 1);
+  const s = scoreEstimate(await getScoreStats(state.uid));
+  const pctNum = fmtDec(s.pct, Number.isInteger(s.pct) ? 0 : 1);
   const pctText = `${pctNum}%`;
   const estimates = [
-    { label: t.estimateBuraxilis, n: EXAM_QUESTION_COUNT.buraxilis, value: week.buraxilis },
-    { label: t.estimateBlok, n: EXAM_QUESTION_COUNT.blok, value: week.blok },
+    { label: t.estimateBuraxilis, n: EXAM_QUESTION_COUNT.buraxilis, value: s.buraxilis },
+    { label: t.estimateBlok, n: EXAM_QUESTION_COUNT.blok, value: s.blok },
   ];
 
   return (
@@ -34,24 +34,37 @@ export default async function ScoreSimulatorPage() {
           <h2 id="score-week" className={h3Class}>
             {t.weekTitle}
           </h2>
-          {week.total === 0 ? (
-            <Card tone="tint">
-              <p className="text-ink-muted">{t.weekEmpty}</p>
+          <dl className="m-0 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {[
+              { label: t.weekSolved, value: fmtInt(s.total) },
+              { label: t.weekCorrect, value: fmtInt(s.correct) },
+              { label: t.weekPct, value: pctText },
+              { label: t.weekTopics, value: fmtInt(s.topics) },
+            ].map((x) => (
+              <Card key={x.label} className="grid gap-1 p-4!">
+                <dt className="order-2 text-small text-ink-muted">{x.label}</dt>
+                <dd className="m-0 font-display text-[32px] leading-[38px] font-extrabold text-navy-900 tabular">{x.value}</dd>
+              </Card>
+            ))}
+          </dl>
+
+          {!s.ready ? (
+            <Card tone="tint" className="grid gap-3">
+              <p className="m-0 font-semibold text-navy-900">{t.notReadyTitle}</p>
+              <p className="m-0 text-ink-muted">{t.notReadyText(MIN_QUESTIONS, MIN_TOPICS)}</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <span className="text-small font-semibold tabular">{t.progressQuestions(s.total, MIN_QUESTIONS)}</span>
+                  <Meter value={Math.min(100, Math.round((s.total / MIN_QUESTIONS) * 100))} label={t.weekSolved} tone="navy" />
+                </div>
+                <div className="grid gap-1.5">
+                  <span className="text-small font-semibold tabular">{t.progressTopics(s.topics, MIN_TOPICS)}</span>
+                  <Meter value={Math.min(100, Math.round((s.topics / MIN_TOPICS) * 100))} label={t.weekTopics} tone="navy" />
+                </div>
+              </div>
             </Card>
           ) : (
             <>
-              <dl className="m-0 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {[
-                  { label: t.weekSolved, value: fmtInt(week.total) },
-                  { label: t.weekCorrect, value: fmtInt(week.correct) },
-                  { label: t.weekPct, value: pctText },
-                ].map((s) => (
-                  <Card key={s.label} className="grid gap-1 p-4!">
-                    <dt className="order-2 text-small text-ink-muted">{s.label}</dt>
-                    <dd className="m-0 font-display text-[32px] leading-[38px] font-extrabold text-navy-900 tabular">{s.value}</dd>
-                  </Card>
-                ))}
-              </dl>
               <h3 className={h3Class}>{t.estimateTitle}</h3>
               <div className="grid gap-3 md:grid-cols-2">
                 {estimates.map((e) => (

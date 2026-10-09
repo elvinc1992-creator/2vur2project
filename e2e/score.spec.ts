@@ -25,37 +25,49 @@ test.beforeAll(async () => {
   db.close();
 });
 
-test("son 7 gün: 200 sualdan 120 düzgün → buraxılış 14, blok 17", async ({ page }) => {
-  await login(page);
-  await page.goto("/bal-simulyatoru");
-  await expect(page.getByText(/Son 7 gündə heç bir suala cavab verməmisən/)).toBeVisible();
-
-  // 200 cavab son həftədə (120 düzgün) + 50 köhnə cavab (8 gün əvvəl — nəzərə alınmır).
+/** Cavabları birbaşa bazaya yazır: [istinad (bank id), düzgün, neçə gün əvvəl]. */
+async function addAnswers(rows: Array<[string, boolean, number]>) {
   const db = connect();
   const now = Date.now();
-  const rows = [
-    ...Array.from({ length: 200 }, (_, i) => [i < 120 ? 1 : 0, now - i * 60_000]),
-    ...Array.from({ length: 50 }, () => [1, now - 8 * 24 * 3600_000]),
-  ];
   await db.batch(
-    rows.map(([ok, at], i) => ({
+    rows.map(([ref, ok, daysAgo], i) => ({
       sql: "insert into user_answers (user_id, source, question_ref, correct, answered_at) values (?, 'daily', ?, ?, ?)",
-      args: [user.id, `e2e${i}`, ok, at],
+      args: [user.id, ref, ok ? 1 : 0, now - daysAgo * 86_400_000 - i * 1000],
     })),
     "write",
   );
   db.close();
+}
 
+const ids = (prefix: string) => Array.from({ length: 10 }, (_, i) => `${prefix}${i + 1}`);
+
+test("bütün cavablar (7 gün yox); ən azı 4 mövzudan 20 sual → 200 sualdan 120 düzgün: buraxılış 14, blok 17", async ({ page }) => {
+  await login(page);
+  await page.goto("/bal-simulyatoru");
+  const box = page.locator("section[aria-labelledby=score-week]");
+  await expect(box.getByText("Təxmin üçün hələ az məlumat var")).toBeVisible();
+  await expect(box.getByText("Sual: 0 / 20")).toBeVisible();
+  await expect(box.getByText("Mövzu: 0 / 4")).toBeVisible();
+
+  // 30 düzgün cavab, 3 mövzu (triqonometriya, loqarifm, stereometriya); bir hissəsi 30 gün əvvəl — yenə sayılır.
+  await addAnswers([...ids("t"), ...ids("l"), ...ids("s")].map((id, i) => [id, true, i < 15 ? 30 : 0]));
   await page.reload();
-  const week = page.locator("section[aria-labelledby=score-week]");
-  await expect(week.getByText("200", { exact: true })).toBeVisible();
-  await expect(week.getByText("120", { exact: true })).toBeVisible();
-  await expect(week.getByText("int(25 × 60 / 100) − 1 = 14")).toBeVisible();
-  await expect(week.getByText("60%", { exact: true })).toBeVisible();
-  await expect(week.getByText("int(30 × 60 / 100) − 1 = 17")).toBeVisible();
-  await page.screenshot({ path: "screenshots/bal-simulyatoru-hefte.png", fullPage: true });
-});
+  await expect(box.getByText("Sual: 20 / 20")).toBeVisible();
+  await expect(box.getByText("Mövzu: 3 / 4")).toBeVisible();
+  await expect(box.getByText(/int\(25/)).toHaveCount(0);
 
+  // +170 cavab (90 düzgün), 4-cü mövzu — faiz → cəmi 200 sual, 120 düzgün, 4 mövzu
+  await addAnswers(Array.from({ length: 170 }, (_, i) => [ids("f")[i % 10], i < 90, i % 20]));
+  await page.reload();
+  await expect(box.getByText("Təxmin üçün hələ az məlumat var")).toHaveCount(0);
+  await expect(box.getByText("200", { exact: true })).toBeVisible();
+  await expect(box.getByText("120", { exact: true })).toBeVisible();
+  await expect(box.getByText("60%", { exact: true })).toBeVisible();
+  await expect(box.getByText("4", { exact: true })).toBeVisible();
+  await expect(box.getByText("int(25 × 60 / 100) − 1 = 14")).toBeVisible();
+  await expect(box.getByText("int(30 × 60 / 100) − 1 = 17")).toBeVisible();
+  await page.screenshot({ path: "screenshots/bal-simulyatoru-netice.png", fullPage: true });
+});
 async function login(page: Page) {
   await page.goto("/daxil-ol");
   await page.getByLabel("E-poçt və ya istifadəçi adı").fill(user.email);
