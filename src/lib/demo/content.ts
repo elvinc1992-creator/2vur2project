@@ -37,8 +37,11 @@ export type DailyQuestion = {
 /** Bu günün mövzuları: 7 mövzu × 10 sual. */
 export const DAILY_TOPICS: TopicSlug[] = ["triqonometriya", "loqarifm", "feza", "faiz", "funksiya", "ucbucaq", "ardicilliq"];
 
-/** Pulsuz planda hər mövzunun ilk N sualı açıqdır, qalanları abunə ilə (serverdə yoxlanılır). */
-export const FREE_DAILY_PER_TOPIC = 1;
+/** Free planda günün hər mövzusunun ilk N sualı açıqdır, qalanları Pro/Premium ilə (serverdə yoxlanılır). */
+export const FREE_DAILY_PER_TOPIC = 2;
+/** Hər gün sual bankından təsadüfi seçilən mövzu və hər mövzudan sual sayı. */
+export const DAILY_TOPICS_PER_DAY = 4;
+export const DAILY_PER_TOPIC = 5;
 
 export const DAILY: DailyQuestion[] = [
   // Triqonometriya
@@ -352,5 +355,4 @@ export const EXAM_QUESTIONS: ExamQuestion[] = [
 
 /* ---------------- Abunə və ödəniş ---------------- */
 
-export const PRICE_PLACEHOLDER = "[QİYMƏT] AZN";
 export const CARD_LABEL = "Kart •••• 4821";

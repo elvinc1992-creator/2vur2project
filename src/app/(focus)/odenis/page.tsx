@@ -5,25 +5,31 @@ import { Page, Topbar } from "@/components/app/topbar";
 import { CheckIcon, LockIcon, ShieldIcon } from "@/components/icons";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, KeyValues, Placeholder } from "@/components/ui/display";
+import { Card, KeyValues, Placeholder, Tag } from "@/components/ui/display";
 import { az } from "@/content/az";
 import { mockPayAction } from "@/lib/demo/actions";
-import { PRICE_PLACEHOLDER } from "@/lib/demo/content";
 import { findExam } from "@/lib/demo/logic";
+import { PLANS, priceOf, tierOf } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
+import type { PaidTier } from "@/lib/demo/state";
 import { cn } from "@/lib/cn";
 
 export const metadata: Metadata = { title: az.app.payment.title };
+
+const TIERS: PaidTier[] = ["pro", "premium"];
 
 export default async function PaymentPage(props: PageProps<"/odenis">) {
   const sp = await props.searchParams;
   const examId = typeof sp.exam === "string" ? sp.exam : null;
   const exam = examId ? findExam(examId) : undefined;
   if (examId && !exam) notFound();
-  await requireDemo(`/odenis${examId ? `?exam=${examId}` : ""}`);
+  const tier: PaidTier = sp.plan === "premium" ? "premium" : "pro";
+  const { state } = await requireDemo(`/odenis${examId ? `?exam=${examId}` : `?plan=${tier}`}`);
+  const current = tierOf(state);
   const t = az.app.payment;
   const kind = exam ? "exam" : "monthly";
-  const title = exam ? exam.title : t.monthly;
+  const title = exam ? exam.title : t.planTitle(PLANS[tier].name);
+  const price = priceOf(exam ? "exam" : tier);
 
   return (
     <>
@@ -35,6 +41,37 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
           </h1>
           <input type="hidden" name="kind" value={kind} />
           {exam && <input type="hidden" name="exam" value={exam.id} />}
+          {!exam && <input type="hidden" name="plan" value={tier} />}
+
+          {!exam && (
+            <nav aria-label={t.planLabel} className="grid gap-2 sm:grid-cols-2">
+              {TIERS.map((x) => (
+                <Link
+                  key={x}
+                  href={`/odenis?plan=${x}`}
+                  aria-current={x === tier ? "true" : undefined}
+                  className={cn(
+                    "grid content-start gap-2 rounded-lg border-2 p-4 text-inherit no-underline",
+                    x === tier ? "border-navy-900 bg-navy-050" : "border-line bg-white hover:border-navy-500",
+                  )}
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{PLANS[x].name}</b>
+                    {current === x && <Tag tone="success">{t.current}</Tag>}
+                  </span>
+                  <b className="text-navy-900 tabular">{t.perMonth(priceOf(x))}</b>
+                  <ul className="m-0 grid list-none gap-1 p-0 text-small text-ink">
+                    {t.planFeatures[x].map((f) => (
+                      <li key={f} className="flex items-start gap-1.5">
+                        <CheckIcon className="mt-0.5 size-4 flex-none text-success-700" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </Link>
+              ))}
+            </nav>
+          )}
 
           <Card tone="tint" className="grid gap-2 !p-4">
             <span className="text-small text-ink-muted">{t.selected}</span>
@@ -46,7 +83,7 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
             </div>
             <div className="flex items-center justify-between gap-3 text-small">
               <span className="text-ink-muted">{exam ? t.examNote : t.monthlyNote}</span>
-              <b className="whitespace-nowrap">{exam ? PRICE_PLACEHOLDER : t.perMonth(PRICE_PLACEHOLDER)}</b>
+              <b className="whitespace-nowrap">{exam ? price : t.perMonth(price)}</b>
             </div>
           </Card>
 
@@ -81,14 +118,14 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
           <div className="grid gap-2 rounded-lg border border-line bg-white p-5">
             <KeyValues
               rows={[
-                [title, PRICE_PLACEHOLDER],
+                [title, price],
                 [t.discount, "—"],
               ]}
             />
             <hr className="my-1 w-full border-0 border-t border-dashed border-control-border" />
             <dl className="m-0 grid grid-cols-[1fr_auto] gap-3">
               <dt className="font-bold text-ink">{t.total}</dt>
-              <dd className="m-0 font-display text-lg leading-6 font-extrabold">{PRICE_PLACEHOLDER}</dd>
+              <dd className="m-0 font-display text-lg leading-6 font-extrabold">{price}</dd>
             </dl>
           </div>
 
@@ -111,7 +148,7 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
 
           <Button type="submit" variant="primary" block>
             <LockIcon />
-            {t.pay(PRICE_PLACEHOLDER)}
+            {t.pay(price)}
           </Button>
           <p className="flex items-start justify-center gap-2 text-small text-ink-muted">
             <ShieldIcon className="mt-px size-[18px] flex-none" />
@@ -119,7 +156,7 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
           </p>
           <p className="text-center text-small text-ink-muted">
             {t.mockNote}{" "}
-            <Link href={`/odenis/ugursuz${exam ? `?exam=${exam.id}` : ""}`}>{t.demoFail}</Link>
+            <Link href={`/odenis/ugursuz${exam ? `?exam=${exam.id}` : `?plan=${tier}`}`}>{t.demoFail}</Link>
           </p>
         </form>
       </Page>

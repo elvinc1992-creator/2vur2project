@@ -1,7 +1,8 @@
 import "server-only";
 import type { RepetitorKey, RepetitorQuestion, RepetitorTopic } from "./types";
 
-// MOCK MƏLUMAT — admin paneli hazır olanda bu fayl DB cədvəli ilə əvəz olunacaq (bax: ./source.ts).
+// TEST FİKSTURU. Tətbiq sualları bazadan oxuyur (tutor_questions); eyni suallar bazaya
+// db/migrations/0006_tutor_seed.sql ilə yazılıb. Bu fayl yalnız unit testlərdə istifadə olunur.
 // Sualların mətni orijinaldır (test toplularından deyil). Mövzular — statistikada ən çox çıxan 5 mövzu.
 
 export const MOCK_TOPICS: RepetitorTopic[] = [

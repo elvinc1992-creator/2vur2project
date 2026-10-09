@@ -4,7 +4,7 @@ import { mailInboxUrl } from "@/lib/mail-link";
 import { safeRedirect } from "@/lib/safe-redirect";
 import { checkPassword, isPasswordAcceptable, passwordScore } from "./password-policy";
 import { generateToken, hashToken } from "./tokens";
-import { fieldErrors, loginSchema, registerSchema } from "./validation";
+import { emailCodeSchema, fieldErrors, loginSchema, phoneSchema, registerSchema } from "./validation";
 
 describe("şifrə qaydaları", () => {
   it("dizayndakı 4 şərti yoxlayır (Azərbaycan hərfləri ilə)", () => {
@@ -30,25 +30,24 @@ describe("şifrə qaydaları", () => {
 describe("qeydiyyat validasiyası", () => {
   const valid = {
     name: " Aysel ",
+    surname: "Məmmədova",
+    fatherName: "Rəşid",
     username: "Aysel_M",
-    email: " Aysel.M@Mail.AZ ",
     password: "Aysel2026",
     grade: "11",
-    targetExam: "both",
     terms: "on",
   };
 
-  it("e-poçt və istifadəçi adını normallaşdırır", () => {
+  it("istifadəçi adını normallaşdırır; e-poçt qeydiyyatda tələb olunmur", () => {
     const r = registerSchema.parse(valid);
-    expect(r).toMatchObject({ name: "Aysel", username: "aysel_m", email: "aysel.m@mail.az", grade: 11 });
+    expect(r).toMatchObject({ name: "Aysel", surname: "Məmmədova", fatherName: "Rəşid", username: "aysel_m", grade: 11 });
   });
 
   it("xətaları Azərbaycan dilində, sahə üzrə qaytarır", () => {
-    const r = registerSchema.safeParse({ ...valid, email: "yox", password: "aysel2026", terms: undefined });
+    const r = registerSchema.safeParse({ ...valid, password: "aysel2026", terms: undefined });
     expect(r.success).toBe(false);
     if (r.success) return;
     expect(fieldErrors(r.error)).toEqual({
-      email: az.errors.emailInvalid,
       password: az.errors.passwordWeak,
       terms: az.errors.termsRequired,
     });
@@ -62,6 +61,18 @@ describe("qeydiyyat validasiyası", () => {
 
   it("sinif yalnız 9/10/11", () => {
     expect(registerSchema.safeParse({ ...valid, grade: "12" }).success).toBe(false);
+  });
+
+  it("telefon: +994 və 9 rəqəm; boşluq/0 ilə yazılış normallaşır", () => {
+    expect(phoneSchema.parse("+994 50 123 45 67")).toBe("+994501234567");
+    expect(phoneSchema.parse("050-123-45-67")).toBe("+994501234567");
+    expect(phoneSchema.parse("994 (55) 123 45 67")).toBe("+994551234567");
+    for (const bad of ["+99450123456", "+7 999 123 45 67", "abc"]) expect(phoneSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it("təsdiq kodu — 6 rəqəm", () => {
+    expect(emailCodeSchema.parse(" 012345 ")).toBe("012345");
+    expect(emailCodeSchema.safeParse("12345").success).toBe(false);
   });
 
   it("giriş identifikatorunu kiçik hərfə salır", () => {

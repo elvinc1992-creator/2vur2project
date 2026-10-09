@@ -6,6 +6,7 @@ import { buttonClass } from "@/components/ui/button";
 import { Tag } from "@/components/ui/display";
 import { az } from "@/content/az";
 import { daysLeft, planStatus } from "@/lib/demo/logic";
+import { PLANS, tierOf } from "@/lib/demo/plans";
 import type { DemoState } from "@/lib/demo/state";
 import Link from "next/link";
 
@@ -14,12 +15,13 @@ export function AppFrame({ state, children }: { state: DemoState; children: Reac
   const t = az.app;
   const days = daysLeft(state.sub.periodEnd);
   const plan = planStatus(state);
+  const name = PLANS[tierOf(state)].name;
   const tag =
     plan === "free"
       ? { tone: "lock" as const, text: t.sub.free }
       : plan === "active"
-        ? { tone: "success" as const, text: t.sub.active(days) }
-        : { tone: "warning" as const, text: t.sub.canceled(days) };
+        ? { tone: "success" as const, text: `${name} · ${t.sub.active(days)}` }
+        : { tone: "warning" as const, text: `${name} · ${t.sub.canceled(days)}` };
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[248px_1fr]">

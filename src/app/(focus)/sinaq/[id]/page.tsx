@@ -6,9 +6,10 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, FormatBar, h3Class } from "@/components/ui/display";
 import { EmptyState } from "@/components/ui/empty-art";
 import { az } from "@/content/az";
-import { startExamAction } from "@/lib/demo/actions";
-import { EXAM_FORMAT, EXAM_QUESTIONS, PRICE_PLACEHOLDER } from "@/lib/demo/content";
+import { claimExamAction, startExamAction } from "@/lib/demo/actions";
+import { EXAM_FORMAT, EXAM_QUESTIONS } from "@/lib/demo/content";
 import { answeredCount, examStatus, findExam, remainingMs } from "@/lib/demo/logic";
+import { EXAM_PRICE, examQuota } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import { ExamRunner } from "./exam-runner";
 import { ExpiredExam } from "./expired-exam";
@@ -21,6 +22,7 @@ export default async function ExamPage(props: PageProps<"/sinaq/[id]">) {
   if (!exam) notFound();
   const { state } = await requireDemo(`/sinaq/${id}`);
   const status = examStatus(state, id);
+  const quota = examQuota(state);
   const t = az.app;
 
   if (status === "done") redirect(`/sinaq/${id}/netice`);
@@ -36,9 +38,17 @@ export default async function ExamPage(props: PageProps<"/sinaq/[id]">) {
               <EmptyState icon={<LockIcon />} title={exam.title}>
                 {t.exam.locked}
               </EmptyState>
-              <ButtonLink href={`/odenis?exam=${id}`} variant="primary" block>
-                {t.store.buy(PRICE_PLACEHOLDER)}
-              </ButtonLink>
+              {quota.kind !== "all" && quota.left > 0 ? (
+                <form action={claimExamAction.bind(null, id)}>
+                  <Button type="submit" block>
+                    {t.store.claim(quota.kind)}
+                  </Button>
+                </form>
+              ) : (
+                <ButtonLink href={`/odenis?exam=${id}`} variant="primary" block>
+                  {t.store.buy(EXAM_PRICE)}
+                </ButtonLink>
+              )}
             </>
           ) : (
             <Card className="grid gap-4">

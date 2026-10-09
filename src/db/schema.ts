@@ -17,9 +17,14 @@ export const users = sqliteTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     // E-poçt və istifadəçi adı kiçik hərflə saxlanılır.
-    email: text("email").notNull().unique(),
+    // Qeydiyyatda tələb olunmur — profildə əlavə edilir və kodla təsdiqlənir.
+    email: text("email").unique(),
+    /** +994XXXXXXXXX (istəyə bağlı, profildə). */
+    phone: text("phone").unique(),
     username: text("username").unique(),
     name: text("name").notNull(),
+    surname: text("surname"),
+    fatherName: text("father_name"),
     // Yalnız Google ilə yaradılmış hesabda boş olur.
     passwordHash: text("password_hash"),
     role: text("role", { enum: USER_ROLES }).notNull().default("student"),
@@ -87,6 +92,28 @@ const tokenTable = (name: string) =>
   );
 
 export const emailVerificationTokens = tokenTable("email_verification_tokens");
+
+/**
+ * Profildə e-poçt əlavə edəndə göndərilən 6 rəqəmli kod. E-poçt users-ə yalnız kod təsdiqlənəndən sonra yazılır.
+ * Kodun özü saxlanılmır — yalnız SHA-256 hash.
+ */
+export const emailCodes = sqliteTable(
+  "email_codes",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    codeHash: text("code_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("email_codes_user_idx").on(t.userId)],
+);
 export const passwordResetTokens = tokenTable("password_reset_tokens");
 
 // Sabit pəncərəli rate limit sayğacları (giriş, qeydiyyat, bərpa, e-poçt).
@@ -94,6 +121,81 @@ export const rateLimits = sqliteTable("rate_limits", {
   key: text("key").primaryKey(),
   count: integer("count").notNull(),
   resetAt: integer("reset_at").notNull(),
+});
+
+/* ---------------- İstifadəçi fəaliyyəti ---------------- */
+
+/** İstifadəçinin bütün vəziyyəti (cavablar, sınaqlar, alışlar, abunə…) — JSON, userId-yə bağlı. */
+export const userState = sqliteTable("user_state", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  data: text("data").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdateFn(() => new Date()),
+});
+
+export const ANSWER_SOURCES = ["daily", "tutor", "review", "exam"] as const;
+export type AnswerSource = (typeof ANSWER_SOURCES)[number];
+
+/** Hər cavablanmış sual ayrıca sətir — bal simulyatoru son 7 günü buradan hesablayır. */
+export const userAnswers = sqliteTable(
+  "user_answers",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    source: text("source", { enum: ANSWER_SOURCES }).notNull(),
+    /** Sualın istinadı: günün sualı id, repetitor id, təkrar ref, "examId:n". */
+    questionRef: text("question_ref").notNull(),
+    correct: integer("correct", { mode: "boolean" }).notNull(),
+    answeredAt: integer("answered_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [
+    index("user_answers_user_time_idx").on(t.userId, t.answeredAt),
+    check("user_answers_source_check", sql`${t.source} in ('daily','tutor','review','exam')`),
+  ],
+);
+
+/* ---------------- Onlayn repetitor ---------------- */
+
+/** Repetitor sualları — mövzuya bağlı; cavab, ipucu və izah yalnız serverdə istifadə olunur. */
+export const tutorQuestions = sqliteTable(
+  "tutor_questions",
+  {
+    id: text("id").primaryKey(),
+    topicId: integer("topic_id")
+      .notNull()
+      .references(() => topics.id),
+    type: text("type").notNull(),
+    freq: integer("freq").notNull().default(0),
+    text: text("text").notNull(),
+    /** JSON: { A, B, C, D, E }. */
+    options: text("options").notNull(),
+    ref: text("ref").notNull().default(""),
+    answer: text("answer").notNull(),
+    hint: text("hint").notNull().default(""),
+    /** JSON: string[]. */
+    steps: text("steps").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [
+    index("tutor_questions_topic_idx").on(t.topicId, t.sortOrder),
+    check("tutor_questions_answer_check", sql`${t.answer} in ('A','B','C','D','E')`),
+  ],
+);
+
+/** Mövzunun nəzəriyyəsi (Markdown + LaTeX). */
+export const tutorTheory = sqliteTable("tutor_theory", {
+  topicId: integer("topic_id")
+    .primaryKey()
+    .references(() => topics.id),
+  body: text("body").notNull(),
 });
 
 export type User = typeof users.$inferSelect;

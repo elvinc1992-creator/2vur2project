@@ -2,52 +2,48 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DailyPager } from "@/components/app/daily";
 import { Page, Topbar } from "@/components/app/topbar";
-import { ArrowIcon, LockIcon, PercentIcon } from "@/components/icons";
+import { ArrowIcon, LockIcon } from "@/components/icons";
+import { TopicIcon } from "@/components/landing/topic-icon";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, Freq, Tag } from "@/components/ui/display";
 import { QuestionCard } from "@/components/ui/question";
 import { az } from "@/content/az";
-import { DAILY_TOPICS, TOPICS, type TopicSlug } from "@/lib/demo/content";
-import { DAILY_KEYS } from "@/lib/demo/keys";
-import {
-  dailyByTopic,
-  dailyPager,
-  isCorrectDaily,
-  isDailyOpen,
-  nextDailyHref,
-  typeStats,
-} from "@/lib/demo/logic";
-import { requireDemo } from "@/lib/demo/session";
+import { requireDaily } from "@/lib/demo/daily";
+import { dailyPager, dailyTopic, isCorrectDaily, isDailyOpen, nextDailyHref, typeStats } from "@/lib/demo/logic";
+import { getRepetitorKey } from "@/lib/repetitor/source";
 import { DailyAnswer } from "./daily-answer";
 
 export const metadata: Metadata = { title: az.app.daily.title };
 
 export default async function DailyQuestionPage(props: PageProps<"/gunun-suallari/[topic]/[n]">) {
   const { topic, n } = await props.params;
-  if (!DAILY_TOPICS.includes(topic as TopicSlug)) notFound();
-  const qs = dailyByTopic(topic as TopicSlug);
-  const q = qs[Number(n) - 1];
-  if (!q) notFound();
+  const { state, ctx } = await requireDaily(`/gunun-suallari/${topic}/${n}`);
+  const x = dailyTopic(ctx, topic);
+  const id = x?.ids[Number(n) - 1];
+  const q = id ? ctx.byId.get(id) : undefined;
+  if (!x || !q) notFound();
 
-  const { state } = await requireDemo(`/gunun-suallari/${topic}/${n}`);
   const t = az.app.daily;
-  const name = TOPICS[q.topic].name;
-  const pager = dailyPager(state, q.topic, q.id);
+  const qs = x.ids;
+  const name = x.name;
+  const pager = dailyPager(state, ctx, topic, q.id);
   const done = pager.filter((s) => s.status === "ok" || s.status === "bad").length;
   // Giriş serverdə yoxlanılır: kilidli sualın mətni, variantları və istinadı səhifəyə düşmür.
-  const open = isDailyOpen(state, q);
+  const open = isDailyOpen(state, ctx, q.id);
   const chosen = open ? state.daily[q.id] : undefined;
   // Cavab yalnız sual cavablanandan sonra brauzerə gedir.
-  const initial = chosen
-    ? {
-        chosen,
-        correct: isCorrectDaily(state, q.id),
-        answer: DAILY_KEYS[q.id].answer,
-        steps: DAILY_KEYS[q.id].steps,
-        stats: typeStats(state, q.type),
-        nextHref: nextDailyHref(state, q),
-      }
-    : null;
+  const key = chosen ? await getRepetitorKey(q.id) : null;
+  const initial =
+    chosen && key
+      ? {
+          chosen,
+          correct: isCorrectDaily(state, q.id),
+          answer: key.answer,
+          steps: key.steps,
+          stats: typeStats(state, ctx, q.type),
+          nextHref: nextDailyHref(state, ctx, q.id),
+        }
+      : null;
 
   return (
     <>
@@ -67,7 +63,7 @@ export default async function DailyQuestionPage(props: PageProps<"/gunun-suallar
           <DailyPager items={pager} label={t.pagerLabel(name)} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Tag icon={q.topic === "faiz" ? <PercentIcon /> : undefined}>{name}</Tag>
+          <Tag icon={<TopicIcon name={name} />}>{name}</Tag>
           <Tag tone="type">{q.type}</Tag>
           <Freq count={q.freq} label={t.inExam(q.freq)} />
         </div>
@@ -79,13 +75,11 @@ export default async function DailyQuestionPage(props: PageProps<"/gunun-suallar
               n={Number(n)}
               total={qs.length}
               text={q.text}
-              image={Boolean(q.image)}
-              imageLabel={t.imagePlaceholder}
             />
             <DailyAnswer key={q.id} id={q.id} options={q.options} refText={q.ref} initial={initial} />
           </>
         ) : (
-          <LockedQuestion n={Number(n)} freeHref={nextDailyHref(state) ?? "/gunun-suallari"} />
+          <LockedQuestion n={Number(n)} freeHref={nextDailyHref(state, ctx) ?? "/gunun-suallari"} />
         )}
       </Page>
     </>
@@ -129,7 +123,7 @@ function LockedQuestion({ n, freeHref }: { n: number; freeHref: string }) {
         </div>
       </div>
       <div className="grid gap-2 md:flex md:flex-wrap">
-        <ButtonLink href="/odenis" variant="primary">
+        <ButtonLink href="/odenis?plan=pro" variant="primary">
           {t.subscribe}
         </ButtonLink>
         <ButtonLink href={freeHref} variant="secondary">

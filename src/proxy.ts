@@ -16,12 +16,14 @@ const PROTECTED = [
   "/tapshiriq",
   "/sinaq",
   "/abune",
+  "/abunelikler",
   "/admin",
   // Demo mərhələsində mağaza da tətbiq daxilindədir (TZ-də ictimai /sinaqlar — landing mərhələsində).
   "/sinaqlar",
   "/odenis",
 ];
-const GUEST_ONLY = ["/daxil-ol", "/qeydiyyat"];
+// /daxil-ol və /qeydiyyat daxil olmuş istifadəçiyə də açıqdır: başqa hesabla daxil olmaq və ya
+// yeni hesab yaratmaq sessiyanı həmin hesaba keçirir (səhifədə xəbərdarlıq göstərilir).
 const STAFF_ROLES = new Set(["editor", "admin"]);
 
 const matches = (path: string, prefixes: string[]) =>
@@ -35,9 +37,6 @@ export default auth((req) => {
     const url = new URL("/daxil-ol", req.nextUrl);
     url.searchParams.set("next", `${pathname}${search}`);
     return NextResponse.redirect(url);
-  }
-  if (user && matches(pathname, GUEST_ONLY)) {
-    return NextResponse.redirect(new URL("/panel", req.nextUrl));
   }
   if (user && matches(pathname, ["/admin"]) && !STAFF_ROLES.has(user.role)) {
     return NextResponse.redirect(new URL("/panel", req.nextUrl));

@@ -1,51 +1,60 @@
 import "server-only";
-import {
-  DAILY,
-  DAILY_TOPICS,
-  FREE_DAILY_PER_TOPIC,
-  WEEK_LABELS,
-  EXAMS,
-  EXAM_QUESTIONS,
-  TOPICS,
-  type DailyQuestion,
-  type ExamMeta,
-  type TopicSlug,
-} from "./content";
+import { EXAMS, EXAM_QUESTIONS, FREE_DAILY_PER_TOPIC, WEEK_LABELS, type ExamMeta, type Letter, type TopicSlug } from "./content";
 import { DAILY_KEYS, EXAM_KEYS } from "./keys";
+import { hasFullDaily, tierOf } from "./plans";
 import { remainingOf } from "./timer";
 import type { Attempt, DemoState, ExamResult } from "./state";
 
 const DAY = 24 * 60 * 60 * 1000;
 
 /* ---------------- Günün sualları ---------------- */
+// Hər gün sual bankından (tutor_questions) təsadüfi 4 mövzu × 5 sual (bax: daily.ts → DailySet).
+// Free planda hər mövzunun ilk FREE_DAILY_PER_TOPIC sualı açıqdır.
 
-export function dailyByTopic(topic: TopicSlug): DailyQuestion[] {
-  return DAILY.filter((q) => q.topic === topic);
-}
+/** Bankdakı sual (brauzerə gedə bilən hissə) + mövzunun adı. */
+export type BankQuestion = {
+  id: string;
+  topic: string;
+  topicName: string;
+  type: string;
+  freq: number;
+  text: string;
+  options: Record<Letter, string>;
+  ref: string;
+};
+
+export type DailyTopic = { slug: string; name: string; ids: string[] };
+
+/** Bu günün dəsti + bütün bank (köhnə cavabların tipi/mövzusu üçün). */
+export type DailyCtx = { date: string; topics: DailyTopic[]; byId: Map<string, BankQuestion> };
 
 export function isCorrectDaily(state: DemoState, id: string): boolean {
+  const ok = state.dailyOk?.[id];
+  if (ok !== undefined) return ok;
   return state.daily[id] === DAILY_KEYS[id]?.answer;
 }
 
-/** Pulsuz planda hər mövzunun ilk FREE_DAILY_PER_TOPIC sualı açıqdır, qalanları abunə ilə. */
-export function isDailyOpen(state: DemoState, q: DailyQuestion): boolean {
-  if (hasPaidAccess(state)) return true;
-  return dailyByTopic(q.topic).findIndex((x) => x.id === q.id) < FREE_DAILY_PER_TOPIC;
+export const dailyTopic = (ctx: DailyCtx, slug: string) => ctx.topics.find((t) => t.slug === slug);
+
+/** Sual bu günün dəstindədir və istifadəçinin planına görə açıqdır. */
+export function isDailyOpen(state: DemoState, ctx: DailyCtx, id: string): boolean {
+  const topic = ctx.topics.find((t) => t.ids.includes(id));
+  if (!topic) return false;
+  return hasFullDaily(state) || topic.ids.indexOf(id) < FREE_DAILY_PER_TOPIC;
 }
 
-export function dailyOverview(state: DemoState) {
-  const topics = DAILY_TOPICS.map((topic) => {
-    const qs = dailyByTopic(topic);
-    const open = qs.filter((q) => isDailyOpen(state, q));
+export function dailyOverview(state: DemoState, ctx: DailyCtx) {
+  const topics = ctx.topics.map((x) => {
+    const open = x.ids.filter((id) => isDailyOpen(state, ctx, id));
     return {
-      topic,
-      name: TOPICS[topic].name,
-      done: qs.filter((q) => state.daily[q.id]).length,
-      total: qs.length,
+      topic: x.slug,
+      name: x.name,
+      done: x.ids.filter((id) => state.daily[id]).length,
+      total: x.ids.length,
       open: open.length,
       /** Açıq, amma hələ cavablanmamış suallar. */
-      openLeft: open.filter((q) => !state.daily[q.id]).length,
-      locked: qs.length - open.length,
+      openLeft: open.filter((id) => !state.daily[id]).length,
+      locked: x.ids.length - open.length,
     };
   });
   const sum = (k: "done" | "total" | "open" | "openLeft" | "locked") => topics.reduce((s, t) => s + t[k], 0);
@@ -54,40 +63,42 @@ export function dailyOverview(state: DemoState) {
 
 export type PagerItem = { n: number; href: string; status: "ok" | "bad" | "open" | "locked"; current: boolean };
 
-/** Mövzunun 1–10 sual nömrələri: cavab (düz/səhv), açıq və ya kilidli; `currentId` — açıq olan səhifə. */
-export function dailyPager(state: DemoState, topic: TopicSlug, currentId?: string): PagerItem[] {
-  return dailyByTopic(topic).map((q, i) => ({
+export const dailyHref = (slug: string, n: number) => `/gunun-suallari/${slug}/${n}`;
+
+/** Mövzunun 1–5 sual nömrələri: cavab (düz/səhv), açıq və ya kilidli; `currentId` — açıq olan səhifə. */
+export function dailyPager(state: DemoState, ctx: DailyCtx, slug: string, currentId?: string): PagerItem[] {
+  return (dailyTopic(ctx, slug)?.ids ?? []).map((id, i) => ({
     n: i + 1,
-    href: `/gunun-suallari/${topic}/${i + 1}`,
-    status: !isDailyOpen(state, q) ? "locked" : state.daily[q.id] ? (isCorrectDaily(state, q.id) ? "ok" : "bad") : "open",
-    current: q.id === currentId,
+    href: dailyHref(slug, i + 1),
+    status: !isDailyOpen(state, ctx, id) ? "locked" : state.daily[id] ? (isCorrectDaily(state, id) ? "ok" : "bad") : "open",
+    current: id === currentId,
   }));
 }
 
 /** Növbəti açıq və cavabsız sual: əvvəl həmin mövzu, sonra digər mövzular. */
-export function nextDailyHref(state: DemoState, after?: DailyQuestion): string | null {
-  const order = after ? [after.topic, ...DAILY_TOPICS.filter((t) => t !== after.topic)] : DAILY_TOPICS;
+export function nextDailyHref(state: DemoState, ctx: DailyCtx, afterId?: string): string | null {
+  const cur = afterId ? ctx.topics.find((t) => t.ids.includes(afterId)) : undefined;
+  const order = cur ? [cur, ...ctx.topics.filter((t) => t !== cur)] : ctx.topics;
   for (const topic of order) {
-    const qs = dailyByTopic(topic);
-    const idx = qs.findIndex((q) => !state.daily[q.id] && q.id !== after?.id && isDailyOpen(state, q));
-    if (idx >= 0) return `/gunun-suallari/${topic}/${idx + 1}`;
+    const idx = topic.ids.findIndex((id) => !state.daily[id] && id !== afterId && isDailyOpen(state, ctx, id));
+    if (idx >= 0) return dailyHref(topic.slug, idx + 1);
   }
   return null;
 }
 
 /** "Bu tipdə düzgün cavabların: x / y" — yalnız istifadəçinin öz cavabları. */
-export function typeStats(state: DemoState, type: string) {
-  const answered = DAILY.filter((q) => q.type === type && state.daily[q.id]);
-  return { ok: answered.filter((q) => isCorrectDaily(state, q.id)).length, total: answered.length };
+export function typeStats(state: DemoState, ctx: DailyCtx, type: string) {
+  const answered = Object.keys(state.daily).filter((id) => state.daily[id] !== "skip" && ctx.byId.get(id)?.type === type);
+  return { ok: answered.filter((id) => isCorrectDaily(state, id)).length, total: answered.length };
 }
 
-/** Panel: mövzunun tipləri üzrə proqres = düzgün həll olunmuş sualların payı. */
-export function typeProgress(state: DemoState, topic: TopicSlug) {
-  const qs = dailyByTopic(topic);
+/** Panel: mövzunun tipləri üzrə proqres = bankdakı həmin tipdən düzgün həll olunmuş sualların payı. */
+export function typeProgress(state: DemoState, ctx: DailyCtx, slug: string) {
+  const qs = [...ctx.byId.values()].filter((q) => q.topic === slug);
   const types = [...new Set(qs.map((q) => q.type))];
   return types.map((type) => {
     const ofType = qs.filter((q) => q.type === type);
-    const ok = ofType.filter((q) => isCorrectDaily(state, q.id)).length;
+    const ok = ofType.filter((q) => state.daily[q.id] && isCorrectDaily(state, q.id)).length;
     return { type, pct: Math.round((ok / ofType.length) * 100) };
   });
 }
@@ -112,12 +123,13 @@ export function findExam(id: string): ExamMeta | undefined {
   return EXAMS.find((e) => e.id === id);
 }
 
+/** "purchased" — başlamağa hazırdır: alınıb, plan üzrə seçilib və ya Premium (bütün sınaqlar). */
 export function examStatus(state: DemoState, id: string, now = Date.now()): ExamStatus {
   if (state.results[id]) return "done";
   const attempt = state.attempts[id];
   const exam = findExam(id);
   if (attempt && exam) return remainingMs(attempt, exam, now) <= 0 ? "expired" : "in_progress";
-  if (state.purchased.includes(id)) return "purchased";
+  if (state.purchased.includes(id) || tierOf(state) === "premium") return "purchased";
   return "locked";
 }
 
@@ -199,18 +211,17 @@ export function daysLeft(periodEnd: string, now = Date.now()) {
 }
 
 /**
- * Plan: "free" — abunə yoxdur, ləğv edilib və dövr bitib, və ya demo "pulsuz plan kimi bax";
- * "canceled" — ləğv edilib, amma dövr bitməyib (giriş qalır).
+ * Abunənin vəziyyəti: "free" — abunə yoxdur və ya ləğv edilib və dövr bitib;
+ * "canceled" — ləğv edilib, amma dövr bitməyib (giriş qalır). Plan (Pro/Premium) — plans.ts → tierOf.
  */
 export function planStatus(state: DemoState): "free" | "active" | "canceled" {
-  if (state.free || state.sub.status === "none") return "free";
-  if (state.sub.status === "canceled" && daysLeft(state.sub.periodEnd) <= 0) return "free";
-  return state.sub.status;
+  if (tierOf(state) === "free") return "free";
+  return state.sub.status === "canceled" ? "canceled" : "active";
 }
 
-/** Ödənişli hissələrə giriş (serverdə yoxlanılır). */
+/** Pro və ya Premium (ödənişli plan). Hansı hissənin açıq olduğu — plans.ts. */
 export function hasPaidAccess(state: DemoState) {
-  return planStatus(state) !== "free";
+  return tierOf(state) !== "free";
 }
 
 export function formatDate(iso: string) {

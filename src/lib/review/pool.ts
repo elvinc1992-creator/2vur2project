@@ -1,17 +1,19 @@
 import "server-only";
-import { DAILY, EXAM_QUESTIONS, TOPICS, type Letter, type TopicSlug } from "@/lib/demo/content";
-import { DAILY_KEYS, EXAM_KEYS } from "@/lib/demo/keys";
+import { EXAM_QUESTIONS, TOPICS, type Letter, type TopicSlug } from "@/lib/demo/content";
+import { EXAM_KEYS } from "@/lib/demo/keys";
+import { DEMO_TO_REAL } from "@/lib/demo/personal";
 import { getRepetitorKey, listRepetitorTopics } from "@/lib/repetitor/source";
 
-// Səhvlərim üçün vahid sual modeli: günün sualları (d:id), repetitor (r:id), sınağın qapalı sualları (e:n).
-// Cavab açarı ayrıca və yalnız serverdə (getPracticeKey).
+// Səhvlərim üçün vahid sual modeli: sual bankı (q:id — günün sualları və repetitor eyni bankdandır)
+// və sınağın qapalı sualları (e:n). Cavab açarı ayrıca və yalnız serverdə (getPracticeKey).
+// Köhnə ref-lər (d:id, r:id) normRef ilə q:id-yə çevrilir.
 
-export type PracticeSource = "daily" | "tutor" | "exam";
+export type PracticeSource = "bank" | "exam";
 
 export type PracticeQuestion = {
   ref: string;
   source: PracticeSource;
-  /** Oxşarlıq üçün mövzu ailəsi (günün sualı, repetitor və sınaq mövzuları bir-birinə bağlanır). */
+  /** Oxşarlıq üçün mövzu (bankın mövzu slug-ı; sınaq sualları da ona bağlanır). */
   family: string;
   topicName: string;
   type: string;
@@ -25,63 +27,51 @@ export type PracticeQuestion = {
 
 export type PracticeKey = { answer: Letter; steps: string[] };
 
-// Repetitor mövzuları (statistika slug-ları) → günün suallarının mövzu ailəsi.
-const TUTOR_FAMILY: Record<string, string> = {
-  stereometriya: "feza",
-  "loqarifm-ustlu-tenlik-berabersizlik": "loqarifm",
-  ucbucaqlar: "ucbucaq",
-  triqonometriya: "triqonometriya",
-  "limit-toreme-inteqral": "funksiya",
-};
+/** d:id / r:id (köhnə) → q:id. */
+export const normRef = (ref: string) => ref.replace(/^[dr]:/, "q:");
 
-const dailyPos = (id: string) => {
-  const q = DAILY.find((x) => x.id === id)!;
-  return DAILY.filter((x) => x.topic === q.topic).findIndex((x) => x.id === id) + 1;
+// Sınaq mövzuları (demo slug) → bankın mövzu slug-ı.
+const REAL_SLUG: Record<string, string> = {
+  faiz: "faiz-nisbet-tenasub",
+  funksiya: "funksiya-ve-qrafikler",
+  triqonometriya: "triqonometriya",
+  ucbucaq: "ucbucaqlar",
+  loqarifm: "loqarifm-ustlu-tenlik-berabersizlik",
+  ardicilliq: "ededi-ardicilliqlar-silsileler",
+  feza: "stereometriya",
 };
 
 export async function practicePool(): Promise<PracticeQuestion[]> {
-  const daily: PracticeQuestion[] = DAILY.map((q) => ({
-    ref: `d:${q.id}`,
-    source: "daily",
-    family: q.topic,
-    topicName: TOPICS[q.topic].name,
-    type: q.type,
-    text: q.text,
-    options: q.options,
-    bookRef: q.ref,
-    href: `/gunun-suallari/${q.topic}/${dailyPos(q.id)}`,
-  }));
-  const tutor: PracticeQuestion[] = (await listRepetitorTopics()).flatMap((t) =>
-    t.questions.map((q, i) => ({
-      ref: `r:${q.id}`,
-      source: "tutor" as const,
-      family: TUTOR_FAMILY[t.slug] ?? t.slug,
+  const bank: PracticeQuestion[] = (await listRepetitorTopics()).flatMap((t) =>
+    t.questions.map((q) => ({
+      ref: `q:${q.id}`,
+      source: "bank" as const,
+      family: t.slug,
       topicName: t.name,
       type: q.type,
       text: q.text,
       options: q.options,
       bookRef: q.ref,
-      href: `/onlayn-repetitor/${t.slug}/${i + 1}`,
+      href: "/sehvlerim",
     })),
   );
   const exam: PracticeQuestion[] = EXAM_QUESTIONS.filter((q) => q.format === "closed" && q.options).map((q) => ({
     ref: `e:${q.n}`,
     source: "exam",
-    family: q.topic,
-    topicName: TOPICS[q.topic as TopicSlug].name,
+    family: REAL_SLUG[q.topic] ?? q.topic,
+    topicName: DEMO_TO_REAL[q.topic as TopicSlug] ?? TOPICS[q.topic as TopicSlug].name,
     type: q.type,
     text: q.text,
     options: q.options!,
     bookRef: q.ref,
     href: "/sinaqlar?f=owned",
   }));
-  return [...daily, ...tutor, ...exam];
+  return [...bank, ...exam];
 }
 
 export async function getPracticeKey(ref: string): Promise<PracticeKey | null> {
-  const [kind, id] = ref.split(":");
-  if (kind === "d") return DAILY_KEYS[id] ?? null;
-  if (kind === "r") {
+  const [kind, id] = normRef(ref).split(":");
+  if (kind === "q") {
     const k = await getRepetitorKey(id);
     return k ? { answer: k.answer, steps: k.steps } : null;
   }

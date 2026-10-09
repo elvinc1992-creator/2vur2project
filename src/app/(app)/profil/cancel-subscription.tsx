@@ -10,7 +10,7 @@ import { cancelSubscriptionAction } from "@/lib/demo/actions";
 import { cn } from "@/lib/cn";
 
 /** "Abunəni ləğv et" → təsdiq paneli (təzyiqsiz: "Abunədə qal" əsas düymədir). */
-export function CancelSubscription({ periodEnd }: { periodEnd: string }) {
+export function CancelSubscription() {
   const t = az.app.cancel;
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export function CancelSubscription({ periodEnd }: { periodEnd: string }) {
         <h2 id="cancel-title" className={h3Class}>
           {t.title}
         </h2>
-        <p className="text-ink-muted">{t.text(periodEnd)}</p>
+        <p className="text-ink-muted">{t.text}</p>
         <ul className="m-0 grid list-none gap-2.5 p-0 text-[15px] leading-[22px]">
           <li className="flex items-start gap-2.5 text-ink-muted">
             <LockIcon className="mt-px size-5 flex-none" />

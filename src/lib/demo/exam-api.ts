@@ -8,8 +8,8 @@ type Body =
   | { op: "flag"; n: number }
   | { op: "timeout" };
 
-// Sorğular növbə ilə gedir: vəziyyət kukidədir, paralel iki sorğu (məs. cavab + siqnal)
-// eyni köhnə vəziyyəti oxuyub bir-birinin dəyişikliyini silə bilər.
+// Sorğular növbə ilə gedir ki, cavablar serverə göndərildiyi ardıcıllıqla yazılsın
+// (paralel yazılardan server özü də qorunur — bax: updateDemoState).
 let queue: Promise<unknown> = Promise.resolve();
 
 function call<T>(id: string, body: Body): Promise<T> {

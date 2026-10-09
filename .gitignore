@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# Visual Studio (FileContentIndex faylları kilidli qalır — Tailwind skanını pozur)
+/.vs/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
@@ -33,6 +36,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+
+# lokal SQLite bazası (TURSO_DATABASE_URL=file:./local.db)
+/local.db
+/local.db-*
 
 # vercel
 .vercel
@@ -49,3 +56,6 @@ next-env.d.ts
 
 # Sifarişçinin Excel analizi (repo-ya düşmür, idxal: npm run stats:import)
 /data/
+
+# Google OAuth client secret (dəyərlər .env.local-dadır)
+/client_secret*.json

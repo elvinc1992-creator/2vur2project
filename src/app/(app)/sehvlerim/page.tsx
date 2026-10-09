@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-art";
 import { MathText } from "@/components/ui/math-text";
 import { az } from "@/content/az";
 import type { Letter } from "@/lib/demo/content";
-import { hasPaidAccess } from "@/lib/demo/logic";
+import { canPracticeSimilar } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import type { ReviewSession } from "@/lib/demo/state";
 import { startReviewAction } from "@/lib/review/actions";
@@ -106,7 +106,7 @@ export default async function MistakesPage(props: PageProps<"/sehvlerim">) {
           </Card>
         )}
 
-        {!hasPaidAccess(state) && active.length > 0 && (
+        {!canPracticeSimilar(state) && active.length > 0 && (
           <p className="flex items-start gap-2 rounded-lg border border-dashed border-navy-200 bg-white px-4 py-3 text-small text-ink-muted">
             <InfoIcon className="mt-px size-[18px] flex-none text-navy-500" />
             {t.freeNote}

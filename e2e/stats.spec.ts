@@ -97,22 +97,17 @@ test("mobil (390px): qrafiklər default olaraq cədvəl kimi", async ({ page }) 
   await expect(page.getByRole("button", { name: "Qrafik kimi göstər" })).toBeVisible();
 });
 
-test("daxil olmuş, abunəli: şəxsi faiz və prioritet plan; pulsuz plan — kilid", async ({ page }) => {
+test("daxil olmuş (Free daxil): statistika tam açıqdır — şəxsi faiz, prioritet plan, bütün istinadlar", async ({ page }) => {
   await login(page);
-  // Yeni istifadəçi pulsuz planda başlayır: prioritet plan kilidlidir
-  await page.goto("/statistika");
-  await expect(page.getByText("Prioritet plan abunə ilə açılır")).toBeVisible();
-  // Mock ödəniş: aylıq abunə
-  await page.goto("/odenis");
-  await page.getByRole("button", { name: /ödə/ }).click();
-  await expect(page).toHaveURL(/\/odenis\/ugurlu\?r=/);
+  // Yeni istifadəçi Free plandadır — statistika yenə tam açıqdır, plan üçün məlumat gözlənilir
   await page.goto("/statistika");
   await expect(page.getByText("Bir sınaq və ya 10 günün sualı həll et, plan hazırlansın.")).toBeVisible();
+  await expect(page.getByText("Prioritet plan abunə ilə açılır")).toHaveCount(0);
 
-  // Sınaq: 1-ci (faiz) düzgün, qalanı boş → bitir
-  await page.goto("/odenis?exam=1");
-  await page.getByRole("button", { name: /ödə/ }).click();
-  await page.getByRole("button", { name: "Sınağa başla" }).click();
+  // Sınaq (Free: ayın sınağı): 1-ci (faiz) düzgün, qalanı boş → bitir
+  await page.goto("/sinaq/1");
+  await page.getByRole("button", { name: "Bu ayın sınağı kimi seç" }).click();
+  await page.getByRole("button", { name: "Başla" }).click();
   await page.keyboard.press("c");
   await page.waitForTimeout(500);
   await page.getByRole("button", { name: "Sınağı bitir" }).first().click();
@@ -125,17 +120,7 @@ test("daxil olmuş, abunəli: şəxsi faiz və prioritet plan; pulsuz plan — k
   await expect(plan).toContainText("Toplu səhifələri:");
   await expect(page.getByRole("img", { name: /Ən çox çıxan mövzu/ })).toContainText("Sənin nəticən");
 
-  // Abunəli istifadəçi mövzu detalında bütün istinadları görür
+  // Mövzu detalında bütün istinadlar (Free planda da)
   await page.goto("/statistika/stereometriya");
   await expect(page.getByRole("table", { name: "Toplu istinadları" }).locator("tbody tr")).toHaveCount(92);
-
-  // Demo: pulsuz plan → kilid (serverdə)
-  await page.goto("/profil");
-  await page.getByRole("button", { name: "Bağlı" }).click();
-  await expect(page.getByRole("button", { name: "Açıq" })).toBeVisible();
-  await page.goto("/statistika");
-  await expect(page.getByText("Prioritet plan abunə ilə açılır")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Abunə ol" })).toBeVisible();
-  await page.goto("/statistika/stereometriya");
-  await expect(page.getByRole("table", { name: "Toplu istinadları" }).locator("tbody tr")).toHaveCount(3);
 });

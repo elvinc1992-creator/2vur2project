@@ -1,11 +1,12 @@
 import "server-only";
-import { DAILY, type TopicSlug } from "./content";
+import { listRepetitorTopics } from "@/lib/repetitor/source";
+import type { TopicSlug } from "./content";
 import { isCorrectDaily } from "./logic";
 import type { DemoState } from "./state";
 
 /**
- * Demo mövzuları → Excel-dəki real mövzular (ada görə uyğunlaşdırma).
- * Real cavab bazası gələndə bu xəritə lazım olmayacaq.
+ * Sınağın demo mövzuları → Excel-dəki real mövzular (ada görə uyğunlaşdırma).
+ * Günün sualları artıq bankdandır və real mövzuya bağlıdır.
  */
 export const DEMO_TO_REAL: Record<TopicSlug, string> = {
   faiz: "Faiz. Nisbət. Tənasüb",
@@ -19,16 +20,19 @@ export const DEMO_TO_REAL: Record<TopicSlug, string> = {
 
 export type Personal = { ok: number; total: number; pct: number };
 
-/** İstifadəçinin real mövzu adı üzrə düzgün cavab faizi: günün sualları + bitmiş sınaqlar. */
-export function personalByTopic(state: DemoState): Map<string, Personal> {
+/** İstifadəçinin real mövzu adı üzrə düzgün cavab faizi: günün sualları (bankdan) + bitmiş sınaqlar. */
+export async function personalByTopic(state: DemoState): Promise<Map<string, Personal>> {
+  const topicOf = new Map<string, string>();
+  for (const t of await listRepetitorTopics()) for (const q of t.questions) topicOf.set(q.id, t.name);
+
   const acc = new Map<string, { ok: number; total: number }>();
-  const add = (slug: TopicSlug, ok: number, total: number) => {
-    const name = DEMO_TO_REAL[slug];
+  const add = (name: string | undefined, ok: number, total: number) => {
+    if (!name) return;
     const cur = acc.get(name) ?? { ok: 0, total: 0 };
     acc.set(name, { ok: cur.ok + ok, total: cur.total + total });
   };
-  for (const q of DAILY) if (state.daily[q.id]) add(q.topic, isCorrectDaily(state, q.id) ? 1 : 0, 1);
-  for (const r of Object.values(state.results)) for (const t of r.byTopic) add(t.topic, t.ok, t.total);
+  for (const id of Object.keys(state.daily)) add(topicOf.get(id), isCorrectDaily(state, id) ? 1 : 0, 1);
+  for (const r of Object.values(state.results)) for (const t of r.byTopic) add(DEMO_TO_REAL[t.topic], t.ok, t.total);
   return new Map([...acc].filter(([, v]) => v.total > 0).map(([k, v]) => [k, { ...v, pct: v.ok / v.total }]));
 }
 
@@ -36,4 +40,3 @@ export function personalByTopic(state: DemoState): Map<string, Personal> {
 export function hasPlanData(state: DemoState) {
   return Object.keys(state.results).length > 0 || Object.keys(state.daily).length >= 10;
 }
-
