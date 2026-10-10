@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cavab kartı</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fffdf8; --ink:#1e2a4a; --muted:#6b7491; --line:#d9cfc0;
+  --dim:#c8102e; --dim-soft:#fdecee; --blue:#1d4ed8; --blue-soft:#e8efff;
+  --fill:#111827; --ok:#16a34a; --bg:#eef1f7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:var(--ink);padding:20px 16px 110px}
+.layout{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1fr 300px;gap:22px;align-items:start}
+
+/* ===== KART ===== */
+.sheet{position:relative;background:var(--paper);border-radius:6px;padding:28px 38px 30px;
+  box-shadow:0 1px 0 #e7dfd2,0 20px 50px -24px rgba(30,42,74,.35);
+  background-image:radial-gradient(rgba(200,16,46,.035) 1px,transparent 1px);background-size:14px 14px}
+/* OMR qara nişanlar */
+.sheet::before,.sheet::after{content:"";position:absolute;top:24px;bottom:24px;width:10px;
+  background:repeating-linear-gradient(to bottom,#111 0 6px,transparent 6px 26px)}
+.sheet::before{left:12px}.sheet::after{right:12px}
+
+.head{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:3px double var(--dim);padding-bottom:14px}
+.brand{display:flex;align-items:center;gap:12px}
+.seal{width:52px;height:52px;border-radius:50%;border:3px solid var(--dim);display:grid;place-items:center;color:var(--dim);font-weight:800;font-size:13px;letter-spacing:.04em}
+.brand h1{margin:0;font-size:20px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.brand small{color:var(--muted);font-weight:600;font-size:12.5px}
+.variant{text-align:right}
+.variant .v{display:inline-block;border:2px solid var(--ink);padding:4px 14px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px}
+.variant small{display:block;font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.1em}
+
+.student{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin:16px 0 6px}
+.field{border:1.5px solid var(--line);border-radius:4px;padding:6px 10px;background:#fff}
+.field label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700}
+.field span{font-weight:700;font-size:14px}
+
+.hint{display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--muted);margin:12px 0 0}
+.hint b.dot{width:16px;height:16px;border-radius:50%;background:var(--fill);display:inline-block}
+.hint b.dot.e{background:transparent;border:1.5px solid var(--ink)}
+
+.section{margin-top:22px}
+.sec-title{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sec-title span{background:var(--dim);color:#fff;font-weight:800;font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:6px 12px;border-radius:3px}
+.sec-title em{font-style:normal;color:var(--muted);font-size:12.5px;font-weight:600}
+.sec-title::after{content:"";flex:1;height:1.5px;background:var(--line)}
+
+/* qapalı: iki sütun */
+.closed{display:grid;grid-template-columns:1fr 1fr;gap:4px 34px}
+.row{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;transition:background .15s}
+.row:nth-child(odd){background:rgba(200,16,46,.035)}
+.row.active{background:var(--blue-soft)!important;outline:2px solid var(--blue)}
+.num{width:30px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px}
+.bub{all:unset;cursor:pointer;width:32px;height:32px;border-radius:50%;border:1.6px solid var(--ink);
+  display:grid;place-items:center;font-weight:700;font-size:12.5px;color:var(--ink);transition:transform .12s,background .15s}
+.bub:hover{transform:scale(1.1);background:var(--dim-soft)}
+.bub.on{background:var(--fill);color:var(--fill);border-color:var(--fill);animation:pop .22s}
+@keyframes pop{50%{transform:scale(1.22)}}
+.flag{all:unset;cursor:pointer;margin-left:auto;font-size:15px;opacity:.25;transition:opacity .15s}
+.flag:hover,.flag.on{opacity:1}
+
+/* kodlaşdırılan */
+.coded{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:16px}
+.cblock{border:1.5px solid var(--line);border-radius:6px;background:#fff;padding:10px}
+.cblock.active{outline:2px solid var(--blue);border-color:var(--blue)}
+.ctop{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.ctop .num{width:auto}
+.clear{all:unset;cursor:pointer;font-size:11.5px;color:var(--dim);font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(6,30px);gap:4px;justify-content:center}
+.cell{height:34px;border:1.6px solid var(--ink);border-radius:3px;display:grid;place-items:center;
+  font-family:'JetBrains Mono',monospace;font-weight:700;font-size:17px;background:#fffef6}
+.mini{all:unset;cursor:pointer;width:22px;height:22px;margin:0 auto;border-radius:50%;border:1.2px solid #8a8fa3;
+  display:grid;place-items:center;font-size:10.5px;font-weight:700;color:#5b6178;transition:background .12s}
+.mini:hover{background:var(--dim-soft)}
+.mini.on{background:var(--fill);color:#fff;border-color:var(--fill)}
+
+/* yazılı */
+.written{display:grid;gap:10px}
+.wrow{display:flex;gap:12px;align-items:flex-start;border:1.5px solid var(--line);border-radius:6px;background:#fff;padding:10px 12px}
+.wrow.active{outline:2px solid var(--blue);border-color:var(--blue)}
+.wrow textarea{flex:1;min-height:46px;resize:vertical;border:none;outline:none;font:inherit;font-size:14.5px;
+  background:repeating-linear-gradient(transparent 0 25px,#e7dfd2 25px 26px);line-height:26px;color:var(--ink)}
+.state{font-size:11px;font-weight:700;padding:4px 8px;border-radius:999px;background:#f1f3f8;color:var(--muted);white-space:nowrap}
+.state.done{background:#dcfce7;color:var(--ok)}
+
+.owner{text-align:center;margin-top:24px;font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px}
+
+/* ===== PANEL ===== */
+.panel{position:sticky;top:20px;background:#fff;border-radius:18px;padding:20px;box-shadow:0 12px 34px -18px rgba(30,42,74,.35)}
+.timer{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#1e2a4a,#33416e);color:#fff;border-radius:12px;padding:12px 14px}
+.timer b{font-family:'JetBrains Mono',monospace;font-size:24px}
+.timer small{opacity:.75;font-size:12px}
+.ring{display:flex;align-items:center;gap:14px;margin:16px 0}
+.ring svg{width:64px;height:64px;transform:rotate(-90deg)}
+.ring .t{font-weight:800;font-size:20px}
+.ring .s{font-size:12.5px;color:var(--muted)}
+.nav{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.nav button{all:unset;cursor:pointer;text-align:center;padding:9px 0;border-radius:9px;font-weight:700;font-size:13.5px;border:1.6px solid #d6dae6;transition:all .15s}
+.nav button:hover{border-color:var(--blue)}
+.nav button.done{background:#dcfce7;border-color:#86efac;color:#166534}
+.nav button.flagged{background:#fff7ed;border-color:#fdba74;color:#c2410c}
+.nav button.cur{background:var(--ink);border-color:var(--ink);color:#fff}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:6px;vertical-align:-1px}
+
+.finish{position:fixed;left:0;right:0;bottom:0;padding:14px 16px;background:rgba(238,241,247,.85);backdrop-filter:blur(8px);display:flex;justify-content:center}
+.finish button{all:unset;cursor:pointer;width:min(760px,100%);text-align:center;padding:15px;border-radius:14px;font-weight:800;font-size:16px;color:#fff;
+  background:linear-gradient(135deg,#c8102e,#ef4444);box-shadow:0 12px 26px -10px rgba(200,16,46,.6);transition:transform .15s}
+.finish button:hover{transform:translateY(-2px)}
+
+@media(max-width:960px){.layout{grid-template-columns:1fr}.panel{position:static;order:-1}}
+@media(max-width:640px){
+  .sheet{padding:20px 22px}.closed{grid-template-columns:1fr}
+  .student{grid-template-columns:1fr 1fr}.student .field:first-child{grid-column:1/-1}
+  .head{flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <main class="sheet">
+    <div class="head">
+      <div class="brand">
+        <div class="seal">2×2</div>
+        <div><h1>Cavab kartı</h1><small>Buraxılış imtahanı · IX sinif · Riyaziyyat</small></div>
+      </div>
+      <div class="variant"><span class="v">A</span><small>Variant</small></div>
+    </div>
+
+    <div class="student">
+      <div class="field"><label>Şagird</label><span>Ad Soyad</span></div>
+      <div class="field"><label>Sınaq №</label><span>12</span></div>
+      <div class="field"><label>Tarix</label><span id="date"></span></div>
+    </div>
+    <div class="hint"><b class="dot"></b> düzgün qaraltma &nbsp;·&nbsp; <b class="dot e"></b> boş &nbsp;·&nbsp; seçilmiş dairəyə yenidən bassanız, cavab silinir</div>
+
+    <section class="section">
+      <div class="sec-title"><span>Qapalı tipli</span><em>1–13</em></div>
+      <div class="closed" id="closed"></div>
+    </section>
+
+    <section class="section">
+      <div class="sec-title"><span>Açıq kodlaşdırılan</span><em>14–18 · hər xanaya bir simvol</em></div>
+      <div class="coded" id="coded"></div>
+    </section>
+
+    <section class="section">
+      <div class="sec-title"><span>Yazılı</span><em>19–25 · həlli ətraflı yazın</em></div>
+      <div class="written" id="written"></div>
+    </section>
+
+    <div class="owner">Bu material Cəfərli Elvin müəllimə məxsusdur</div>
+  </main>
+
+  <aside class="panel">
+    <div class="timer"><div><small>Qalan vaxt</small><br><b id="time">02:00:00</b></div><span style="font-size:26px">⏱</span></div>
+    <div class="ring">
+      <svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="#eef1f7" stroke-width="4"/>
+        <circle id="arc" cx="18" cy="18" r="15.5" fill="none" stroke="#16a34a" stroke-width="4" stroke-linecap="round" stroke-dasharray="0 100" pathLength="100"/></svg>
+      <div><div class="t"><span id="cnt">0</span> / 25</div><div class="s">cavablanıb</div></div>
+    </div>
+    <div class="nav" id="nav"></div>
+    <div class="legend">
+      <span><i style="background:#1e2a4a"></i>Hazırkı</span><span><i style="background:#dcfce7;border:1px solid #86efac"></i>Cavablanıb</span>
+      <span><i style="border:1.5px solid #d6dae6"></i>Boş</span><span><i style="background:#fff7ed;border:1px solid #fdba74"></i>İşarələnib</span>
+    </div>
+  </aside>
+</div>
+<div class="finish"><button id="finish">Sınağı bitir</button></div>
+
+<script>
+const N=25, CLOSED=13, CODED_TO=18, ans={}, flags={};
+const SYM=['-',',','0','1','2','3','4','5','6','7','8','9'];
+document.getElementById('date').textContent=new Date().toLocaleDateString('az-AZ');
+
+// qapalı
+const closed=document.getElementById('closed');
+for(let i=1;i<=CLOSED;i++){
+  const r=document.createElement('div');r.className='row';r.id='q'+i;
+  r.innerHTML=`<span class="num">${i}</span>`+'ABCDE'.split('').map(l=>`<button class="bub" data-l="${l}">${l}</button>`).join('')+`<button class="flag" title="İşarələ">🚩</button>`;
+  r.querySelectorAll('.bub').forEach(b=>b.onclick=()=>{
+    const same=ans[i]===b.dataset.l;
+    r.querySelectorAll('.bub').forEach(x=>x.classList.remove('on'));
+    if(same) delete ans[i]; else {ans[i]=b.dataset.l;b.classList.add('on')}
+    focusQ(i);update();
+  });
+  r.querySelector('.flag').onclick=e=>{flags[i]=!flags[i];e.target.classList.toggle('on',flags[i]);update()};
+  closed.appendChild(r);
+}
+
+// kodlaşdırılan
+const coded=document.getElementById('coded');
+for(let i=CLOSED+1;i<=CODED_TO;i++){
+  const val=Array(6).fill('');
+  const b=document.createElement('div');b.className='cblock';b.id='q'+i;
+  let html=`<div class="ctop"><span class="num">${i}</span><button class="clear">Təmizlə</button></div><div class="grid">`;
+  for(let c=0;c<6;c++) html+=`<div class="cell" data-c="${c}"></div>`;
+  SYM.forEach(s=>{for(let c=0;c<6;c++) html+=`<button class="mini" data-c="${c}" data-s="${s}">${s}</button>`});
+  b.innerHTML=html+'</div>';
+  const render=()=>{
+    b.querySelectorAll('.cell').forEach(el=>el.textContent=val[el.dataset.c]);
+    b.querySelectorAll('.mini').forEach(m=>m.classList.toggle('on',val[m.dataset.c]===m.dataset.s));
+    const s=val.join('').trim(); if(s) ans[i]=s; else delete ans[i]; update();
+  };
+  b.querySelectorAll('.mini').forEach(m=>m.onclick=()=>{
+    const c=m.dataset.c; val[c]=val[c]===m.dataset.s?'':m.dataset.s; focusQ(i); render();
+  });
+  b.querySelector('.clear').onclick=()=>{val.fill('');render()};
+  coded.appendChild(b);
+}
+
+// yazılı
+const written=document.getElementById('written');
+for(let i=CODED_TO+1;i<=N;i++){
+  const w=document.createElement('div');w.className='wrow';w.id='q'+i;
+  w.innerHTML=`<span class="num">${i}</span><textarea placeholder="Həlli bura yazın..."></textarea><span class="state">Boş</span>`;
+  const t=w.querySelector('textarea'),st=w.querySelector('.state');
+  t.onfocus=()=>focusQ(i,false);
+  t.oninput=()=>{const v=t.value.trim();if(v)ans[i]=v;else delete ans[i];st.textContent=v?'Yazılıb':'Boş';st.classList.toggle('done',!!v);update()};
+  written.appendChild(w);
+}
+
+// naviqasiya
+const nav=document.getElementById('nav');let cur=1;
+for(let i=1;i<=N;i++){const b=document.createElement('button');b.textContent=i;b.onclick=()=>focusQ(i);nav.appendChild(b)}
+function focusQ(i,scroll=true){
+  document.querySelector('#q'+cur)?.classList.remove('active');cur=i;
+  const el=document.querySelector('#q'+i);el.classList.add('active');
+  if(scroll&&!el.matches(':hover'))el.scrollIntoView({behavior:'smooth',block:'center'});update();
+}
+function update(){
+  const n=Object.keys(ans).length;
+  document.getElementById('cnt').textContent=n;
+  document.getElementById('arc').setAttribute('stroke-dasharray',`${n/N*100} 100`);
+  [...nav.children].forEach((b,k)=>{const q=k+1;b.className=q===cur?'cur':flags[q]?'flagged':ans[q]?'done':''});
+}
+focusQ(1,false);
+
+// taymer
+let left=2*3600;
+setInterval(()=>{if(left>0)left--;const h=String(left/3600|0).padStart(2,'0'),m=String(left%3600/60|0).padStart(2,'0'),s=String(left%60).padStart(2,'0');
+  document.getElementById('time').textContent=`${h}:${m}:${s}`},1000);
+
+document.getElementById('finish').onclick=()=>{
+  const n=Object.keys(ans).length;
+  if(confirm(`${n} / ${N} sual cavablanıb. Sınağı bitirmək istəyirsiniz?`)) console.log(ans);
+};
+</script>
+</body>
+</html>

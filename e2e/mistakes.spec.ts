@@ -3,7 +3,7 @@ import { createClient } from "@libsql/client";
 import { loadEnvConfig } from "@next/env";
 import { hash } from "@node-rs/argon2";
 import { expect, test, type Page } from "@playwright/test";
-import { fixDaily } from "./daily-fixture";
+import { bankKeys, fixDaily, wrongOf } from "./daily-fixture";
 
 // Səhvlərim: səhv cavablar toplanır, "Səhvlərimi təkrar et" — həmin suallar + oxşar suallar.
 test.describe.configure({ mode: "serial" });
@@ -41,11 +41,10 @@ async function axe(page: Page) {
     .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
 }
 
-const pick = (page: Page, letter: string, value: string) =>
-  page.locator(`label:has(input[aria-label="Variant ${letter}: ${value}"])`).click();
+const pick = (page: Page, letter: string) => page.locator(`label:has(input[aria-label^="Variant ${letter}:"])`).click();
 
-async function answer(page: Page, letter: string, value: string) {
-  await pick(page, letter, value);
+async function answer(page: Page, letter: string) {
+  await pick(page, letter);
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
 }
 
@@ -54,18 +53,20 @@ test("Free: səhv → Səhvlərim → təkrar → düzəldildi", async ({ page }
   await page.goto("/sehvlerim");
   await expect(page.getByRole("heading", { name: "Hələ səhvin yoxdur" })).toBeVisible();
 
-  // Günün sualı (faiz/1 = f1, düzgün: B · 12) — səhv cavab
+  // Günün sualı (faiz/1 = FNT-0001, düzgün: C · 18) — səhv cavab
   await page.goto("/gunun-suallari/faiz-nisbet-tenasub/1");
-  await answer(page, "A", "10");
+  await answer(page, "A");
   await expect(page.getByText("Bu sual Səhvlərim bölməsinə əlavə olundu.")).toBeVisible();
   await page.getByRole("link", { name: "Səhvlərimə bax" }).click();
   await expect(page).toHaveURL(/\/sehvlerim$/);
 
-  const card = page.getByRole("article", { name: "Faiz. Nisbət. Tənasüb: Sadə və mürəkkəb faiz" });
+  const card = page.getByRole("article", {
+    name: "Faiz. Nisbət. Tənasüb: Nisbət. Tənasüb. Tənasübün xassələri. Düz və tərs mütənasiblik",
+  });
   await expect(card).toContainText("Sənin cavabın");
   await expect(card).toContainText("Düzgün cavab");
-  await expect(card.locator("dd").first()).toContainText("A · 10");
-  await expect(card.locator("dd").last()).toContainText("B · 12");
+  await expect(card.locator("dd").first()).toContainText("A · 9");
+  await expect(card.locator("dd").last()).toContainText("C · 18");
   await expect(page.getByText(/Free planda təkrar yalnız öz səhvlərindən ibarətdir/)).toBeVisible();
   expect(await axe(page)).toEqual([]);
 
@@ -80,7 +81,7 @@ test("Free: səhv → Səhvlərim → təkrar → düzəldildi", async ({ page }
   await expect(page.getByText("Səhv etdiyin sual", { exact: true })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Təkrar sualları" }).getByRole("link")).toHaveCount(1);
   expect(await axe(page)).toEqual([]);
-  await answer(page, "B", "12");
+  await answer(page, "C");
   await expect(page.getByText("Bu səhv düzəldildi!")).toBeVisible();
   await page.getByRole("link", { name: "Nəticəyə bax" }).click();
   await expect(page).toHaveURL(/\/sehvlerim\?bitdi=1$/);
@@ -95,10 +96,10 @@ test("Pro: səhv + oxşar suallar; oxşara səhv cavab da Səhvlərimə düşür
   await page.getByRole("button", { name: /ödə/ }).click();
   await expect(page).toHaveURL(/\/odenis\/ugurlu\?r=/);
 
-  // faiz/3 = f2 (Ardıcıl faiz artımı, düzgün: C · 16%) — Pro ilə açılır; səhv
+  // faiz/3 = FNT-0002 (düzgün: A) — Pro ilə açılır; səhv
   await page.goto("/gunun-suallari/faiz-nisbet-tenasub/3");
-  await answer(page, "A", "12%");
-  await expect(page.getByText("Yanlışdır. Düzgün cavab: C")).toBeVisible();
+  await answer(page, "B");
+  await expect(page.getByText("Yanlışdır. Düzgün cavab: A")).toBeVisible();
   await page.goto("/sehvlerim");
   await expect(page.getByText("1 səhv + 2 oxşar sual")).toBeVisible();
   await page.getByRole("button", { name: "Səhvlərimi təkrar et" }).click();
@@ -106,23 +107,26 @@ test("Pro: səhv + oxşar suallar; oxşara səhv cavab da Səhvlərimə düşür
   const pager = page.getByRole("navigation", { name: "Təkrar sualları" });
   await expect(pager.getByRole("link")).toHaveCount(3);
   await expect(page.getByText("Səhv etdiyin sual", { exact: true })).toBeVisible();
-  await answer(page, "C", "16%");
+  await answer(page, "A");
   await expect(page.getByText("Bu səhv düzəldildi!")).toBeVisible();
 
-  // 2-ci: oxşar sual (eyni tip — f9), səhv cavab
+  // 2-ci: oxşar sual (eyni alt mövzu), səhv cavab — düzgün cavab bazadan
   await page.getByRole("link", { name: "Növbəti sual" }).click();
   await expect(page).toHaveURL(/\/sehvlerim\/tekrar\/2$/);
   await expect(page.getByText("Oxşar sual", { exact: true })).toBeVisible();
-  await expect(page.getByText("Ardıcıl faiz artımı", { exact: true })).toBeVisible();
-  await answer(page, "A", "Dəyişmədi");
-  await expect(page.getByText("Yanlışdır. Düzgün cavab: C")).toBeVisible();
+  const subtopic = "Nisbət. Tənasüb. Tənasübün xassələri. Düz və tərs mütənasiblik";
+  await expect(page.getByText(subtopic, { exact: true })).toBeVisible();
+  const ref = (await page.locator("[data-qid]").getAttribute("data-qid"))!;
+  const key = (await bankKeys([ref.replace(/^q:/, "")])).values().next().value!;
+  await answer(page, wrongOf(key.answer));
+  await expect(page.getByText(`Yanlışdır. Düzgün cavab: ${key.answer}`)).toBeVisible();
   expect(await axe(page)).toEqual([]);
 
   // Yarımçıq seans: davam et
   await page.goto("/sehvlerim");
   await expect(page.getByRole("link", { name: "Təkrara davam et · 2/3" })).toHaveAttribute("href", "/sehvlerim/tekrar/3");
   // Oxşara verilən səhv cavab — "Təkrar" mənbəli yeni səhv
-  await expect(page.getByRole("article", { name: "Faiz. Nisbət. Tənasüb: Ardıcıl faiz artımı" }).filter({ hasText: "Təkrar" })).toBeVisible();
+  await expect(page.getByRole("article", { name: `Faiz. Nisbət. Tənasüb: ${subtopic}` }).filter({ hasText: "Təkrar" })).toBeVisible();
 
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });

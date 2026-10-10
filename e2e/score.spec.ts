@@ -3,6 +3,7 @@ import { createClient } from "@libsql/client";
 import { loadEnvConfig } from "@next/env";
 import { hash } from "@node-rs/argon2";
 import { expect, test, type Page } from "@playwright/test";
+import { topicCodes } from "./daily-fixture";
 
 // DİM bal simulyatoru: bölmələr üzrə düzgün cavab sayı → təxmini bal (demo düstur).
 const stamp = Date.now();
@@ -39,7 +40,8 @@ async function addAnswers(rows: Array<[string, boolean, number]>) {
   db.close();
 }
 
-const ids = (prefix: string) => Array.from({ length: 10 }, (_, i) => `${prefix}${i + 1}`);
+/** Mövzunun ilk 10 sualı (sual bankından). */
+const ids = async (slug: string) => (await topicCodes(slug)).slice(0, 10);
 
 test("bütün cavablar (7 gün yox); ən azı 4 mövzudan 20 sual → 200 sualdan 120 düzgün: buraxılış 14, blok 17", async ({ page }) => {
   await login(page);
@@ -49,15 +51,18 @@ test("bütün cavablar (7 gün yox); ən azı 4 mövzudan 20 sual → 200 sualda
   await expect(box.getByText("Sual: 0 / 20")).toBeVisible();
   await expect(box.getByText("Mövzu: 0 / 4")).toBeVisible();
 
-  // 30 düzgün cavab, 3 mövzu (triqonometriya, loqarifm, stereometriya); bir hissəsi 30 gün əvvəl — yenə sayılır.
-  await addAnswers([...ids("t"), ...ids("l"), ...ids("s")].map((id, i) => [id, true, i < 15 ? 30 : 0]));
+  // 30 düzgün cavab, 3 mövzu (triqonometriya, loqarifm, üçbucaqlar); bir hissəsi 30 gün əvvəl — yenə sayılır.
+  const [trq, loq, ucb, fnt] = await Promise.all(
+    ["triqonometriya", "loqarifm-ustlu-tenlik-berabersizlik", "ucbucaqlar", "faiz-nisbet-tenasub"].map(ids),
+  );
+  await addAnswers([...trq, ...loq, ...ucb].map((id, i) => [id, true, i < 15 ? 30 : 0]));
   await page.reload();
   await expect(box.getByText("Sual: 20 / 20")).toBeVisible();
   await expect(box.getByText("Mövzu: 3 / 4")).toBeVisible();
   await expect(box.getByText(/int\(25/)).toHaveCount(0);
 
   // +170 cavab (90 düzgün), 4-cü mövzu — faiz → cəmi 200 sual, 120 düzgün, 4 mövzu
-  await addAnswers(Array.from({ length: 170 }, (_, i) => [ids("f")[i % 10], i < 90, i % 20]));
+  await addAnswers(Array.from({ length: 170 }, (_, i) => [fnt[i % 10], i < 90, i % 20]));
   await page.reload();
   await expect(box.getByText("Təxmin üçün hələ az məlumat var")).toHaveCount(0);
   await expect(box.getByText("200", { exact: true })).toBeVisible();

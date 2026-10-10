@@ -3,6 +3,11 @@ import { createClient } from "@libsql/client";
 import { loadEnvConfig } from "@next/env";
 import { hash } from "@node-rs/argon2";
 import { expect, test, type Page } from "@playwright/test";
+import { bankKeys, topicCodes, wrongOf } from "./daily-fixture";
+
+// Repetitor sualları müəllifin sual bankındandır: ilk mövzu — Loqarifm (69 sual → 2 dərs), sonra Triqonometriya.
+const LOQ = "loqarifm-ustlu-tenlik-berabersizlik";
+const LOQ_NAME = "Loqarifm, üstlü tənlik/bərabərsizlik";
 
 // Onlayn repetitor (Pro): həftəlik qrafik → mövzular sıra ilə açılır → ✓ → hər 2 mövzudan sonra sınaq.
 test.describe.configure({ mode: "serial" });
@@ -52,8 +57,7 @@ async function axe(page: Page) {
     .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
 }
 
-const pick = (page: Page, letter: string, value: string) =>
-  page.locator(`label:has(input[aria-label="Variant ${letter}: ${value}"])`).click();
+const pick = (page: Page, letter: string) => page.locator(`label:has(input[aria-label^="Variant ${letter}:"])`).click();
 
 test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı mövzu", async ({ page }) => {
   await login(page);
@@ -62,8 +66,8 @@ test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı 
   await page.goto("/onlayn-repetitor");
   await expect(page.getByRole("heading", { level: 1, name: "Onlayn repetitor Premium planı ilə açılır" })).toBeVisible();
   await expect(page.locator("#tutor-topics + ul > li")).toHaveCount(27);
-  const html = await (await page.request.get("/onlayn-repetitor/stereometriya/1")).text();
-  expect(html).not.toContain("Düzgün dördbucaqlı prizmanın");
+  const html = await (await page.request.get(`/onlayn-repetitor/${LOQ}/1`)).text();
+  expect(html).not.toContain("funksiyasının təyin oblastını tapın");
 
   // Pro repetitoru açmır — yalnız Premium
   await page.goto("/odenis?plan=pro");
@@ -95,84 +99,87 @@ test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı 
   await page.getByRole("button", { name: "Qrafiki təsdiqlə" }).first().click();
   await expect(page.getByText(/Dərs günləri: Bazar ertəsi, Çərşənbə axşamı/)).toBeVisible();
   const plan = page.locator("#curriculum + ol");
-  await expect(plan.getByText("Stereometriya", { exact: true })).toBeVisible();
+  await expect(plan.locator("li").nth(0)).toContainText(LOQ_NAME);
   await expect(plan.locator("li").nth(0)).toContainText("Açıqdır");
   await expect(plan.locator("li").nth(1)).toContainText("açılacaq");
-  await expect(plan.locator("li").nth(2)).toContainText("Sınaq 1");
+  await expect(plan.locator("li").nth(3)).toContainText("Sınaq 1");
   await expect(page.getByRole("heading", { name: "Tezliklə" })).toBeVisible();
   expect(await axe(page)).toEqual([]);
 
   // Bağlı mövzunun sualı açılmır
-  await page.goto("/onlayn-repetitor/limit-toreme-inteqral/1");
-  await expect(page).toHaveURL(/\/onlayn-repetitor\/limit-toreme-inteqral$/);
+  await page.goto("/onlayn-repetitor/triqonometriya/1");
+  await expect(page).toHaveURL(/\/onlayn-repetitor\/triqonometriya$/);
   await expect(page.getByText(/tarixində açılacaq/)).toBeVisible();
 
   // İlk mövzu: nəzəriyyə → praktiki testlər
   await page.goto("/onlayn-repetitor");
-  await page.getByRole("link", { name: /Dərsə başla: Stereometriya/ }).first().click();
-  await expect(page).toHaveURL(/\/onlayn-repetitor\/stereometriya$/);
+  await page.getByRole("link", { name: /Dərsə başla: Loqarifm/ }).first().click();
+  await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${LOQ}$`));
   await expect(page.getByRole("heading", { name: "Nəzəriyyə" })).toBeVisible();
   await page.getByRole("link", { name: "Dərsə başla" }).click();
-  await expect(page).toHaveURL(/\/onlayn-repetitor\/stereometriya\/1$/);
-  const qHtml = await (await page.request.get("/onlayn-repetitor/stereometriya/1")).text();
-  expect(qHtml).toContain("Düzgün dördbucaqlı prizmanın");
-  expect(qHtml).not.toContain("oturacağın perimetri");
+  await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${LOQ}/1$`));
+  const qHtml = await (await page.request.get(`/onlayn-repetitor/${LOQ}/1`)).text();
+  expect(qHtml).toContain("funksiyasının təyin oblastını tapın");
+  expect(qHtml).not.toContain("Üstlü funksiya hər yerdə təyin olunub");
 
-  await page.getByRole("button", { name: "İpucu" }).click();
-  await expect(page.getByText(/oturacağın perimetri/)).toBeVisible();
-  await pick(page, "C", "78");
+  // Bankdakı suallarda ipucu yoxdur — düymə göstərilmir. LOQ-0001 düzgün: C.
+  await expect(page.getByRole("button", { name: "İpucu" })).toHaveCount(0);
+  await pick(page, "C");
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
   await expect(page.getByText("Düzgündür!")).toBeVisible();
   expect(await axe(page)).toEqual([]);
 
   await page.getByRole("link", { name: "Növbəti sual" }).click();
-  await expect(page).toHaveURL(/\/onlayn-repetitor\/stereometriya\/2$/);
-  await pick(page, "A", "144");
+  await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${LOQ}/2$`));
+  // LOQ-0002 düzgün: A — yanlış seçirik
+  await pick(page, "B");
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
-  await expect(page.getByText("Yanlışdır. Düzgün cavab: B")).toBeVisible();
+  await expect(page.getByText("Yanlışdır. Düzgün cavab: A")).toBeVisible();
 });
 
 test("mövzular bitir → ✓, 2 mövzudan sonra 20 suallıq sınaq → nəticə", async ({ page }) => {
-  // Qrafik 3 gün əvvəl başlayıb (hər gün) → 4 dərs açıqdır; ilk iki mövzunun suallarını cavablanmış edirik.
+  // Qrafik 3 gün əvvəl başlayıb (hər gün) → 4 dərs açıqdır; ilk iki mövzunun (Loqarifm — 2 dərs, Triqonometriya)
+  // bütün suallarını cavablanmış edirik.
   const start = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
+  const ids = [...(await topicCodes(LOQ)), ...(await topicCodes("triqonometriya"))];
   await patchState((s) => {
     s.tutorPlan = { days: [1, 2, 3, 4, 5, 6, 7], start, offset: 0 };
-    // Stereometriya: 4 repetitor + 10 günün sualı (s1–s10) bankdadır.
-    const ids = ["st1", "st2", "st3", "st4", "lt1", "lt2", "lt3", "lt4", ...Array.from({ length: 10 }, (_, i) => `s${i + 1}`)];
-    s.tutor = Object.fromEntries(ids.map((id) => [id, { a: "A", ok: id === "st1" }]));
+    s.tutor = Object.fromEntries(ids.map((id, i) => [id, { a: "A", ok: i === 0 }]));
   });
   await login(page);
   await page.goto("/onlayn-repetitor");
   const plan = page.locator("#curriculum + ol");
-  await expect(plan.locator("li").nth(0)).toContainText("Bitib");
-  await expect(plan.locator("li").nth(1)).toContainText("Bitib");
-  await expect(plan.getByLabel("Mövzu bitib")).toHaveCount(2);
-  await expect(plan.locator("li").nth(2)).toContainText("Sınaq hazırdır");
-  // 11 mövzuda sual var: 8 ilkin + müəllifin bankından 3 yeni mövzu (Natural, Adi və onluq kəsrlər, Həqiqi ədədlər)
-  await expect(page.getByText("2 / 11 mövzu bitib")).toBeVisible();
+  for (const i of [0, 1, 2]) await expect(plan.locator("li").nth(i)).toContainText("Bitib");
+  await expect(plan.locator("li").nth(3)).toContainText("Sınaq hazırdır");
+  // Sualı olan bütün mövzular (müəllifin bankı)
+  const topicsWithQuestions = new Set([...(await bankKeys()).values()].map((k) => k.topic)).size;
+  await expect(page.getByText(`2 / ${topicsWithQuestions} mövzu bitib`)).toBeVisible();
 
   await page.getByRole("link", { name: /Sınağa başla: Sınaq 1/ }).first().click();
   await expect(page).toHaveURL(/\/onlayn-repetitor\/sinaq\/1$/);
-  await expect(page.locator("form section")).toHaveCount(18); // 14 + 4 sual (20-dən az)
+  await expect(page.locator("form section")).toHaveCount(20);
   const exHtml = await (await page.request.get("/onlayn-repetitor/sinaq/1")).text();
   expect(exHtml).not.toMatch(/"answer":"[A-E]"/);
   expect(await axe(page)).toEqual([]);
-  // 1-ci sual (st1) düzgün: C; 2-ci (lt1) — yanlış seçirik; qalanları boş
-  await page.locator("form section").nth(0).locator("label", { hasText: "C)" }).click();
-  await page.locator("form section").nth(1).locator("label", { hasText: "A)" }).click();
+  // 1-ci sual düzgün, 2-ci yanlış (cavablar bazadan; sualın kodu section-un id-sindədir); qalanları boş
+  const sections = page.locator("form section");
+  const codeOf = async (i: number) => (await sections.nth(i).getAttribute("aria-labelledby"))!.replace(/^tq-/, "");
+  const keys = await bankKeys([await codeOf(0), await codeOf(1)]);
+  await sections.nth(0).locator("label", { hasText: `${keys.get(await codeOf(0))!.answer})` }).click();
+  await sections.nth(1).locator("label", { hasText: `${wrongOf(keys.get(await codeOf(1))!.answer)})` }).click();
   await page.getByRole("button", { name: "Sınağı bitir" }).click();
-  await expect(page.getByText("Nəticə: 1 / 18")).toBeVisible();
+  await expect(page.getByText("Nəticə: 1 / 20")).toBeVisible();
   await expect(page.getByText(/Səhv · düzgün cavab: [A-E]/)).toHaveCount(1);
-  await expect(page.getByText(/^Cavab verilməyib/)).toHaveCount(16);
+  await expect(page.getByText(/^Cavab verilməyib/)).toHaveCount(18);
 
   await page.goto("/onlayn-repetitor");
-  await expect(plan.locator("li").nth(2)).toContainText("Nəticə: 1 / 18");
+  await expect(plan.locator("li").nth(3)).toContainText("Nəticə: 1 / 20");
 });
 
 test("mobil 390: üfüqi sürüşmə yoxdur, alt menyuda Repetitor var", async ({ page }) => {
   await login(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const p of ["/onlayn-repetitor", "/onlayn-repetitor/stereometriya", "/onlayn-repetitor/limit-toreme-inteqral/4", "/onlayn-repetitor/sinaq/1", "/panel"]) {
+  for (const p of ["/onlayn-repetitor", `/onlayn-repetitor/${LOQ}`, `/onlayn-repetitor/${LOQ}/2`, "/onlayn-repetitor/sinaq/1", "/panel"]) {
     await page.goto(p);
     expect(await page.evaluate(() => document.documentElement.scrollWidth), p).toBeLessThanOrEqual(390);
   }

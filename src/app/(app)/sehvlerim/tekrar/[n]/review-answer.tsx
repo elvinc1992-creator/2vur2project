@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { ArrowIcon, BookIcon, BulbIcon, CheckCircleIcon, XCircleIcon } from "@/components/icons";
 import { AnswerOptions } from "@/components/ui/answer-options";
+import { useAnswerMeta } from "@/components/ui/use-answer-meta";
 import { Button, buttonClass } from "@/components/ui/button";
 import { MathText } from "@/components/ui/math-text";
 import { az } from "@/content/az";
@@ -25,12 +26,13 @@ export function ReviewAnswer({ n, kind, options, bookRef, last, initial }: Props
   const t = az.app.mistakes;
   const td = az.app.daily;
   const [selected, setSelected] = useState<Letter | null>(null);
+  const timing = useAnswerMeta();
   const [result, setResult] = useState<ReviewResult | null>(initial);
   const [pending, startTransition] = useTransition();
 
   const submit = (choice: Letter | "skip") =>
     startTransition(async () => {
-      setResult(await answerReviewAction(n, choice));
+      setResult(await answerReviewAction(n, choice, timing.meta()));
     });
 
   const title = !result
@@ -52,7 +54,10 @@ export function ReviewAnswer({ n, kind, options, bookRef, last, initial }: Props
         label={td.optionsLabel}
         options={options}
         value={selected}
-        onChange={setSelected}
+        onChange={(l) => {
+          timing.track(l);
+          setSelected(l);
+        }}
         onClear={() => setSelected(null)}
         clearLabel={td.clearSelection}
         disabled={pending}

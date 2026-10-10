@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zəif mövzular</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f4f6fb;--card:#fff;--ink:#0f1b3d;--muted:#5b6785;--line:#e6e9f2;
+  --brand:linear-gradient(135deg,#6366f1,#8b5cf6 55%,#ec4899);
+  --red:#ef4444;--red-soft:#fef2f2;--amber:#f59e0b;--amber-soft:#fffbeb;
+  --green:#10b981;--green-soft:#ecfdf5;--indigo:#4f46e5;--indigo-soft:#eef0ff;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:24px 16px 40px}
+.wrap{max-width:1180px;margin:0 auto}
+h2{margin:0;font-size:19px;font-weight:800}
+.muted{color:var(--muted)}
+
+/* HERO */
+.hero{position:relative;overflow:hidden;border-radius:26px;padding:28px 30px;color:#fff;background:var(--brand);
+  display:grid;grid-template-columns:1.4fr 1fr;gap:24px;align-items:center;box-shadow:0 20px 50px -22px rgba(99,102,241,.7)}
+.hero::after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.1);right:-80px;top:-110px}
+.hero .tag{display:inline-block;background:rgba(255,255,255,.2);padding:6px 12px;border-radius:999px;font-size:12.5px;font-weight:700}
+.hero h1{margin:12px 0 8px;font-size:clamp(24px,3.4vw,34px);font-weight:800;letter-spacing:-.02em;line-height:1.2}
+.hero p{margin:0;opacity:.95;line-height:1.55}
+.hero .big{font-size:1.25em;background:#fff;color:#be185d;padding:0 8px;border-radius:8px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;position:relative;z-index:1}
+.stat{background:rgba(255,255,255,.16);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.25);border-radius:16px;padding:14px}
+.stat b{display:block;font-size:26px;font-weight:800}
+.stat span{font-size:12.5px;opacity:.9}
+
+/* FILTER */
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:26px 0 14px}
+.tabs{display:flex;gap:6px;background:#fff;border:1px solid var(--line);padding:5px;border-radius:12px}
+.tabs button{all:unset;cursor:pointer;padding:8px 14px;border-radius:9px;font-weight:600;font-size:13.5px;color:var(--muted)}
+.tabs button.on{background:var(--ink);color:#fff}
+.sort{font-size:13px;color:var(--muted)}
+
+/* TOPIC CARDS */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.tc{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px;
+  position:relative;transition:transform .2s,box-shadow .2s}
+.tc:hover{transform:translateY(-4px);box-shadow:0 18px 36px -20px rgba(15,27,61,.35)}
+.tc::before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:4px;border-radius:0 4px 4px 0;background:var(--c)}
+.tc.weak{--c:var(--red);--s:var(--red-soft)}
+.tc.mid{--c:var(--amber);--s:var(--amber-soft)}
+.tc.good{--c:var(--green);--s:var(--green-soft)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.rank{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:800;background:var(--s);color:var(--c);flex:none}
+.name{flex:1}
+.name b{display:block;font-size:16.5px}
+.name small{color:var(--muted);font-size:12.5px}
+.loss{text-align:right;flex:none}
+.loss b{display:block;font-size:22px;font-weight:800;color:var(--c)}
+.loss small{font-size:11.5px;color:var(--muted)}
+.bar-row{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700}
+.bar{flex:1;height:10px;border-radius:999px;background:#eef1f7;overflow:hidden}
+.bar span{display:block;height:100%;width:0;border-radius:999px;background:var(--c);transition:width 1.2s cubic-bezier(.2,.8,.2,1)}
+.diag{background:var(--s);border-radius:12px;padding:11px 13px;font-size:13.5px;line-height:1.5}
+.diag b{color:var(--c)}
+.root{display:flex;gap:8px;align-items:center;font-size:12.5px;font-weight:600;color:var(--indigo);background:var(--indigo-soft);padding:8px 11px;border-radius:10px}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:#f1f3f8;color:var(--muted)}
+.pill.warn{background:#fff7ed;color:#c2410c}
+.actions{display:flex;gap:8px;margin-top:auto}
+.btn{all:unset;cursor:pointer;flex:1;text-align:center;padding:11px;border-radius:12px;font-weight:700;font-size:14px;transition:transform .15s,filter .15s}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.05)}
+.btn.primary{background:var(--c);color:#fff;box-shadow:0 8px 18px -10px var(--c)}
+.btn.ghost{flex:none;padding:11px 14px;background:#f4f6fb;color:var(--ink)}
+
+/* BOTTOM */
+.bottom{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-top:18px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px}
+.panel h2{margin-bottom:4px}
+.chart-box{height:240px;margin-top:12px}
+.errs{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:10px}
+.errs li{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center}
+.errs li span{font-weight:600;font-size:14px}
+.errs li em{font-style:normal;font-weight:800;color:var(--red);font-size:14px}
+.errs li .eb{grid-column:1/-1;height:6px;border-radius:999px;background:#eef1f7;overflow:hidden}
+.errs li .eb i{display:block;height:100%;background:linear-gradient(90deg,#f97316,#ef4444);border-radius:999px}
+
+.review{margin-top:16px;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#0f1b3d,#33416e);color:#fff;border-radius:20px;padding:18px 20px;flex-wrap:wrap}
+.review .ic{font-size:28px}
+.review div{flex:1;min-width:200px}
+.review small{opacity:.8}
+.review .btn{flex:none;background:#fff;color:var(--ink);padding:11px 18px}
+
+.owner{text-align:center;margin-top:22px;font-size:12px;color:var(--muted)}
+
+/* MODAL */
+.modal{position:fixed;inset:0;background:rgba(15,27,61,.5);display:none;place-items:center;padding:16px;z-index:10}
+.modal.on{display:grid}
+.mbox{background:#fff;border-radius:22px;max-width:440px;width:100%;padding:24px;animation:up .25s}
+@keyframes up{from{transform:translateY(16px);opacity:0}}
+.mbox h3{margin:0 0 6px}
+.mbox ul{padding-left:18px;line-height:1.8;color:var(--muted);font-size:14px}
+.mbox .actions .btn.primary{--c:#4f46e5;background:#4f46e5}
+
+@media(max-width:860px){.hero{grid-template-columns:1fr}.bottom{grid-template-columns:1fr}}
+@media(max-width:420px){.grid{grid-template-columns:1fr}.hero{padding:22px 18px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section class="hero">
+    <div>
+      <span class="tag">🧠 Avtomatik təhlil · son 30 gün</span>
+      <h1>Zəif mövzuların sənə imtahanda<br><span class="big">~11 bal</span> itirdir</h1>
+      <p>İlk 3 mövzunu düzəltsən, təxminən <b>+7 bal</b> qazanarsan. Siyahı faizə görə yox, imtahanda itirdiyin bala görə sıralanıb.</p>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>3</b><span>zəif mövzu</span></div>
+      <div class="stat"><b>2</b><span>inkişafda</span></div>
+      <div class="stat"><b>214</b><span>təhlil edilən cavab</span></div>
+      <div class="stat"><b>↓ 2,5</b><span>bal itkisi bu həftə</span></div>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <div class="tabs" id="tabs">
+      <button class="on" data-f="all">Hamısı</button>
+      <button data-f="weak">Zəif</button>
+      <button data-f="mid">İnkişafda</button>
+      <button data-f="good">Mənimsənib</button>
+    </div>
+    <span class="sort">Sıralama: <b>bal itkisinə görə ↓</b></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="bottom">
+    <div class="panel">
+      <h2>Bal itkisinin dinamikası</h2>
+      <span class="muted" style="font-size:13px">Xətt aşağı düşdükcə imtahan nəticən yaxşılaşır</span>
+      <div class="chart-box"><canvas id="trend"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>Ən çox etdiyin səhvlər</h2>
+      <span class="muted" style="font-size:13px">Yanlış seçdiyin variantların təhlili</span>
+      <ul class="errs" id="errs"></ul>
+    </div>
+  </div>
+
+  <div class="review">
+    <span class="ic">🔁</span>
+    <div><b>Təkrar yoxlama vaxtıdır</b><br><small>"Modul" mövzusunu 3 gün əvvəl düzəltmişdin. 5 sualla yoxla — keçsən, siyahıdan çıxacaq.</small></div>
+    <button class="btn">Yoxlamaya başla →</button>
+  </div>
+
+  <div class="owner">Bu material Cəfərli Elvin müəllimə məxsusdur</div>
+</div>
+
+<div class="modal" id="modal"><div class="mbox">
+  <h3 id="mt"></h3>
+  <p class="muted" style="margin:0;font-size:14px">Sənin səhvlərinə uyğun seçilmiş dəst:</p>
+  <ul id="ml"></ul>
+  <div class="actions"><button class="btn ghost" onclick="closeM()">Bağla</button><button class="btn primary">Başla →</button></div>
+</div></div>
+
+<script>
+const topics=[
+ {n:"Faiz. Nisbət. Tənasüb",cat:"Cəbr",m:38,loss:4.1,cnt:21,dim:"Hər imtahanda 2–3 sual",
+  err:"<b>Ardıcıl faiz dəyişməsində bazanı səhv götürürsən.</b> 20% artım + 20% azalmanı \"dəyişməz\" sayırsan — 5 sualdan 3-də.",
+  root:null,pills:["4 təxmini cavab"],q:8},
+ {n:"Kvadrat tənliklər",cat:"Cəbr",m:44,loss:3.2,cnt:17,dim:"Hər imtahanda 2 sual",
+  err:"<b>Diskriminantda işarə səhvi:</b> −b² əvəzinə b² yazırsan.",
+  root:"Kök səbəb: <b>Vuruqlara ayırma</b> da 52%-dir — əvvəlcə onu bərpa et",pills:["orta vaxt 3:40"],q:10},
+ {n:"Üçbucağın sahəsi",cat:"Həndəsə",m:47,loss:2.4,cnt:12,dim:"Hər imtahanda 1–2 sual",
+  err:"<b>Hündürlüyü yanlış tərəfə endirirsən</b> — korbucaqlı üçbucaqlarda.",root:null,pills:["şəkilli suallar"],q:8},
+ {n:"Vuruqlara ayırma",cat:"Cəbr",m:52,loss:1.1,cnt:9,dim:"Digər mövzuların əsası",
+  err:"<b>Qruplaşdırmada ortaq vuruğu</b> mötərizədən tam çıxarmırsan.",root:null,pills:["az məlumat"],q:6},
+ {n:"Ardıcıllıqlar",cat:"Cəbr",m:68,loss:0.8,cnt:14,dim:"Hər imtahanda 1 sual",
+  err:"<b>Həndəsi silsilədə</b> n-ci həddi qüvvətdə 1 vahid sürüşdürürsən.",root:null,pills:[],q:6},
+ {n:"Modul",cat:"Cəbr",m:81,loss:0.2,cnt:19,dim:"Hər imtahanda 1 sual",
+  err:"Mənimsənib. <b>3 gün sonra təkrar yoxlama</b> gözləyir.",root:null,pills:["təkrar yoxlama"],q:5},
+];
+const st=m=>m<50?"weak":m<75?"mid":"good";
+const label={weak:"Zəif",mid:"İnkişafda",good:"Mənimsənib"};
+const grid=document.getElementById('grid');
+
+function render(f="all"){
+  grid.innerHTML="";
+  topics.filter(t=>f==="all"||st(t.m)===f).sort((a,b)=>b.loss-a.loss).forEach((t,i)=>{
+    const s=st(t.m),el=document.createElement('article');
+    el.className="tc "+s;
+    el.innerHTML=`
+      <div class="top">
+        <div class="rank">${i+1}</div>
+        <div class="name"><b>${t.n}</b><small>${t.cat} · ${t.dim}</small></div>
+        <div class="loss"><b>−${t.loss.toFixed(1).replace('.',',')}</b><small>bal itkisi</small></div>
+      </div>
+      <div class="bar-row"><span>${label[s]}</span><div class="bar"><span data-w="${t.m}"></span></div><span>${t.m}%</span></div>
+      <div class="diag">${t.err}</div>
+      ${t.root?`<div class="root">🧩 ${t.root}</div>`:""}
+      <div class="pills"><span class="pill">${t.cnt} cavab</span>${t.pills.map(p=>`<span class="pill ${p.includes('təxmini')?'warn':''}">${p}</span>`).join("")}</div>
+      <div class="actions">
+        <button class="btn primary">${s==="good"?"Təkrar yoxla":t.q+" sualla düzəlt"} →</button>
+        <button class="btn ghost" title="İzah">📘</button>
+      </div>`;
+    el.querySelector('.primary').onclick=()=>openM(t);
+    grid.appendChild(el);
+  });
+  requestAnimationFrame(()=>setTimeout(()=>grid.querySelectorAll('.bar span').forEach(b=>b.style.width=b.dataset.w+"%"),60));
+}
+render();
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');render(b.dataset.f);
+});
+
+// səhv tipləri
+const errs=[["Faizdə baza səhvi",9],["İşarə səhvi (−/+)",7],["Hündürlüyün yeri",5],["Vahid çevirmə",3],["Qüvvət sürüşməsi",2]];
+const mx=Math.max(...errs.map(e=>e[1]));
+document.getElementById('errs').innerHTML=errs.map(([n,c])=>`<li><span>${n}</span><em>${c} dəfə</em><div class="eb"><i style="width:${c/mx*100}%"></i></div></li>`).join("");
+
+// qrafik
+new Chart(document.getElementById('trend'),{type:'line',
+  data:{labels:["1 sen","8 sen","15 sen","22 sen","29 sen","6 okt","10 okt"],
+    datasets:[{data:[19.5,18.2,16.9,15.4,14.1,13.5,11.0],fill:true,tension:.4,borderColor:'#8b5cf6',borderWidth:3,pointRadius:4,pointBackgroundColor:'#fff',
+      backgroundColor:(c)=>{const g=c.chart.ctx.createLinearGradient(0,0,0,240);g.addColorStop(0,'rgba(139,92,246,.35)');g.addColorStop(1,'rgba(236,72,153,0)');return g}}]},
+  options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' −'+c.parsed.y+' bal'}}},
+    scales:{y:{beginAtZero:true,grid:{color:'#eef1f7'},ticks:{callback:v=>'−'+v}},x:{grid:{display:false}}}}});
+
+// modal
+function openM(t){
+  document.getElementById('mt').textContent=t.n;
+  document.getElementById('ml').innerHTML=[
+    `${Math.ceil(t.q/2)} sual — əsas səhvini hədəfləyən`,`${Math.floor(t.q/2)} sual — DİM imtahan analoqları`,
+    `Hər sualdan sonra qısa izah`,`Uğurla bitirsən — 3 gün sonra təkrar yoxlama`].map(x=>`<li>${x}</li>`).join("");
+  document.getElementById('modal').classList.add('on');
+}
+function closeM(){document.getElementById('modal').classList.remove('on')}
+document.getElementById('modal').onclick=e=>{if(e.target.id==='modal')closeM()};
+</script>
+</body>
+</html>

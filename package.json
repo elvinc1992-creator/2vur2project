@@ -17,7 +17,8 @@
     "test:e2e": "playwright test",
     "db:seed-demo": "node scripts/seed-demo.mts",
     "stats:import": "node scripts/import-stats.mts",
-    "bank:import": "node scripts/import-question-bank.mts"
+    "bank:import": "node scripts/import-question-bank.mts",
+    "db:seed-weak": "node scripts/seed-weak-demo.mts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

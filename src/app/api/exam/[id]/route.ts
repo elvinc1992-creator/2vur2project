@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { EXAM_QUESTIONS } from "@/lib/demo/content";
 import { finalizeAttempt, pauseAttempt, saveAnswer, tickAttempt, toggleFlag } from "@/lib/demo/exam-session";
 import { updateDemoState } from "@/lib/demo/state";
+import { afterExamFinished } from "@/lib/weak/hooks";
 
 // Sınaq prosesinin tez-tez çağırılan əməliyyatları (siqnal, fasilə, cavab, işarə, vaxt bitdi).
 // Route Handler — server action kimi bütün səhifəni yenidən render etmir; sendBeacon da buraya göndərir.
@@ -10,7 +11,12 @@ import { updateDemoState } from "@/lib/demo/state";
 const body = z.discriminatedUnion("op", [
   z.object({ op: z.literal("tick") }),
   z.object({ op: z.literal("pause") }),
-  z.object({ op: z.literal("save"), n: z.number().int().min(1).max(EXAM_QUESTIONS.length), value: z.string().max(8) }),
+  z.object({
+    op: z.literal("save"),
+    n: z.number().int().min(1).max(EXAM_QUESTIONS.length),
+    value: z.string().max(8),
+    ms: z.number().int().min(0).max(6 * 3_600_000).optional(),
+  }),
   z.object({ op: z.literal("flag"), n: z.number().int().min(1).max(EXAM_QUESTIONS.length) }),
   z.object({ op: z.literal("timeout") }),
 ]);
@@ -34,12 +40,15 @@ export async function POST(req: Request, ctx: RouteContext<"/api/exam/[id]">) {
       case "pause":
         return pauseAttempt(state, id);
       case "save":
-        return saveAnswer(state, id, cmd.n, cmd.value);
+        return saveAnswer(state, id, cmd.n, cmd.value, Date.now(), cmd.ms);
       case "flag":
         return { ok: toggleFlag(state, id, cmd.n) };
       case "timeout":
         return { answered: state.attempts[id] ? finalizeAttempt(state, id, true) : Object.keys(state.results[id]?.answers ?? {}).length };
     }
   });
+  // Vaxt bitib sınaq bağlandı — zəif mövzular yenilənir.
+  const r = result as { expired?: boolean } | null;
+  if (cmd.op === "timeout" || r?.expired) await afterExamFinished(session.user.id);
   return Response.json(result ?? null);
 }

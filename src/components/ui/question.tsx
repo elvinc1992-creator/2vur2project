@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { Placeholder } from "@/components/ui/display";
 import { MathText } from "@/components/ui/math-text";
@@ -18,6 +19,9 @@ export function QuestionCard({
   aside,
   image,
   imageLabel,
+  imageUrl,
+  imageAlt,
+  qid,
   className,
 }: {
   id: string;
@@ -28,11 +32,17 @@ export function QuestionCard({
   aside?: ReactNode;
   image?: boolean;
   imageLabel?: string;
+  /** Sualın real şəkli (bank_tasks.image_url). */
+  imageUrl?: string | null;
+  imageAlt?: string | null;
+  /** Sualın kodu (data-qid) — cavab deyil; testlər və analitika üçün. */
+  qid?: string;
   className?: string;
 }) {
   return (
     <article
       aria-labelledby={`${id}-title`}
+      data-qid={qid}
       className={cn("overflow-hidden rounded-lg border border-line bg-surface shadow-card", className)}
     >
       <header className="flex min-h-12 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line bg-navy-050 px-4 py-2 lg:px-6">
@@ -48,7 +58,17 @@ export function QuestionCard({
         <p className="text-[18px] leading-[1.65] text-ink">
           <MathText text={text} />
         </p>
-        {image && <Placeholder className="min-h-[120px]">{imageLabel}</Placeholder>}
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={imageAlt ?? ""}
+            width={520}
+            height={360}
+            className="h-auto max-h-[320px] w-auto max-w-full justify-self-center rounded-md border border-line bg-white object-contain p-2"
+          />
+        ) : (
+          image && <Placeholder className="min-h-[120px]">{imageLabel}</Placeholder>
+        )}
       </div>
     </article>
   );

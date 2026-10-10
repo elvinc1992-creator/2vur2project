@@ -5,7 +5,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { LETTERS, type Letter } from "@/lib/demo/content";
 import { canUseRepetitor } from "@/lib/demo/plans";
-import { updateDemoState, type DemoState } from "@/lib/demo/state";
+import { cleanMeta, rememberMeta, updateDemoState, type AnswerMeta, type DemoState } from "@/lib/demo/state";
 import { changePlan, examKey, todayIn } from "./plan";
 import { nextRepetitorHref, tutorContext } from "./progress";
 import { findRepetitorQuestion, getRepetitorKey, getRepetitorKeys } from "./source";
@@ -45,7 +45,7 @@ export type RepetitorResult = {
   nextHref: string | null;
 };
 
-export async function answerRepetitorAction(id: string, choice: string): Promise<RepetitorResult> {
+export async function answerRepetitorAction(id: string, choice: string, meta?: AnswerMeta): Promise<RepetitorResult> {
   const parsed = z.enum([...LETTERS, "skip"]).safeParse(choice);
   const q = await findRepetitorQuestion(id);
   const key = await getRepetitorKey(id);
@@ -56,7 +56,10 @@ export async function answerRepetitorAction(id: string, choice: string): Promise
     if (!ctx.isOpen(id)) throw new Error("Bu dərs hələ açılmayıb");
     const tutor = (state.tutor ??= {});
     // Artıq cavablanıbsa, ilk cavab qalır.
-    if (!tutor[id]?.a) tutor[id] = { ...tutor[id], a: parsed.data, ok: parsed.data === key.answer };
+    if (!tutor[id]?.a) {
+      tutor[id] = { ...tutor[id], a: parsed.data, ok: parsed.data === key.answer };
+      rememberMeta(state, `tutor:${id}`, cleanMeta(meta));
+    }
     const p = tutor[id];
     return {
       chosen: p.a!,

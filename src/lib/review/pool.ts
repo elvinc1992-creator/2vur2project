@@ -1,8 +1,8 @@
 import "server-only";
 import { EXAM_QUESTIONS, TOPICS, type Letter, type TopicSlug } from "@/lib/demo/content";
 import { EXAM_KEYS } from "@/lib/demo/keys";
-import { DEMO_TO_REAL } from "@/lib/demo/personal";
-import { getRepetitorKey, listQuestionPool } from "@/lib/repetitor/source";
+import { DEMO_TO_REAL, DEMO_TO_SLUG } from "@/lib/demo/personal";
+import { getRepetitorKey, getRepetitorKeys, listQuestionPool } from "@/lib/repetitor/source";
 
 // Səhvlərim üçün vahid sual modeli: sual bankı (q:id — günün sualları və repetitor eyni bankdandır)
 // və sınağın qapalı sualları (e:n). Cavab açarı ayrıca və yalnız serverdə (getPracticeKey).
@@ -18,6 +18,8 @@ export type PracticeQuestion = {
   topicName: string;
   type: string;
   text: string;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   options: Record<Letter, string>;
   /** Toplu istinadı. */
   bookRef: string;
@@ -30,16 +32,7 @@ export type PracticeKey = { answer: Letter; steps: string[] };
 /** d:id / r:id (köhnə) → q:id. */
 export const normRef = (ref: string) => ref.replace(/^[dr]:/, "q:");
 
-// Sınaq mövzuları (demo slug) → bankın mövzu slug-ı.
-const REAL_SLUG: Record<string, string> = {
-  faiz: "faiz-nisbet-tenasub",
-  funksiya: "funksiya-ve-qrafikler",
-  triqonometriya: "triqonometriya",
-  ucbucaq: "ucbucaqlar",
-  loqarifm: "loqarifm-ustlu-tenlik-berabersizlik",
-  ardicilliq: "ededi-ardicilliqlar-silsileler",
-  feza: "stereometriya",
-};
+const REAL_SLUG: Record<string, string> = DEMO_TO_SLUG;
 
 export async function practicePool(): Promise<PracticeQuestion[]> {
   const bank: PracticeQuestion[] = (await listQuestionPool()).flatMap((t) =>
@@ -50,6 +43,8 @@ export async function practicePool(): Promise<PracticeQuestion[]> {
       topicName: t.name,
       type: q.type,
       text: q.text,
+      imageUrl: q.imageUrl,
+      imageAlt: q.imageAlt,
       options: q.options,
       bookRef: q.ref,
       href: "/sehvlerim",
@@ -67,6 +62,20 @@ export async function practicePool(): Promise<PracticeQuestion[]> {
     href: "/sinaqlar?f=owned",
   }));
   return [...bank, ...exam];
+}
+
+/** Bir neçə sualın açarı — bank sualları bir sorğu ilə (səhvlər siyahısı üçün; N+1 olmasın). */
+export async function getPracticeKeys(refs: string[]): Promise<Map<string, PracticeKey>> {
+  const norm = [...new Set(refs.map(normRef))];
+  const bankIds = norm.filter((r) => r.startsWith("q:")).map((r) => r.slice(2));
+  const bank = await getRepetitorKeys(bankIds);
+  const out = new Map<string, PracticeKey>();
+  for (const ref of norm) {
+    const [kind, id] = ref.split(":");
+    const k = kind === "q" ? bank.get(id) : kind === "e" ? EXAM_KEYS[Number(id)] : undefined;
+    if (k) out.set(ref, { answer: k.answer as Letter, steps: k.steps });
+  }
+  return out;
 }
 
 export async function getPracticeKey(ref: string): Promise<PracticeKey | null> {

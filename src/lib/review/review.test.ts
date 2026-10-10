@@ -13,9 +13,12 @@ vi.mock("@/lib/repetitor/source", async () => {
   };
   const questions = [...m.MOCK_QUESTIONS, ...DAILY.map((q) => ({ ...q, topic: real[q.topic] }))];
   const slugs = [...new Set(questions.map((q) => q.topic))];
+  const key = (id: string) => m.MOCK_KEYS[id] ?? (DAILY_KEYS[id] ? { ...DAILY_KEYS[id], hint: "" } : null);
   return {
     listQuestionPool: async () => slugs.map((slug) => ({ slug, name: slug, questions: questions.filter((q) => q.topic === slug) })),
-    getRepetitorKey: async (id: string) => m.MOCK_KEYS[id] ?? (DAILY_KEYS[id] ? { ...DAILY_KEYS[id], hint: "" } : null),
+    getRepetitorKey: async (id: string) => key(id),
+    getRepetitorKeys: async (ids: string[]) =>
+      new Map(ids.flatMap((id) => (key(id) ? [[id, key(id)!] as const] : []))),
   };
 });
 const { DAILY, EXAM_QUESTIONS } = await import("@/lib/demo/content");

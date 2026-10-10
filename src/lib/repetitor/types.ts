@@ -1,7 +1,7 @@
 import type { Letter } from "@/lib/demo/content";
 
 // Onlayn repetitor: təhlil nəticəsində imtahanda çıxma ehtimalı yüksək olan suallar.
-// Bu tiplər admin panelindəki formanın və gələcək DB cədvəlinin (tutor_questions) əsasıdır.
+// Suallar müəllifin sual bankından (bank_tasks) gəlir — bax: source.ts.
 
 export type RepetitorTopic = {
   /** Statistikadakı mövzunun slug-ı (/statistika/[slug] ilə eyni). */
@@ -17,6 +17,9 @@ export type RepetitorQuestion = {
   /** Təhlilə görə bu tip keçmiş imtahanlarda neçə dəfə çıxıb. */
   freq: number;
   text: string;
+  /** Sualın şəkli (/images/tasks/KOD.png) və təsviri. */
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   options: Record<Letter, string>;
   /** Toplu istinadı: "2025 toplu, II hissə, səh.210 №4–9". */
   ref: string;

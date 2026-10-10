@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { ArrowIcon, BookIcon, BulbIcon, CheckCircleIcon, XCircleIcon } from "@/components/icons";
 import { AnswerOptions } from "@/components/ui/answer-options";
+import { useAnswerMeta } from "@/components/ui/use-answer-meta";
 import { Button, buttonClass } from "@/components/ui/button";
 import { MathText } from "@/components/ui/math-text";
 import { az } from "@/content/az";
@@ -21,13 +22,14 @@ type Props = {
 export function DailyAnswer({ id, options, refText, initial }: Props) {
   const t = az.app.daily;
   const [selected, setSelected] = useState<Letter | null>(null);
+  const timing = useAnswerMeta();
   const [result, setResult] = useState<DailyResult | null>(initial);
   const [pending, startTransition] = useTransition();
   const answered = result !== null;
 
   const submit = (choice: Letter | "skip") =>
     startTransition(async () => {
-      setResult(await answerDailyAction(id, choice));
+      setResult(await answerDailyAction(id, choice, timing.meta()));
     });
 
   return (
@@ -37,7 +39,10 @@ export function DailyAnswer({ id, options, refText, initial }: Props) {
         label={t.optionsLabel}
         options={options}
         value={selected}
-        onChange={setSelected}
+        onChange={(l) => {
+          timing.track(l);
+          setSelected(l);
+        }}
         onClear={() => setSelected(null)}
         clearLabel={t.clearSelection}
         disabled={pending}

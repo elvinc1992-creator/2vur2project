@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-art";
 import { az } from "@/content/az";
 import { claimExamAction, startExamAction } from "@/lib/demo/actions";
 import { EXAM_FORMAT, EXAM_QUESTIONS } from "@/lib/demo/content";
-import { answeredCount, examStatus, findExam, remainingMs } from "@/lib/demo/logic";
+import { answeredCount, examStatus, findExam, formatDate, remainingMs, todayIso } from "@/lib/demo/logic";
 import { EXAM_PRICE, examQuota } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import { ExamRunner } from "./exam-runner";
@@ -20,7 +20,7 @@ export default async function ExamPage(props: PageProps<"/sinaq/[id]">) {
   const { id } = await props.params;
   const exam = findExam(id);
   if (!exam) notFound();
-  const { state } = await requireDemo(`/sinaq/${id}`);
+  const { user, state } = await requireDemo(`/sinaq/${id}`);
   const status = examStatus(state, id);
   const quota = examQuota(state);
   const t = az.app;
@@ -83,6 +83,8 @@ export default async function ExamPage(props: PageProps<"/sinaq/[id]">) {
       initialAnswers={attempt.answers}
       initialFlags={attempt.flags}
       remaining={remainingMs(attempt, exam)}
+      studentName={user.name ?? ""}
+      today={formatDate(todayIso())}
     />
   );
 }

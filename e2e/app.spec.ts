@@ -60,8 +60,8 @@ test.beforeEach(async ({ page, context }) => {
 });
 
 /** Variantı seç (input sr-only, ona görə label-ə klikləyirik). */
-const pick = (page: Page, letter: string, value: string) =>
-  page.locator(`label:has(input[aria-label="Variant ${letter}: ${value}"])`).click();
+const pick = (page: Page, letter: string) => page.locator(`label:has(input[aria-label^="Variant ${letter}:"])`).click();
+const variant = (page: Page, letter: string) => page.locator(`input[aria-label^="Variant ${letter}:"]`);
 
 async function buyAndStart(page: Page, id: string) {
   await page.goto(`/odenis?exam=${id}`);
@@ -110,7 +110,8 @@ test("günün sualı: düzgün və yanlış cavab, proqres artır", async ({ pag
 
   // Cavab seçilməyib — yoxla düyməsi deaktivdir.
   await expect(page.getByRole("button", { name: "Cavabı yoxla" })).toHaveAttribute("aria-disabled", "true");
-  await pick(page, "C", "1");
+  // TRQ-0001 düzgün: C
+  await pick(page, "C");
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
   await expect(page.getByText("Düzgündür!")).toBeVisible();
   await expect(page.getByText("Bu tipdə düzgün cavabların: 1 / 1.")).toBeVisible();
@@ -119,9 +120,10 @@ test("günün sualı: düzgün və yanlış cavab, proqres artır", async ({ pag
   // Free plan: 2-ci sual da açıqdır
   await page.getByRole("link", { name: "Növbəti sual" }).click();
   await expect(page).toHaveURL(/\/gunun-suallari\/triqonometriya\/2$/);
-  await pick(page, "B", "0");
+  // TRQ-0002 düzgün: B — yanlış seçirik
+  await pick(page, "A");
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
-  await expect(page.getByText("Yanlışdır. Düzgün cavab: A")).toBeVisible();
+  await expect(page.getByText("Yanlışdır. Düzgün cavab: B")).toBeVisible();
   // 3-cü sual kilidlidir → növbəti başqa mövzunun açıq sualı
   await page.getByRole("link", { name: "Növbəti sual" }).click();
   await expect(page).toHaveURL(/\/gunun-suallari\/loqarifm-ustlu-tenlik-berabersizlik\/1$/);
@@ -150,8 +152,8 @@ test("Free plan: kilidli sualın mətni və variantları serverdən gəlmir, Pro
   await expect(page.getByRole("radio")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Pro planına keç" })).toHaveAttribute("href", "/odenis?plan=pro");
   const locked = await (await page.request.get("/gunun-suallari/faiz-nisbet-tenasub/3")).text();
-  expect(locked).not.toContain("45% artırıldı");
-  expect(locked).not.toContain("səh.146 №11–15");
+  expect(locked).not.toContain("Tənasübün kənar hədləri");
+  expect(locked).not.toContain("səh.20 №2");
 
   // Pro → bütün 20 sual açıqdır
   await subscribe(page);
@@ -159,14 +161,14 @@ test("Free plan: kilidli sualın mətni və variantları serverdən gəlmir, Pro
   await expect(page.getByText("Bu gün sual bankından təsadüfi 4 mövzu üzrə 20 sual. Sabah yeni mövzular gələcək.")).toBeVisible();
   await expect(page.getByRole("link", { name: /kilidli/ })).toHaveCount(0);
   await page.goto("/gunun-suallari/faiz-nisbet-tenasub/3");
-  await expect(page.getByText("45% artırıldı")).toBeVisible();
+  await expect(page.getByText(/Tənasübün kənar hədləri/)).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(5);
 });
 
 test("günün sualı: cavab açarı HTML-də yoxdur", async ({ page }) => {
-  const html = await (await page.request.get("/gunun-suallari/stereometriya/1")).text();
-  expect(html).toContain("Tili 3 sm olan kubun");
-  expect(html).not.toContain("Kubun həcmi");
+  const html = await (await page.request.get("/gunun-suallari/ucbucaqlar/1")).text();
+  expect(html).toContain("üçbucağın üçüncü tərəfinin ən böyük tam qiymətini");
+  expect(html).not.toContain("Üçbucaq bərabərsizliyinə görə");
   expect(html).not.toMatch(/"answer":"[A-E]"/);
 });
 test("kodlaşdırılan cavab: icazəsiz simvol daxil edilmir, xəta göstərilir", async ({ page }) => {
@@ -222,7 +224,7 @@ test("cavabı silmək: sınaqda, cavab vərəqində, kodlaşdırılanda, günün
   const cell1 = page.getByRole("button", { name: /^Sual 1,/ });
 
   // Seç → "Cavabı sil" → sual yenidən boşdur (serverdə də)
-  await pick(page, "C", "16%");
+  await pick(page, "C");
   await expect(cell1).toHaveAccessibleName("Sual 1, cavablanıb");
   await page.getByRole("button", { name: "Cavabı sil" }).click();
   await expect(page.getByLabel("Variant C: 16%")).not.toBeChecked();
@@ -233,7 +235,7 @@ test("cavabı silmək: sınaqda, cavab vərəqində, kodlaşdırılanda, günün
   await expect(page.getByRole("button", { name: /^Sual 1,/ })).toHaveAccessibleName("Sual 1, boş");
 
   // Delete klavişi ilə
-  await pick(page, "B", "20%");
+  await pick(page, "B");
   await page.getByLabel("Variant B: 20%").focus();
   await page.keyboard.press("Delete");
   await expect(page.getByLabel("Variant B: 20%")).not.toBeChecked();
@@ -256,9 +258,9 @@ test("cavabı silmək: sınaqda, cavab vərəqində, kodlaşdırılanda, günün
 
   // Günün sualı: yoxlamadan əvvəl seçimi silmək olar
   await page.goto("/gunun-suallari/faiz-nisbet-tenasub/1");
-  await pick(page, "B", "12");
+  await pick(page, "B");
   await page.getByRole("button", { name: "Seçimi sil" }).click();
-  await expect(page.getByLabel("Variant B: 12")).not.toBeChecked();
+  await expect(variant(page, "B")).not.toBeChecked();
   await expect(page.getByRole("button", { name: "Cavabı yoxla" })).toHaveAttribute("aria-disabled", "true");
 });
 
@@ -351,7 +353,7 @@ test("sınaq: Free — ayın sınağını seç → başla → cavabla → yenil�
   expect(html).not.toContain("36 + 64 = 100");
 
   await expect(page.getByText("Sual 1 / 25")).toBeVisible();
-  await pick(page, "C", "16%");
+  await pick(page, "C");
   await page.getByRole("button", { name: "Növbəti" }).click();
   await expect(page.getByText("Sual 2 / 25")).toBeVisible();
 
@@ -370,6 +372,11 @@ test("sınaq: Free — ayın sınağını seç → başla → cavabla → yenil�
   await page.getByRole("button", { name: "Cavab vərəqi" }).first().click();
   await expect(page.getByText("3 / 25 cavablanıb")).toBeVisible();
   await expect(page.getByText("Yazılıb")).toBeVisible();
+  await page.screenshot({ path: "screenshots/cavab-karti-1280.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 900 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: "screenshots/cavab-karti-390.png", fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.getByRole("button", { name: "Sınağı bitir" }).last().click();
   await expect(page.getByRole("heading", { name: "Sınağı bitirək?" })).toBeVisible();
   await expect(page.getByText("22 sual boşdur, 0 sual işarələnib. Sınağı bitirmək istəyirsiniz?")).toBeVisible();
@@ -544,8 +551,9 @@ test("aylıq → illik: eyni plan illiyə keçir, qalan günlər itmir", async (
   await expect(pro).toContainText(`${d}.${m}.${y}`);
 });
 test("demo sıfırlama hər şeyi sıfıra qaytarır", async ({ page }) => {
+  // FNT-0001 düzgün: C
   await page.goto("/gunun-suallari/faiz-nisbet-tenasub/1");
-  await pick(page, "B", "12");
+  await pick(page, "C");
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
   await expect(page.getByText("Düzgündür!")).toBeVisible();
   await page.goto("/panel");
