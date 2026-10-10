@@ -1,33 +1,7 @@
 import "server-only";
 import { listQuestionPool } from "@/lib/repetitor/source";
-import type { TopicSlug } from "./content";
 import { isCorrectDaily } from "./logic";
 import type { DemoState } from "./state";
-
-/**
- * Sınağın demo mövzuları → Excel-dəki real mövzular (ada görə uyğunlaşdırma).
- * Günün sualları artıq bankdandır və real mövzuya bağlıdır.
- */
-export const DEMO_TO_REAL: Record<TopicSlug, string> = {
-  faiz: "Faiz. Nisbət. Tənasüb",
-  funksiya: "Funksiya və qrafiklər",
-  triqonometriya: "Triqonometriya",
-  ucbucaq: "Üçbucaqlar",
-  loqarifm: "Loqarifm, üstlü tənlik/bərabərsizlik",
-  ardicilliq: "Ədədi ardıcıllıqlar. Silsilələr",
-  feza: "Stereometriya",
-};
-
-/** Sınaq mövzuları (demo slug) → bankın mövzu slug-ı. */
-export const DEMO_TO_SLUG: Record<TopicSlug, string> = {
-  faiz: "faiz-nisbet-tenasub",
-  funksiya: "funksiya-ve-qrafikler",
-  triqonometriya: "triqonometriya",
-  ucbucaq: "ucbucaqlar",
-  loqarifm: "loqarifm-ustlu-tenlik-berabersizlik",
-  ardicilliq: "ededi-ardicilliqlar-silsileler",
-  feza: "stereometriya",
-};
 
 export type Personal = { ok: number; total: number; pct: number };
 
@@ -43,7 +17,7 @@ export async function personalByTopic(state: DemoState): Promise<Map<string, Per
     acc.set(name, { ok: cur.ok + ok, total: cur.total + total });
   };
   for (const id of Object.keys(state.daily)) add(topicOf.get(id), isCorrectDaily(state, id) ? 1 : 0, 1);
-  for (const r of Object.values(state.results)) for (const t of r.byTopic) add(DEMO_TO_REAL[t.topic], t.ok, t.total);
+  for (const r of Object.values(state.results)) if (r.items) for (const t of r.byTopic) add(t.name, t.ok, t.total);
   return new Map([...acc].filter(([, v]) => v.total > 0).map(([k, v]) => [k, { ...v, pct: v.ok / v.total }]));
 }
 

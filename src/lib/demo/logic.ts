@@ -1,9 +1,9 @@
 import "server-only";
-import { EXAMS, EXAM_QUESTIONS, FREE_DAILY_PER_TOPIC, WEEK_LABELS, type ExamMeta, type Letter, type TopicSlug } from "./content";
-import { DAILY_KEYS, EXAM_KEYS } from "./keys";
+import type { ExamMeta } from "@/lib/exams/types";
+import { FREE_DAILY_PER_TOPIC, WEEK_LABELS, type Letter } from "./content";
 import { hasFullDaily, tierOf } from "./plans";
 import { remainingOf } from "./timer";
-import type { Attempt, DemoState, ExamResult } from "./state";
+import type { Attempt, DemoState } from "./state";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -32,8 +32,7 @@ export type DailyCtx = { date: string; topics: DailyTopic[]; byId: Map<string, B
 
 export function isCorrectDaily(state: DemoState, id: string): boolean {
   const ok = state.dailyOk?.[id];
-  if (ok !== undefined) return ok;
-  return state.daily[id] === DAILY_KEYS[id]?.answer;
+  return ok ?? false;
 }
 
 export const dailyTopic = (ctx: DailyCtx, slug: string) => ctx.topics.find((t) => t.slug === slug);
@@ -118,19 +117,16 @@ export function streakInfo(state: DemoState, now = new Date()) {
 }
 
 /* ---------------- Sınaqlar ---------------- */
+// Sınaqlar bazadadır (src/lib/exams). Burada yalnız vəziyyətə görə status və vaxt.
 
 export type ExamStatus = "done" | "in_progress" | "expired" | "purchased" | "locked";
 
-export function findExam(id: string): ExamMeta | undefined {
-  return EXAMS.find((e) => e.id === id);
-}
-
 /** "purchased" — başlamağa hazırdır: alınıb, plan üzrə seçilib və ya Premium (bütün sınaqlar). */
-export function examStatus(state: DemoState, id: string, now = Date.now()): ExamStatus {
+export function examStatus(state: DemoState, exam: ExamMeta, now = Date.now()): ExamStatus {
+  const id = exam.id;
   if (state.results[id]) return "done";
   const attempt = state.attempts[id];
-  const exam = findExam(id);
-  if (attempt && exam) return remainingMs(attempt, exam, now) <= 0 ? "expired" : "in_progress";
+  if (attempt) return remainingMs(attempt, exam, now) <= 0 ? "expired" : "in_progress";
   if (state.purchased.includes(id) || tierOf(state) === "premium") return "purchased";
   return "locked";
 }
@@ -139,70 +135,14 @@ export function answeredCount(attempt: Attempt | undefined) {
   return attempt ? Object.keys(attempt.answers).length : 0;
 }
 
-export const durationMs = (exam: ExamMeta) => exam.durationMin * 60_000;
+export const durationMs = (exam: Pick<ExamMeta, "durationMin">) => exam.durationMin * 60_000;
 
 /** Qalan aktiv vaxt (fasilədə dayanır). */
-export function remainingMs(attempt: Attempt, exam: ExamMeta, now = Date.now()) {
+export function remainingMs(attempt: Attempt, exam: Pick<ExamMeta, "durationMin">, now = Date.now()) {
   return remainingOf(attempt, durationMs(exam), now);
 }
 
-export function normalizeCoded(value: string): number | null {
-  const v = value.trim().replace(/\s/g, "").replace(",", ".").replace("−", "-");
-  if (!/^-?\d+(\.\d+)?$/.test(v)) return null;
-  return Number(v);
-}
-
-/**
- * Qapalı və kodlaşdırılan suallar avtomatik yoxlanılır, yazılılar əl ilə (pending).
- * Demo bal: hər düzgün sual 4 bal (25 × 4 = 100). Real düstur sifarişçidən gələcək.
- */
-export function gradeExam(answers: Record<string, string>, timedOut = false): ExamResult {
-  let correct = 0;
-  let wrong = 0;
-  let empty = 0;
-  let pending = 0;
-  const topic: Partial<Record<TopicSlug, { ok: number; total: number }>> = {};
-  const weakTypes = new Map<string, { topic: TopicSlug; type: string; ref: string }>();
-
-  for (const q of EXAM_QUESTIONS) {
-    const given = answers[String(q.n)];
-    if (q.format === "written") {
-      if (given) pending++;
-      else empty++;
-      continue;
-    }
-    const t = (topic[q.topic] ??= { ok: 0, total: 0 });
-    t.total++;
-    const key = EXAM_KEYS[q.n].answer;
-    const ok =
-      given !== undefined &&
-      (q.format === "closed" ? given === key : normalizeCoded(given) === normalizeCoded(key));
-    if (!given) empty++;
-    else if (ok) correct++;
-    else wrong++;
-    if (ok) t.ok++;
-    else if (!weakTypes.has(q.type)) weakTypes.set(q.type, { topic: q.topic, type: q.type, ref: q.ref });
-  }
-
-  const byTopic = (Object.keys(topic) as TopicSlug[]).map((k) => ({ topic: k, ...topic[k]! }));
-  const weakTopics = new Set(byTopic.filter((t) => t.ok / t.total < 0.5).map((t) => t.topic));
-  const weak = [...weakTypes.values()]
-    .sort((a, b) => Number(weakTopics.has(b.topic)) - Number(weakTopics.has(a.topic)))
-    .slice(0, 3);
-
-  return {
-    score: correct * 4,
-    correct,
-    wrong,
-    empty,
-    pending,
-    byTopic,
-    weak,
-    answers,
-    timedOut,
-    finishedAt: Date.now(),
-  };
-}
+export { normalizeCoded } from "@/lib/exams/grade";
 
 /* ---------------- Abunə ---------------- */
 

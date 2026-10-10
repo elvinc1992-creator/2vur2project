@@ -9,6 +9,7 @@ import { az } from "@/content/az";
 import { startExamAction } from "@/lib/demo/actions";
 
 import { examStatus, formatDate } from "@/lib/demo/logic";
+import { findExam } from "@/lib/exams/source";
 import { periodEndFrom } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import { PrintButton } from "./print-button";
@@ -22,7 +23,8 @@ export default async function PaymentSuccessPage(props: PageProps<"/odenis/ugurl
   if (!p) notFound();
   const t = az.app.payment;
   const isExam = Boolean(p.examId);
-  const canStart = p.examId && examStatus(state, p.examId) === "purchased";
+  const paidExam = p.examId ? await findExam(p.examId) : undefined;
+  const canStart = paidExam && examStatus(state, paidExam) === "purchased";
 
   return (
     <Page>

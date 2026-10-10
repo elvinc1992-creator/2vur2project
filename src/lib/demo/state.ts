@@ -5,7 +5,7 @@ import { userAnswers, userState } from "@/db/schema";
 import { newAnswers } from "./answer-log";
 import { answerTopicResolver } from "./answer-topic";
 import type { TutorExamRecord, TutorPlan } from "@/lib/repetitor/plan";
-import type { Letter, TopicSlug } from "./content";
+import type { Letter } from "./content";
 
 // İSTİFADƏÇİ VƏZİYYƏTİ — bazada, userId-yə bağlı (user_state: alışlar, cavablar, nəticələr, abunə).
 // Hər yeni cavab həm də user_answers cədvəlinə ayrıca sətir kimi yazılır (vaxtı ilə).
@@ -48,9 +48,12 @@ export type ExamResult = {
   empty: number;
   /** Əl ilə yoxlanmalı yazılı cavablar. */
   pending: number;
-  byTopic: Array<{ topic: TopicSlug; ok: number; total: number }>;
-  weak: Array<{ topic: TopicSlug; type: string; ref: string }>;
+  /** Mövzu (bank slug-ı) üzrə nəticə. */
+  byTopic: Array<{ topic: string; name: string; ok: number; total: number }>;
+  weak: Array<{ topic: string; topicName: string; type: string; ref: string }>;
   answers: Record<string, string>;
+  /** n → sualın kodu və düzgünlüyü (yazılı — null). */
+  items?: Record<string, { code: string; ok: boolean | null }>;
   /** Sınaqdakı vaxt/dəyişiklik və işarələnmiş suallar (köhnə nəticələrdə yoxdur). */
   meta?: Record<string, AnswerMeta>;
   flags?: number[];
@@ -174,7 +177,10 @@ async function saveDemoState(state: DemoState): Promise<boolean> {
     : await db.insert(userState).values({ userId: state.uid, data }).onConflictDoNothing();
   if (res.rowsAffected === 0) return false;
 
-  const prev = before ? parse(before.json, state.uid) : null;
+  // Oxunan vəziyyət (versiya sahəsi olmadan saxlanılıb — parse() yox, birbaşa JSON). Əvvəl burada parse()
+  // istifadə olunurdu: o, "v" sahəsini tələb etdiyi üçün null qaytarırdı və hər yazıda bütün köhnə cavablar
+  // user_answers-ə yenidən düşürdü.
+  const prev = before ? (JSON.parse(before.json) as DemoState) : null;
   const events = newAnswers(prev, state);
   if (events.length) {
     // Mövzu cavab anında yazılır — sual sonradan bankdan çıxsa da təhlil itmir.

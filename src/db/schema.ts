@@ -356,6 +356,8 @@ export const topics = sqliteTable("topics", {
   examTypes: text("exam_types").notNull().default("9,11,blok"),
   /** Əsas (ilkin) mövzu — kök səbəb təhlili üçün. */
   prerequisiteId: integer("prerequisite_id"),
+  /** Tədris sırası (tasks_NN faylının nömrəsi: 1 — Natural ədədlər…) — repetitor və siyahılar bu sıra ilə. */
+  curriculumOrder: integer("curriculum_order").notNull().default(0),
 });
 
 const matchCheck = (col: unknown) =>
@@ -504,4 +506,63 @@ export const weakPracticeSets = sqliteTable(
     finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
   },
   (t) => [index("weak_practice_sets_user_idx").on(t.userId, t.createdAt)],
+);
+/* ---------------- Sınaqlar (sual bankından generasiya) ---------------- */
+
+export const EXAM_ITEM_FORMATS = ["closed", "coded", "written"] as const;
+
+/** Sınaq: imtahan quruluşuna (exam_blueprints) görə sual bankından yaradılır. */
+export const exams = sqliteTable(
+  "exams",
+  {
+    id: text("id").primaryKey(),
+    blueprintKey: text("blueprint_key")
+      .notNull()
+      .references(() => examBlueprints.key),
+    /** Eyni tip sınaqlar arasında sıra nömrəsi (№1, №2…). */
+    number: integer("number").notNull(),
+    title: text("title").notNull(),
+    durationMin: integer("duration_min").notNull(),
+    status: text("status", { enum: ["published", "draft"] }).notNull().default("published"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [uniqueIndex("exams_blueprint_number_uq").on(t.blueprintKey, t.number)],
+);
+
+/** Sınağın sualları: n — imtahan kitabçasındakı nömrə (9-cu sinif: 61–85), format — cavab vərəqindəki bölmə. */
+export const examItems = sqliteTable(
+  "exam_items",
+  {
+    examId: text("exam_id")
+      .notNull()
+      .references(() => exams.id, { onDelete: "cascade" }),
+    n: integer("n").notNull(),
+    taskCode: text("task_code").notNull(),
+    format: text("format", { enum: EXAM_ITEM_FORMATS }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.examId, t.n] })],
+);
+
+/** Ödənişlər (admin: qazanc). Mock ödəniş də bura yazılır. */
+export const payments = sqliteTable(
+  "payments",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["subscription", "exam"] }).notNull(),
+    title: text("title").notNull(),
+    /** AZN */
+    amount: real("amount").notNull(),
+    tier: text("tier"),
+    period: text("period"),
+    examId: text("exam_id"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [index("payments_created_idx").on(t.createdAt), index("payments_user_idx").on(t.userId)],
 );

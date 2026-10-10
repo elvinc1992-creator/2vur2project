@@ -58,10 +58,11 @@ for (const [slug, early, late, count] of PLAN) {
     const guess = correct && rand() < 0.15; // təxmini düz cavab: çox tez, ya cavab dəyişib
     rows.push({
       sql: `insert into user_answers (user_id, source, question_ref, correct, answered_at, topic_slug, chosen, time_ms, changes, flagged)
-            values (?, 'daily', ?, ?, ?, ?, ?, ?, ?, ?)`,
+            values (?, 'review', ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         uid,
-        String(task.code),
+        // Hər cəhd ayrıca sətir (eyni sual bir neçə dəfə həll oluna bilər — "w:" məşq istinadı)
+        `w:seed-${slug}-${i}:${String(task.code)}`,
         correct ? 1 : 0,
         now - daysAgo * DAY - Math.floor(rand() * 8 * 3_600_000),
         slug,

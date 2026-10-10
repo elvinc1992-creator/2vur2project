@@ -6,7 +6,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, FormatBar, Tag, h1Class, h3Class } from "@/components/ui/display";
 import { az } from "@/content/az";
 import { claimExamAction, startExamAction } from "@/lib/demo/actions";
-import { EXAMS, EXAM_FORMAT, EXAM_QUESTIONS } from "@/lib/demo/content";
+import { listExams } from "@/lib/exams/source";
 import { answeredCount, examStatus, formatDate, remainingMs } from "@/lib/demo/logic";
 import { EXAM_PRICE, examQuota } from "@/lib/demo/plans";
 import { initials, requireDemo } from "@/lib/demo/session";
@@ -16,6 +16,8 @@ export const metadata: Metadata = { title: az.app.store.title };
 
 const FILTERS = ["all", "owned", "new"] as const;
 type Filter = (typeof FILTERS)[number];
+const TYPES = ["9", "11", "blok"] as const;
+type ExamTypeFilter = (typeof TYPES)[number];
 
 export default async function StorePage(props: PageProps<"/sinaqlar">) {
   const sp = await props.searchParams;
@@ -24,12 +26,21 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
   const { user, state } = await requireDemo("/sinaqlar");
   const quota = examQuota(state);
   const t = az.app.store;
-  const total = EXAM_QUESTIONS.length;
-  const { closed, coded, written } = EXAM_FORMAT;
+  const type = TYPES.includes(sp.tip as ExamTypeFilter) ? (sp.tip as ExamTypeFilter) : null;
+  const qs = (next: { f?: string; tip?: string | null }) => {
+    const p = new URLSearchParams();
+    const ff = next.f ?? filter;
+    const tt = next.tip === undefined ? type : next.tip;
+    if (ff !== "all") p.set("f", ff);
+    if (tt) p.set("tip", tt);
+    const s = p.toString();
+    return s ? `/sinaqlar?${s}` : "/sinaqlar";
+  };
 
-  const exams = EXAMS.map((e) => ({ ...e, status: examStatus(state, e.id) })).filter((e) =>
-    filter === "all" ? true : filter === "new" ? e.status === "locked" : e.status !== "locked",
-  );
+  const exams = (await listExams())
+    .map((e) => ({ ...e, status: examStatus(state, e) }))
+    .filter((e) => (filter === "all" ? true : filter === "new" ? e.status === "locked" : e.status !== "locked"))
+    .filter((e) => !type || e.examType === type);
 
   return (
     <>
@@ -43,7 +54,7 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
           {FILTERS.map((key) => (
             <Link
               key={key}
-              href={key === "all" ? "/sinaqlar" : `/sinaqlar?f=${key}`}
+              href={qs({ f: key })}
               aria-current={filter === key ? "page" : undefined}
               className={cn(
                 "grid min-h-11 place-items-center rounded-md border-[1.5px] px-4 text-[15px] font-bold no-underline",
@@ -51,6 +62,22 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
               )}
             >
               {t.filters[key]}
+            </Link>
+          ))}
+        </nav>
+
+        <nav aria-label={t.typesLabel} className="flex flex-wrap gap-2">
+          {[null, ...TYPES].map((key) => (
+            <Link
+              key={key ?? "all"}
+              href={qs({ tip: key })}
+              aria-current={type === key ? "page" : undefined}
+              className={cn(
+                "grid min-h-10 place-items-center rounded-pill border-[1.5px] px-3.5 text-[14px] font-semibold no-underline",
+                type === key ? "border-coral-600 bg-coral-100 text-navy-900" : "border-line bg-white text-ink-muted",
+              )}
+            >
+              {key ? t.types[key] : t.typesAll}
             </Link>
           ))}
         </nav>
@@ -79,6 +106,8 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
           {exams.map((e) => {
             const result = state.results[e.id];
             const done = answeredCount(state.attempts[e.id]);
+            const { closed, coded, written } = e.counts;
+            const total = e.total;
             return (
               <Card as="article" key={e.id} className="grid gap-3.5">
                 <div className="flex items-start justify-between gap-3">

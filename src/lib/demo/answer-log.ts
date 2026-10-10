@@ -1,8 +1,5 @@
 import "server-only";
 import type { AnswerSource } from "@/db/schema";
-import { EXAM_QUESTIONS } from "./content";
-import { DAILY_KEYS, EXAM_KEYS } from "./keys";
-import { normalizeCoded } from "./logic";
 import type { AnswerMeta, DemoState } from "./state";
 
 export type AnswerEvent = {
@@ -32,7 +29,7 @@ export function newAnswers(prev: DemoState | null, next: DemoState): AnswerEvent
     out.push({
       source: "daily",
       questionRef: id,
-      correct: next.dailyOk?.[id] ?? a === DAILY_KEYS[id]?.answer,
+      correct: next.dailyOk?.[id] ?? false,
       chosen: a,
       ...withMeta(meta[`daily:${id}`]),
     });
@@ -63,19 +60,18 @@ export function newAnswers(prev: DemoState | null, next: DemoState): AnswerEvent
   for (const [examId, result] of Object.entries(next.results)) {
     if (prev?.results[examId]) continue;
     const flags = new Set(result.flags ?? []);
-    for (const q of EXAM_QUESTIONS) {
-      const given = result.answers[String(q.n)];
-      if (!given || q.format === "written") continue;
-      const key = EXAM_KEYS[q.n].answer;
-      const correct = q.format === "closed" ? given === key : normalizeCoded(given) === normalizeCoded(key);
+    // Yalnız bazadakı sınaqlar (items — n → sualın kodu və düzgünlüyü); yazılılar əl ilə yoxlanılır.
+    for (const [n, item] of Object.entries(result.items ?? {})) {
+      const given = result.answers[n];
+      if (!given || item.ok === null) continue;
       out.push({
         source: "exam",
-        questionRef: `${examId}:${q.n}`,
-        correct,
+        questionRef: `${examId}:${item.code}`,
+        correct: item.ok,
         chosen: given,
-        flagged: flags.has(q.n),
+        flagged: flags.has(Number(n)),
         examId,
-        ...withMeta(result.meta?.[String(q.n)]),
+        ...withMeta(result.meta?.[n]),
       });
     }
   }

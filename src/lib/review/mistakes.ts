@@ -1,5 +1,6 @@
 import "server-only";
-import { EXAMS, type Letter } from "@/lib/demo/content";
+import { LETTERS, type Letter } from "@/lib/demo/content";
+import { listExams } from "@/lib/exams/source";
 import { canPracticeSimilar } from "@/lib/demo/plans";
 import type { DemoState, ReviewSession } from "@/lib/demo/state";
 import { getPracticeKeys, normRef, type PracticeQuestion } from "./pool";
@@ -21,7 +22,6 @@ export type Mistake = {
  */
 export async function listMistakes(state: DemoState, pool: PracticeQuestion[]): Promise<Mistake[]> {
   const byRef = new Map(pool.map((q) => [q.ref, q]));
-  const byText = new Map(pool.filter((q) => q.source === "bank").map((q) => [q.text, q]));
   const fixed = new Set(Object.keys(state.fixed ?? {}).map(normRef));
   // Əvvəl namizədlər yığılır, sonra açarlar bir sorğu ilə gəlir.
   type Candidate = { ref: string; chosen: Letter | "skip"; where: Mistake["where"]; href?: string; examTitle?: string };
@@ -32,14 +32,15 @@ export async function listMistakes(state: DemoState, pool: PracticeQuestion[]): 
 
   for (const [id, a] of Object.entries(state.daily)) add(`q:${id}`, a, "daily", "/gunun-suallari");
   for (const [id, p] of Object.entries(state.tutor ?? {})) if (p.a && !p.ok) add(`q:${id}`, p.a, "tutor");
+  // Sınaq: qapalı suallara verilmiş yanlış cavablar (sualın bank kodu nəticədə saxlanılır).
+  const exams = Object.keys(state.results).length ? await listExams({ all: true }) : [];
   for (const [examId, res] of Object.entries(state.results)) {
-    const title = EXAMS.find((e) => e.id === examId)?.title;
-    for (const [n, given] of Object.entries(res.answers)) {
-      const examQ = byRef.get(`e:${n}`);
-      if (!examQ || !given) continue;
-      // Sınaq sualı bankdakı sualın eynisidirsə — bir sual kimi saxlanılır (q:…).
-      const same = byText.get(examQ.text);
-      add(same ? same.ref : examQ.ref, given as Letter, "exam", `/sinaq/${examId}/netice`, title);
+    const title = exams.find((e) => e.id === examId)?.title;
+    if (!title) continue;
+    for (const [n, item] of Object.entries(res.items ?? {})) {
+      const given = res.answers[n];
+      if (!given || item.ok !== false || !(LETTERS as readonly string[]).includes(given)) continue;
+      add(`q:${item.code}`, given as Letter, "exam", `/sinaq/${examId}/netice`, title);
     }
   }
   for (const [ref, a] of Object.entries(state.practiceMistakes ?? {})) add(normRef(ref), a, "practice");

@@ -4,8 +4,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
-const { DAILY, DAILY_PER_TOPIC, DAILY_TOPICS_PER_DAY, FREE_DAILY_PER_TOPIC, LETTERS } = await import("./content");
-const { DAILY_KEYS } = await import("./keys");
+const { DAILY_PER_TOPIC, DAILY_TOPICS_PER_DAY, FREE_DAILY_PER_TOPIC } = await import("./content");
 const { dailyOverview, dailyPager, examStatus, isDailyOpen, nextDailyHref, planStatus } = await import("./logic");
 const { buildDailyCtx, pickDailySet } = await import("./daily");
 const { examQuota, periodBounds, tierOf } = await import("./plans");
@@ -37,17 +36,6 @@ const withSet = (s: ReturnType<typeof seedState>, answered = new Set<string>()) 
 };
 
 const paid = (tier: "pro" | "premium") => ({ ...seedState("u"), sub: { status: "active" as const, periodEnd: "2099-01-01", tier } });
-
-describe("günün sualları: köhnə məzmun bankda", () => {
-  it("hər sualın açarı və həlli var, variantlar təkrarlanmır", () => {
-    for (const q of DAILY) {
-      const key = DAILY_KEYS[q.id];
-      expect(key, q.id).toBeDefined();
-      expect(LETTERS).toContain(key.answer);
-      expect(new Set(Object.values(q.options)).size, q.id).toBe(5);
-    }
-  });
-});
 
 describe("günün sualları: təsadüfi dəst", () => {
   it("4 mövzu × 5 sual (az sualı olan mövzuda — nə qədər var)", () => {
@@ -130,7 +118,8 @@ describe("planlar: sınaq kvotası", () => {
 
     const premium = paid("premium");
     expect(examQuota(premium, now)).toEqual({ kind: "all" });
-    expect(examStatus(premium, "3")).toBe("purchased");
-    expect(examStatus(seedState("u"), "3")).toBe("locked");
+    const exam = { id: "b11-3", durationMin: 90 } as Parameters<typeof examStatus>[1];
+    expect(examStatus(premium, exam)).toBe("purchased");
+    expect(examStatus(seedState("u"), exam)).toBe("locked");
   });
 });

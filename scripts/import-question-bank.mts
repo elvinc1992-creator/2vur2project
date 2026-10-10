@@ -83,12 +83,20 @@ await mem.batch(
 );
 
 const taskFiles = files.filter((f) => /^tasks_.*\.sql$/.test(base(f))).sort((a, b) => base(a).localeCompare(base(b)));
+// Tədris sırası: tasks_NN faylının nömrəsi (01 — Natural ədədlər…) → topics.curriculum_order.
+const curriculum: InStatement[] = [];
 for (const f of taskFiles) {
+  const before = Number((await mem.execute("select coalesce(max(seq), 0) m from tasks")).rows[0].m);
   const sqlText = read(f)
     .replace(/^\s*(BEGIN|COMMIT);\s*$/gim, "")
     .replace(/::jsonb/g, "");
   await mem.executeMultiple(sqlText);
+  const no = Number(base(f).match(/^tasks_(\d+)/)?.[1]);
+  if (!no) continue;
+  const ids = (await mem.execute({ sql: "select distinct topic_id from tasks where seq > ?", args: [before] })).rows;
+  for (const r of ids) if (r.topic_id) curriculum.push({ sql: "update topics set curriculum_order = ? where id = ?", args: [no, r.topic_id] });
 }
+await batched(curriculum);
 const tasks = (await mem.execute("select * from tasks order by seq")).rows;
 const missing = tasks.filter((t) => !t.topic_id).map((t) => t.code);
 if (missing.length) throw new Error(`Mövzusu tapılmayan suallar: ${missing.join(", ")}`);

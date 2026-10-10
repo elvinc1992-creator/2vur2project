@@ -18,7 +18,9 @@
     "db:seed-demo": "node scripts/seed-demo.mts",
     "stats:import": "node scripts/import-stats.mts",
     "bank:import": "node scripts/import-question-bank.mts",
-    "db:seed-weak": "node scripts/seed-weak-demo.mts"
+    "db:seed-weak": "node scripts/seed-weak-demo.mts",
+    "exams:generate": "node scripts/generate-exams.mts",
+    "db:dedupe-answers": "node scripts/dedupe-answers.mts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

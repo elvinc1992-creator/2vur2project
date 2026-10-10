@@ -38,7 +38,8 @@ describe("topicOfAnswer", () => {
     expect(topicOfAnswer("review", "q:st1", bank)).toBe("Stereometriya");
     expect(topicOfAnswer("review", "d:t1", bank)).toBe("Triqonometriya");
     expect(topicOfAnswer("tutor", "sinaq-1:st1", bank)).toBe("Stereometriya");
-    expect(topicOfAnswer("exam", "1:1", bank)).toBe("Faiz. Nisbət. Tənasüb");
+    // Sınaq: "sınaq:KOD" — sual bankdandır
+    expect(topicOfAnswer("exam", "b11-1:st1", bank)).toBe("Stereometriya");
     expect(topicOfAnswer("daily", "yoxdur", bank)).toBeUndefined();
   });
 });

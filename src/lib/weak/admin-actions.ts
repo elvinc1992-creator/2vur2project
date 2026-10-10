@@ -4,9 +4,9 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireAdmin } from "@/lib/admin/guard";
 import { db } from "@/db";
-import { bankTasks, errorTypes, taskOptionErrors, topics, users } from "@/db/schema";
+import { bankTasks, errorTypes, taskOptionErrors, topics } from "@/db/schema";
 import { LETTERS } from "@/lib/demo/content";
 
 // Müəllim tərəfi: mövzuların DİM tezliyi, imtahan tipləri, əsas mövzu; səhv tipləri və variant → səhv tipi.
@@ -14,13 +14,9 @@ import { LETTERS } from "@/lib/demo/content";
 const PATH = "/admin/zeif-movzular";
 const SECTIONS = ["Ədədlər", "Cəbr", "Funksiyalar", "Həndəsə", "Statistika və ehtimal"] as const;
 
-/** Rol bazadan yoxlanılır (sessiyadakı rol köhnə ola bilər). */
+/** Yalnız admin (rol bazadan yoxlanılır). */
 export async function requireStaff() {
-  const session = await auth();
-  if (!session?.user?.id) redirect(`/daxil-ol?next=${encodeURIComponent(PATH)}`);
-  const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, session.user.id));
-  if (!u || u.role === "student") redirect("/panel");
-  return session.user.id;
+  return (await requireAdmin(PATH)).id;
 }
 
 const topicSchema = z.object({

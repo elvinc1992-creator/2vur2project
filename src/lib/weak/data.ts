@@ -14,7 +14,6 @@ import {
   userTopicStats,
 } from "@/db/schema";
 import { answerTopicResolver } from "@/lib/demo/answer-topic";
-import { EXAM_QUESTIONS } from "@/lib/demo/content";
 import { addDaysIso, todayIn } from "@/lib/repetitor/plan";
 import {
   analyze,
@@ -37,8 +36,7 @@ const HISTORY_DAYS = 30;
 const BLUEPRINT: Record<ExamType, string> = { "9": "buraxilis-9", "11": "buraxilis-11", blok: "qebul-11" };
 
 /** Cavab istinadının kanonik kodu: bank kodu və ya sınaq sualı "e:n". */
-export const canonical = (source: string, ref: string) =>
-  source === "exam" ? `e:${ref.split(":")[1]}` : ref.includes(":") ? ref.slice(ref.lastIndexOf(":") + 1) : ref;
+export const canonical = (_source: string, ref: string) => (ref.includes(":") ? ref.slice(ref.lastIndexOf(":") + 1) : ref);
 
 const endOfDay = (iso: string) => Date.parse(`${iso}T23:59:59+04:00`);
 
@@ -51,7 +49,7 @@ export const parseExamTypes = (s: string): ExamType[] =>
   s.split(",").map((x) => x.trim()).filter((x): x is ExamType => x === "9" || x === "11" || x === "blok");
 
 export async function loadTopicMeta(): Promise<TopicMeta[]> {
-  const rows = await db.select().from(topics).orderBy(topics.sortOrder);
+  const rows = await db.select().from(topics).orderBy(topics.curriculumOrder);
   return rows.map((t) => ({
     id: t.id,
     slug: t.slug,
@@ -84,7 +82,7 @@ async function loadInputs(uid: string, now: number): Promise<Inputs> {
   const examType = examTypeOf(user ?? { grade: null, targetExam: null });
   const [bp] = await db.select({ avg: examBlueprints.avgPoints }).from(examBlueprints).where(eq(examBlueprints.key, BLUEPRINT[examType]));
 
-  const codes = [...new Set(rows.map((r) => canonical(r.source, r.questionRef)).filter((c) => !c.startsWith("e:")))];
+  const codes = [...new Set(rows.map((r) => canonical(r.source, r.questionRef)))];
   const [tasks, links, times] = await Promise.all([
     codes.length
       ? db
@@ -109,7 +107,7 @@ async function loadInputs(uid: string, now: number): Promise<Inputs> {
           isNotNull(userAnswers.timeMs),
           codes.length
             ? sql`(${userAnswers.source} = 'exam' or ${inArray(userAnswers.questionRef, [...codes, ...codes.map((c) => `q:${c}`)])})`
-            : eq(userAnswers.source, "exam"),
+            : sql`0`,
         ),
       ),
   ]);
@@ -129,7 +127,6 @@ async function loadInputs(uid: string, now: number): Promise<Inputs> {
     const topic = r.topicSlug ?? resolve(r.source, r.questionRef);
     if (!topic) continue;
     const t = task.get(q);
-    const examQ = q.startsWith("e:") ? EXAM_QUESTIONS.find((x) => `e:${x.n}` === q) : undefined;
     attempts.push({
       topic,
       question: q,
@@ -141,7 +138,7 @@ async function loadInputs(uid: string, now: number): Promise<Inputs> {
       flagged: r.flagged,
       medianMs: medians.get(q) ?? null,
       errorType: !r.correct && r.chosen ? (link.get(`${q}:${r.chosen}`) ?? null) : null,
-      subtopic: t?.subtopic ?? examQ?.type ?? null,
+      subtopic: t?.subtopic ?? null,
     });
   }
 
