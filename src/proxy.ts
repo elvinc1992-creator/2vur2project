@@ -18,6 +18,7 @@ const PROTECTED = [
   "/abune",
   "/abunelikler",
   "/imtahan-qarsiligi",
+  "/zeif-movzular",
   "/admin",
   // Demo mərhələsində mağaza da tətbiq daxilindədir (TZ-də ictimai /sinaqlar — landing mərhələsində).
   "/sinaqlar",
@@ -25,7 +26,7 @@ const PROTECTED = [
 ];
 // /daxil-ol və /qeydiyyat daxil olmuş istifadəçiyə də açıqdır: başqa hesabla daxil olmaq və ya
 // yeni hesab yaratmaq sessiyanı həmin hesaba keçirir (səhifədə xəbərdarlıq göstərilir).
-const STAFF_ROLES = new Set(["editor", "admin"]);
+const STAFF_ROLES = new Set(["teacher", "editor", "admin"]);
 
 const matches = (path: string, prefixes: string[]) =>
   prefixes.some((p) => path === p || path.startsWith(`${p}/`));

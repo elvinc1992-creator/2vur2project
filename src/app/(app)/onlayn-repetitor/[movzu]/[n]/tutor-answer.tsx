@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { ArrowIcon, BookIcon, BulbIcon, CheckCircleIcon, XCircleIcon } from "@/components/icons";
 import { AnswerOptions } from "@/components/ui/answer-options";
+import { useAnswerMeta } from "@/components/ui/use-answer-meta";
 import { Button, buttonClass } from "@/components/ui/button";
 import { MathText } from "@/components/ui/math-text";
 import { az } from "@/content/az";
@@ -16,14 +17,17 @@ type Props = {
   options: Record<Letter, string>;
   refText: string;
   statsHref: string;
+  /** Bankdakı sualın ipucu yoxdursa, düymə göstərilmir. */
+  hasHint: boolean;
   initialHint: string | null;
   initial: RepetitorResult | null;
 };
 
 /** Repetitor rejimi: ipucu (istəyəndə) → cavab → addım-addım izah → növbəti sual. */
-export function TutorAnswer({ id, options, refText, statsHref, initialHint, initial }: Props) {
+export function TutorAnswer({ id, options, refText, statsHref, hasHint, initialHint, initial }: Props) {
   const t = az.app.tutor;
   const [selected, setSelected] = useState<Letter | null>(null);
+  const timing = useAnswerMeta();
   const [hint, setHint] = useState<string | null>(initialHint);
   const [result, setResult] = useState<RepetitorResult | null>(initial);
   const [pending, startTransition] = useTransition();
@@ -32,7 +36,7 @@ export function TutorAnswer({ id, options, refText, statsHref, initialHint, init
 
   const submit = (choice: Letter | "skip") =>
     startTransition(async () => {
-      setResult(await answerRepetitorAction(id, choice));
+      setResult(await answerRepetitorAction(id, choice, timing.meta()));
     });
   const askHint = () =>
     startHint(async () => {
@@ -46,7 +50,10 @@ export function TutorAnswer({ id, options, refText, statsHref, initialHint, init
         label={t.optionsLabel}
         options={options}
         value={selected}
-        onChange={setSelected}
+        onChange={(l) => {
+          timing.track(l);
+          setSelected(l);
+        }}
         onClear={() => setSelected(null)}
         clearLabel={t.clearSelection}
         disabled={pending}
@@ -76,17 +83,19 @@ export function TutorAnswer({ id, options, refText, statsHref, initialHint, init
           >
             {t.check}
           </Button>
-          <div className="grid gap-2 md:grid-cols-2">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={pending || Boolean(hint)}
-              loading={hintPending}
-              onClick={askHint}
-            >
-              <BulbIcon />
-              {t.hint}
-            </Button>
+          <div className={cn("grid gap-2", hasHint && "md:grid-cols-2")}>
+            {hasHint && (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={pending || Boolean(hint)}
+                loading={hintPending}
+                onClick={askHint}
+              >
+                <BulbIcon />
+                {t.hint}
+              </Button>
+            )}
             <Button type="button" variant="ghost" disabled={pending} onClick={() => submit("skip")}>
               {t.dontKnow}
             </Button>

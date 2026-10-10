@@ -13,7 +13,7 @@ export type TickResult = { expired: false; remaining: number } | { expired: true
 export function finalizeAttempt(state: DemoState, id: string, timedOut: boolean): number {
   const attempt = state.attempts[id];
   if (!attempt) return 0;
-  state.results[id] = gradeExam(attempt.answers, timedOut);
+  state.results[id] = { ...gradeExam(attempt.answers, timedOut), meta: attempt.meta, flags: attempt.flags };
   delete state.attempts[id];
   return Object.keys(attempt.answers).length;
 }
@@ -44,6 +44,7 @@ export function saveAnswer(
   n: number,
   value: string,
   now = Date.now(),
+  ms?: number,
 ): { ok: boolean; expired?: boolean; answered?: number } {
   const attempt = state.attempts[id];
   const exam = findExam(id);
@@ -59,6 +60,11 @@ export function saveAnswer(
     (q.format === "coded" && /^[-−]?[\d.,]{1,6}$/.test(v)) ||
     (q.format === "written" && v === "w");
   if (!valid) return { ok: false };
+  // Davranış: cavab başqa cavabla əvəzlənibsə — dəyişiklik; vaxt — klientin ölçdüyü ümumi vaxt.
+  const m = ((attempt.meta ??= {})[n] ??= { ms: 0, ch: 0 });
+  const before = attempt.answers[n];
+  if (before && v && before !== v) m.ch += 1;
+  if (ms !== undefined) m.ms = Math.max(m.ms, ms);
   if (v === "") delete attempt.answers[n];
   else attempt.answers[n] = v;
   return { ok: true };

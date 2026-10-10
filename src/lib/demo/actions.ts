@@ -16,9 +16,10 @@ import {
   todayIso,
   typeStats,
 } from "./logic";
+import { afterExamFinished } from "@/lib/weak/hooks";
 import { finalizeAttempt } from "./exam-session";
 import { EXAM_PRICE, examQuota, periodEndFrom, PLANS, priceOf, type BillingPeriod } from "./plans";
-import { resetDemoState, updateDemoState, type PaidTier } from "./state";
+import { cleanMeta, rememberMeta, resetDemoState, updateDemoState, type AnswerMeta, type PaidTier } from "./state";
 
 async function userId(): Promise<string> {
   const session = await auth();
@@ -37,7 +38,7 @@ export type DailyResult = {
   nextHref: string | null;
 };
 
-export async function answerDailyAction(id: string, choice: string): Promise<DailyResult> {
+export async function answerDailyAction(id: string, choice: string, meta?: AnswerMeta): Promise<DailyResult> {
   const parsed = z.enum([...LETTERS, "skip"]).safeParse(choice);
   const key = await getRepetitorKey(id);
   if (!key || !parsed.success) throw new Error("Yanlış sorğu");
@@ -53,6 +54,7 @@ export async function answerDailyAction(id: string, choice: string): Promise<Dai
     if (!state.daily[id]) {
       state.daily[id] = parsed.data;
       (state.dailyOk ??= {})[id] = parsed.data === key.answer;
+      rememberMeta(state, `daily:${id}`, cleanMeta(meta));
     }
     return {
       chosen: state.daily[id],
@@ -98,10 +100,13 @@ export async function startExamAction(id: string) {
 }
 
 export async function finishExamAction(id: string, timedOut = false): Promise<{ answered: number }> {
-  return updateDemoState(await userId(), (state) => {
+  const uid = await userId();
+  const res = await updateDemoState(uid, (state) => {
     if (!state.attempts[id]) return { answered: Object.keys(state.results[id]?.answers ?? {}).length };
     return { answered: finalizeAttempt(state, id, timedOut) };
   });
+  await afterExamFinished(uid);
+  return res;
 }
 
 /* ---------------- Ödəniş (mock) və abunə ---------------- */

@@ -8,7 +8,7 @@ import type { Attempt, DemoState, ExamResult } from "./state";
 const DAY = 24 * 60 * 60 * 1000;
 
 /* ---------------- Günün sualları ---------------- */
-// Hər gün sual bankından (tutor_questions) təsadüfi 4 mövzu × 5 sual (bax: daily.ts → DailySet).
+// Hər gün sual bankından (bank_tasks) təsadüfi 4 mövzu × 5 sual (bax: daily.ts → DailySet).
 // Free planda hər mövzunun ilk FREE_DAILY_PER_TOPIC sualı açıqdır.
 
 /** Bankdakı sual (brauzerə gedə bilən hissə) + mövzunun adı. */
@@ -19,6 +19,8 @@ export type BankQuestion = {
   type: string;
   freq: number;
   text: string;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   options: Record<Letter, string>;
   ref: string;
 };

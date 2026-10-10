@@ -151,6 +151,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Cavab kartı: dairə qaraldılanda qısa "pop" */
+@keyframes pop {
+  50% {
+    transform: scale(1.22);
+  }
+}
+
 /* Səhv variant: qısa titrəyiş (İmtahan qarşılığı) */
 @keyframes shake {
   25% {

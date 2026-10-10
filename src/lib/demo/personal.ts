@@ -18,6 +18,17 @@ export const DEMO_TO_REAL: Record<TopicSlug, string> = {
   feza: "Stereometriya",
 };
 
+/** Sınaq mövzuları (demo slug) → bankın mövzu slug-ı. */
+export const DEMO_TO_SLUG: Record<TopicSlug, string> = {
+  faiz: "faiz-nisbet-tenasub",
+  funksiya: "funksiya-ve-qrafikler",
+  triqonometriya: "triqonometriya",
+  ucbucaq: "ucbucaqlar",
+  loqarifm: "loqarifm-ustlu-tenlik-berabersizlik",
+  ardicilliq: "ededi-ardicilliqlar-silsileler",
+  feza: "stereometriya",
+};
+
 export type Personal = { ok: number; total: number; pct: number };
 
 /** İstifadəçinin real mövzu adı üzrə düzgün cavab faizi: günün sualları (bankdan) + bitmiş sınaqlar. */

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BagIcon, BookIcon, CalcIcon, CapIcon, CardIcon, ChartIcon, HomeIcon, RetryIcon, TargetIcon, UserIcon } from "@/components/icons";
+import { BagIcon, BookIcon, CalcIcon, CapIcon, CardIcon, ChartIcon, FlameIcon, HomeIcon, RetryIcon, TargetIcon, UserIcon } from "@/components/icons";
 import { az } from "@/content/az";
 import { cn } from "@/lib/cn";
 
@@ -16,6 +16,7 @@ const ITEMS = [
   { href: "/profil", match: ["/profil"], label: t.profile, long: t.profile, Icon: UserIcon },
 ];
 const MISTAKES = { href: "/sehvlerim", match: ["/sehvlerim"], label: t.mistakes, long: t.mistakes, Icon: RetryIcon };
+const WEAK = { href: "/zeif-movzular", match: ["/zeif-movzular"], label: az.app.weak.nav, long: az.app.weak.nav, Icon: FlameIcon };
 const SCORE = { href: "/bal-simulyatoru", match: ["/bal-simulyatoru"], label: t.score, long: t.score, Icon: CalcIcon };
 const STATS = { href: "/statistika", match: ["/statistika"], label: t.stats, long: t.stats, Icon: ChartIcon };
 const EXAM_MATCH = { href: "/imtahan-qarsiligi", match: ["/imtahan-qarsiligi"], label: az.app.examMatch.nav, long: az.app.examMatch.nav, Icon: BookIcon };
@@ -31,7 +32,7 @@ export function SideNav({ footer }: { footer?: React.ReactNode }) {
   const isActive = useActive();
   return (
     <nav aria-label={t.label} className="grid content-start gap-1">
-      {[...ITEMS, MISTAKES, SCORE, STATS, EXAM_MATCH, PLANS].map(({ href, match, long, Icon }) => {
+      {[...ITEMS, MISTAKES, WEAK, SCORE, STATS, EXAM_MATCH, PLANS].map(({ href, match, long, Icon }) => {
         const active = isActive(match);
         return (
           <Link

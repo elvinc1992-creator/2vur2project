@@ -4,7 +4,7 @@ import type { TickResult } from "./exam-session";
 type Body =
   | { op: "tick" }
   | { op: "pause" }
-  | { op: "save"; n: number; value: string }
+  | { op: "save"; n: number; value: string; ms?: number }
   | { op: "flag"; n: number }
   | { op: "timeout" };
 
@@ -31,8 +31,9 @@ function call<T>(id: string, body: Body): Promise<T> {
 export const examApi = {
   tick: (id: string) => call<TickResult | null>(id, { op: "tick" }),
   pause: (id: string) => call<TickResult | null>(id, { op: "pause" }),
-  save: (id: string, n: number, value: string) =>
-    call<{ ok: boolean; expired?: boolean; answered?: number }>(id, { op: "save", n, value }),
+  /** ms — suala indiyədək sərf olunan ümumi vaxt (zəif mövzuların təhlili üçün). */
+  save: (id: string, n: number, value: string, ms?: number) =>
+    call<{ ok: boolean; expired?: boolean; answered?: number }>(id, { op: "save", n, value, ms }),
   flag: (id: string, n: number) => call<{ ok: boolean }>(id, { op: "flag", n }),
   timeout: (id: string) => call<{ answered: number }>(id, { op: "timeout" }),
   /** Vərəq bağlananda: brauzer sorğunu səhifə getdikdən sonra da göndərir. */

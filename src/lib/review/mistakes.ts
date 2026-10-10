@@ -2,7 +2,7 @@ import "server-only";
 import { EXAMS, type Letter } from "@/lib/demo/content";
 import { canPracticeSimilar } from "@/lib/demo/plans";
 import type { DemoState, ReviewSession } from "@/lib/demo/state";
-import { getPracticeKey, normRef, type PracticeQuestion } from "./pool";
+import { getPracticeKeys, normRef, type PracticeQuestion } from "./pool";
 
 export type Mistake = {
   q: PracticeQuestion;
@@ -23,16 +23,15 @@ export async function listMistakes(state: DemoState, pool: PracticeQuestion[]): 
   const byRef = new Map(pool.map((q) => [q.ref, q]));
   const byText = new Map(pool.filter((q) => q.source === "bank").map((q) => [q.text, q]));
   const fixed = new Set(Object.keys(state.fixed ?? {}).map(normRef));
-  const out = new Map<string, Mistake>();
-  const add = async (ref: string, chosen: Letter | "skip", where: Mistake["where"], href?: string, examTitle?: string) => {
-    const q = byRef.get(ref);
-    const key = await getPracticeKey(ref);
-    if (out.has(ref) || !q || !key || chosen === key.answer) return;
-    out.set(ref, { q, chosen, correct: key.answer, where, examTitle, href: href ?? q.href, fixed: fixed.has(ref) });
+  // Əvvəl namizədlər yığılır, sonra açarlar bir sorğu ilə gəlir.
+  type Candidate = { ref: string; chosen: Letter | "skip"; where: Mistake["where"]; href?: string; examTitle?: string };
+  const candidates: Candidate[] = [];
+  const add = (ref: string, chosen: Letter | "skip", where: Mistake["where"], href?: string, examTitle?: string) => {
+    candidates.push({ ref, chosen, where, href, examTitle });
   };
 
-  for (const [id, a] of Object.entries(state.daily)) await add(`q:${id}`, a, "daily", "/gunun-suallari");
-  for (const [id, p] of Object.entries(state.tutor ?? {})) if (p.a && !p.ok) await add(`q:${id}`, p.a, "tutor");
+  for (const [id, a] of Object.entries(state.daily)) add(`q:${id}`, a, "daily", "/gunun-suallari");
+  for (const [id, p] of Object.entries(state.tutor ?? {})) if (p.a && !p.ok) add(`q:${id}`, p.a, "tutor");
   for (const [examId, res] of Object.entries(state.results)) {
     const title = EXAMS.find((e) => e.id === examId)?.title;
     for (const [n, given] of Object.entries(res.answers)) {
@@ -40,10 +39,19 @@ export async function listMistakes(state: DemoState, pool: PracticeQuestion[]): 
       if (!examQ || !given) continue;
       // Sınaq sualı bankdakı sualın eynisidirsə — bir sual kimi saxlanılır (q:…).
       const same = byText.get(examQ.text);
-      await add(same ? same.ref : examQ.ref, given as Letter, "exam", `/sinaq/${examId}/netice`, title);
+      add(same ? same.ref : examQ.ref, given as Letter, "exam", `/sinaq/${examId}/netice`, title);
     }
   }
-  for (const [ref, a] of Object.entries(state.practiceMistakes ?? {})) await add(normRef(ref), a, "practice");
+  for (const [ref, a] of Object.entries(state.practiceMistakes ?? {})) add(normRef(ref), a, "practice");
+
+  const keys = await getPracticeKeys(candidates.filter((c) => byRef.has(c.ref)).map((c) => c.ref));
+  const out = new Map<string, Mistake>();
+  for (const { ref, chosen, where, href, examTitle } of candidates) {
+    const q = byRef.get(ref);
+    const key = keys.get(ref);
+    if (out.has(ref) || !q || !key || chosen === key.answer) continue;
+    out.set(ref, { q, chosen, correct: key.answer, where, examTitle, href: href ?? q.href, fixed: fixed.has(ref) });
+  }
   return [...out.values()];
 }
 

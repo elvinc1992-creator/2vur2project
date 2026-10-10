@@ -32,7 +32,7 @@ test("27 imtahan sualı və qarşılığı (JSON-dan); interaktiv variantlar, ş
   await expect(page.getByRole("heading", { level: 1, name: "İmtahan və bizim suallar" })).toBeVisible();
   await expect(page.getByRole("article")).toHaveCount(27);
   await expect(page.getByRole("progressbar", { name: "Sual bankı hazır olan mövzular" })).toBeVisible();
-  await expect(page.getByText("4 / 27 mövzu")).toBeVisible();
+  await expect(page.getByText(/^\d+ \/ 27 mövzu$/)).toBeVisible();
   await expect(page.getByRole("main")).not.toContainText(/toplu/i);
 
   // Noutbuk ekranında (1366×768) ilk mövzunun hər iki kartı açılan kimi görünür

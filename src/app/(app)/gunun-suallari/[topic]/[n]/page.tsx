@@ -75,6 +75,9 @@ export default async function DailyQuestionPage(props: PageProps<"/gunun-suallar
               n={Number(n)}
               total={qs.length}
               text={q.text}
+              imageUrl={q.imageUrl}
+              imageAlt={q.imageAlt}
+              qid={q.id}
             />
             <DailyAnswer key={q.id} id={q.id} options={q.options} refText={q.ref} initial={initial} />
           </>

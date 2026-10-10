@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { userAnswers, userState } from "@/db/schema";
 import { newAnswers } from "./answer-log";
+import { answerTopicResolver } from "./answer-topic";
 import type { TutorExamRecord, TutorPlan } from "@/lib/repetitor/plan";
 import type { Letter, TopicSlug } from "./content";
 
@@ -33,7 +34,12 @@ export type Attempt = {
   /** n → hərf (qapalı), ədəd (kodlaşdırılan), "w" (yazılı — mətn brauzerdə saxlanılır). */
   answers: Record<string, string>;
   flags: number[];
+  /** n → suala sərf olunan vaxt (ms) və cavabın dəyişdirilmə sayı (zəif mövzuların təhlili üçün). */
+  meta?: Record<string, AnswerMeta>;
 };
+
+/** Cavabın davranış məlumatı: vaxt (ms) və cavabın neçə dəfə dəyişdirildiyi. */
+export type AnswerMeta = { ms: number; ch: number };
 
 export type ExamResult = {
   score: number;
@@ -45,6 +51,9 @@ export type ExamResult = {
   byTopic: Array<{ topic: TopicSlug; ok: number; total: number }>;
   weak: Array<{ topic: TopicSlug; type: string; ref: string }>;
   answers: Record<string, string>;
+  /** Sınaqdakı vaxt/dəyişiklik və işarələnmiş suallar (köhnə nəticələrdə yoxdur). */
+  meta?: Record<string, AnswerMeta>;
+  flags?: number[];
   timedOut?: boolean;
   finishedAt: number;
 };
@@ -85,7 +94,26 @@ export type DemoState = {
   tutorPlan?: TutorPlan;
   /** Onlayn repetitor: hər 2 mövzudan sonrakı sınaqların nəticələri (açar: "sinaq-1"…). */
   tutorExams?: Record<string, TutorExamRecord>;
+  /** Son cavabların vaxtı/dəyişiklik sayı: "source:ref" → meta (user_answers-ə yazılır; ən çox 100). */
+  answerMeta?: Record<string, AnswerMeta>;
 };
+
+/** Klientdən gələn meta: yalnız məntiqli ədədlər (≤ 6 saat, ≤ 50 dəyişiklik). */
+export function cleanMeta(meta: unknown): AnswerMeta | undefined {
+  if (!meta || typeof meta !== "object") return undefined;
+  const { ms, ch } = meta as Record<string, unknown>;
+  if (typeof ms !== "number" || typeof ch !== "number" || !Number.isFinite(ms) || !Number.isFinite(ch)) return undefined;
+  return { ms: Math.min(Math.max(0, ms), 6 * 3_600_000), ch: Math.min(Math.max(0, ch), 50) };
+}
+
+/** Cavabın meta məlumatını yadda saxlayır (köhnələr silinir — vəziyyət böyüməsin). */
+export function rememberMeta(state: DemoState, key: string, meta: AnswerMeta | undefined) {
+  if (!meta) return;
+  const m = (state.answerMeta ??= {});
+  m[key] = { ms: Math.max(0, Math.round(meta.ms)), ch: Math.max(0, Math.round(meta.ch)) };
+  const keys = Object.keys(m);
+  for (const k of keys.slice(0, Math.max(0, keys.length - 100))) delete m[k];
+}
 
 /** Sıfır vəziyyət: heç bir sual həll olunmayıb, sınaq alınmayıb, abunə yoxdur (pulsuz plan). */
 export function seedState(uid: string): DemoState {
@@ -147,8 +175,12 @@ async function saveDemoState(state: DemoState): Promise<boolean> {
   if (res.rowsAffected === 0) return false;
 
   const prev = before ? parse(before.json, state.uid) : null;
-  const answers = newAnswers(prev, state).map((a) => ({ ...a, userId: state.uid }));
-  if (answers.length) await db.insert(userAnswers).values(answers);
+  const events = newAnswers(prev, state);
+  if (events.length) {
+    // Mövzu cavab anında yazılır — sual sonradan bankdan çıxsa da təhlil itmir.
+    const topicOf = await answerTopicResolver();
+    await db.insert(userAnswers).values(events.map((a) => ({ ...a, userId: state.uid, topicSlug: topicOf(a.source, a.questionRef) ?? null })));
+  }
   loaded.set(state, { row: data, json });
   return true;
 }

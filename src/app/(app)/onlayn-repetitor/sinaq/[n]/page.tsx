@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import { Page, Topbar } from "@/components/app/topbar";
 import { CheckCircleIcon, XCircleIcon } from "@/components/icons";
@@ -98,6 +99,15 @@ export default async function TutorExamPage(props: PageProps<"/onlayn-repetitor/
                   <b className="tabular">{i + 1}. </b>
                   <MathText text={q.text} />
                 </p>
+                {q.imageUrl && (
+                  <Image
+                    src={q.imageUrl}
+                    alt={q.imageAlt ?? ""}
+                    width={520}
+                    height={360}
+                    className="h-auto max-h-[280px] w-auto max-w-full justify-self-center rounded-md border border-line bg-white object-contain p-2"
+                  />
+                )}
                 <fieldset className="m-0 grid min-w-0 gap-2 border-0 p-0 sm:grid-cols-5">
                   <legend className="sr-only">
                     {t.optionsLabel}: {i + 1}

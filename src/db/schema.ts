@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { check, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // Vaxt sütunları — Unix millisaniyə (integer, mode: timestamp_ms).
 const createdAt = () =>
@@ -155,40 +155,29 @@ export const userAnswers = sqliteTable(
     answeredAt: integer("answered_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
+    /* Zəif mövzuların təhlili üçün (köhnə sətirlərdə boşdur). */
+    /** Mövzu (slug) — cavab anında yazılır; sual sonradan bankdan çıxsa da məlumat itmir. */
+    topicSlug: text("topic_slug"),
+    /** Seçilmiş cavab (hərf və ya kodlaşdırılan ədəd). */
+    chosen: text("chosen"),
+    /** Suala sərf olunan vaxt (ms). */
+    timeMs: integer("time_ms"),
+    /** Cavab neçə dəfə dəyişdirilib. */
+    changes: integer("changes"),
+    flagged: integer("flagged", { mode: "boolean" }),
+    /** Sınaq (sınaq cavabları üçün). */
+    examId: text("exam_id"),
   },
   (t) => [
     index("user_answers_user_time_idx").on(t.userId, t.answeredAt),
+    index("user_answers_question_idx").on(t.questionRef),
     check("user_answers_source_check", sql`${t.source} in ('daily','tutor','review','exam')`),
   ],
 );
 
 /* ---------------- Onlayn repetitor ---------------- */
 
-/** Repetitor sualları — mövzuya bağlı; cavab, ipucu və izah yalnız serverdə istifadə olunur. */
-export const tutorQuestions = sqliteTable(
-  "tutor_questions",
-  {
-    id: text("id").primaryKey(),
-    topicId: integer("topic_id")
-      .notNull()
-      .references(() => topics.id),
-    type: text("type").notNull(),
-    freq: integer("freq").notNull().default(0),
-    text: text("text").notNull(),
-    /** JSON: { A, B, C, D, E }. */
-    options: text("options").notNull(),
-    ref: text("ref").notNull().default(""),
-    answer: text("answer").notNull(),
-    hint: text("hint").notNull().default(""),
-    /** JSON: string[]. */
-    steps: text("steps").notNull(),
-    sortOrder: integer("sort_order").notNull().default(0),
-  },
-  (t) => [
-    index("tutor_questions_topic_idx").on(t.topicId, t.sortOrder),
-    check("tutor_questions_answer_check", sql`${t.answer} in ('A','B','C','D','E')`),
-  ],
-);
+/* Köhnə test sualları (tutor_questions) silindi — suallar yalnız bank_tasks-dadır. */
 
 /* ---------------- Sual bankı (müəllifin sualları, topic_questions/*.sql) ---------------- */
 
@@ -238,6 +227,8 @@ export const bankTasks = sqliteTable(
     imageUrl: text("image_url"),
     imageAlt: text("image_alt"),
     difficulty: integer("difficulty"),
+    /** Sualın balı (imtahandakı çəki); müəllim dəyişə bilər. */
+    points: real("points").notNull().default(1),
     basedOnYear: integer("based_on_year"),
     basedOnPart: text("based_on_part"),
     basedOnPage: integer("based_on_page"),
@@ -297,6 +288,41 @@ export const examCounterparts = sqliteTable(
   (t) => [uniqueIndex("exam_counterparts_exam_sort_uq").on(t.examN, t.sortOrder), index("exam_counterparts_topic_idx").on(t.topicId)],
 );
 
+/**
+ * DİM imtahanlarının quruluşu (sınaq generasiyası üçün): imtahan → sual tipləri üzrə say və nömrə aralığı.
+ * Mənbə: topic_questions/sual_tipleri_cedveli.txt.
+ */
+export const examBlueprints = sqliteTable("exam_blueprints", {
+  /** "buraxilis-9", "buraxilis-11", "qebul-11". */
+  key: text("key").primaryKey(),
+  name: text("name").notNull(),
+  grade: integer("grade").notNull(),
+  kind: text("kind", { enum: ["buraxilis", "qebul"] }).notNull(),
+  subject: text("subject").notNull(),
+  totalQuestions: integer("total_questions").notNull(),
+  /** Bir sualın orta balı (maksimal bal / sual sayı) — bal itkisinin hesablanması üçün. */
+  avgPoints: real("avg_points").notNull().default(4),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const examBlueprintSections = sqliteTable(
+  "exam_blueprint_sections",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    blueprintKey: text("blueprint_key")
+      .notNull()
+      .references(() => examBlueprints.key),
+    /** bank_tasks.format ilə eyni: closed (qapalı), open (açıq kodlaşdırılan), written (izahlı). */
+    format: text("format", { enum: TASK_FORMATS }).notNull(),
+    questionCount: integer("question_count").notNull(),
+    /** İmtahan kitabçasındakı nömrələr (məs. 9-cu sinif: №61–75). */
+    firstNo: integer("first_no").notNull(),
+    lastNo: integer("last_no").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [uniqueIndex("exam_blueprint_sections_uq").on(t.blueprintKey, t.format)],
+);
+
 /** Mövzunun nəzəriyyəsi (Markdown + LaTeX). */
 export const tutorTheory = sqliteTable("tutor_theory", {
   topicId: integer("topic_id")
@@ -322,6 +348,14 @@ export const topics = sqliteTable("topics", {
   name: text("name").notNull().unique(),
   part: text("part").notNull(),
   sortOrder: integer("sort_order").notNull(),
+  /** Bölmə: Ədədlər, Cəbr, Funksiyalar, Həndəsə, Statistika və ehtimal. */
+  section: text("section"),
+  /** Bir imtahanda bu mövzudan orta sual sayı (müəllim daxil edir; ilkin dəyər — imtahan təhlilindən). */
+  dimFrequency: real("dim_frequency").notNull().default(0),
+  /** Aid olduğu imtahan tipləri, vergüllə: "9,11,blok". */
+  examTypes: text("exam_types").notNull().default("9,11,blok"),
+  /** Əsas (ilkin) mövzu — kök səbəb təhlili üçün. */
+  prerequisiteId: integer("prerequisite_id"),
 });
 
 const matchCheck = (col: unknown) =>
@@ -366,3 +400,108 @@ export const statNotes = sqliteTable("stat_notes", {
   body: text("body").notNull(),
   sortOrder: integer("sort_order").notNull(),
 });
+
+/* ---------------- Zəif mövzular (avtomatik təhlil) ---------------- */
+
+export const WEAK_STATUSES = ["few", "weak", "growing", "mastered"] as const;
+export type WeakStatus = (typeof WEAK_STATUSES)[number];
+
+/** Səhv tipi (müəllim yaradır): məs. "Faizdə baza səhvi". */
+export const errorTypes = sqliteTable(
+  "error_types",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    topicId: integer("topic_id")
+      .notNull()
+      .references(() => topics.id),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [uniqueIndex("error_types_topic_name_uq").on(t.topicId, t.name)],
+);
+
+/** Sualın yanlış variantı → səhv tipi (könüllü bağlantı). */
+export const taskOptionErrors = sqliteTable(
+  "task_option_errors",
+  {
+    taskCode: text("task_code").notNull(),
+    option: text("option").notNull(),
+    errorTypeId: integer("error_type_id")
+      .notNull()
+      .references(() => errorTypes.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.taskCode, t.option] })],
+);
+
+/** Şagird–mövzu nəticəsi (keş): son hesablamanın nəticəsi. */
+export const userTopicStats = sqliteTable(
+  "user_topic_stats",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    topicId: integer("topic_id")
+      .notNull()
+      .references(() => topics.id),
+    /** 0..1 */
+    mastery: real("mastery").notNull(),
+    /** İmtahanda itirilən təxmini bal. */
+    loss: real("loss").notNull(),
+    attempts: integer("attempts").notNull(),
+    status: text("status", { enum: WEAK_STATUSES }).notNull(),
+    /** Əsas səhv: səhv tipi (varsa) və ya ən çox səhv edilən alt mövzu. */
+    mainError: text("main_error"),
+    mainErrorTypeId: integer("main_error_type_id"),
+    mainErrorCount: integer("main_error_count").notNull().default(0),
+    /** Şübhəli (təxmini) düz cavabların sayı. */
+    guesses: integer("guesses").notNull().default(0),
+    /** Kök səbəb: zəif əsas mövzu. */
+    rootTopicId: integer("root_topic_id"),
+    /** Növbəti təkrar yoxlamanın tarixi (YYYY-MM-DD). */
+    nextReviewAt: text("next_review_at"),
+    /** Təkrar yoxlamadan keçib — "Mənimsənib" (yeni zəif nəticəyə qədər). */
+    masteredAt: integer("mastered_at", { mode: "timestamp_ms" }),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.topicId] })],
+);
+
+/** Gündəlik ümumi bal itkisi — dinamika qrafiki üçün. */
+export const userLossHistory = sqliteTable(
+  "user_loss_history",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** YYYY-MM-DD (Bakı vaxtı). */
+    date: text("date").notNull(),
+    loss: real("loss").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.date] })],
+);
+
+/** Hədəfli məşq dəsti ("N sualla düzəlt") və təkrar yoxlama (5 sual). */
+export const weakPracticeSets = sqliteTable(
+  "weak_practice_sets",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    topicId: integer("topic_id")
+      .notNull()
+      .references(() => topics.id),
+    kind: text("kind", { enum: ["fix", "recheck"] }).notNull(),
+    /** JSON: sual kodları. */
+    questionIds: text("question_ids").notNull(),
+    /** JSON: kod → seçilmiş hərf. */
+    answers: text("answers").notNull().default("{}"),
+    correct: integer("correct"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [index("weak_practice_sets_user_idx").on(t.userId, t.createdAt)],
+);

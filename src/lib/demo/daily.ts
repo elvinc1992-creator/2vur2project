@@ -57,9 +57,12 @@ export async function ensureDaily(uid: string, now = new Date()): Promise<{ stat
   // Yeni dəst — cari bankdan; dəstdəki suallar isə bütün hovuzdan tanınır (gün ərzində bank yenilənsə də işləsin).
   const [bank, pool] = await Promise.all([listRepetitorTopics(), listQuestionPool()]);
   const today = todayIn(now);
+  const known = new Set(pool.flatMap((t) => t.questions.map((q) => q.id)));
   let state!: DemoState;
   await updateDemoState(uid, (s) => {
-    if (s.dailySet?.date !== today) {
+    // Yeni gün və ya dəstin bir mövzusunun bütün sualları bankdan çıxıb (məs. köhnə test sualları) — yeni dəst.
+    const stale = s.dailySet?.topics.some((t) => !t.ids.some((id) => known.has(id)));
+    if (s.dailySet?.date !== today || stale) {
       const answered = new Set([...Object.keys(s.daily), ...Object.keys(s.tutor ?? {})]);
       s.dailySet = pickDailySet(bank, answered, today);
     }
