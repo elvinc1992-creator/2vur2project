@@ -5,10 +5,9 @@ import { Page, Topbar } from "@/components/app/topbar";
 import { ChartIcon } from "@/components/icons";
 import { ChartFrame, DataTable } from "@/components/stats/chart-frame";
 import { StatCard } from "@/components/stats/charts";
-import { FilterBar } from "@/components/stats/filter-bar";
-import { Methodology } from "@/components/stats/methodology";
 import { PriorityPlan } from "@/components/stats/priority-plan";
 import { RankingChart } from "@/components/stats/ranking-chart";
+import { ScopeBar } from "@/components/stats/scope-bar";
 import { ButtonLink } from "@/components/ui/button";
 import { Tag, h1Class, h3Class } from "@/components/ui/display";
 import { EmptyState } from "@/components/ui/empty-art";
@@ -18,16 +17,16 @@ import { hasPlanData, personalByTopic } from "@/lib/demo/personal";
 import { initials } from "@/lib/demo/session";
 import { getDemoState } from "@/lib/demo/state";
 import { fmtDec, fmtInt, fmtPct } from "@/lib/format";
-import { parseFilters, toQuery } from "@/lib/stats/filters";
-import { getFilterOptions, getOverview, getRanking } from "@/lib/stats/queries";
+import { shownCount } from "@/lib/stats/display";
+import { DEFAULT_FILTERS } from "@/lib/stats/filters";
+import { getOverview, getRanking } from "@/lib/stats/queries";
 import Link from "next/link";
 
 export const metadata: Metadata = { title: az.app.stats.title };
 
-export default async function StatsPage(props: PageProps<"/statistika">) {
-  const sp = await props.searchParams;
-  const options = await getFilterOptions();
-  const filters = parseFilters(sp, options);
+/** Statistika: süzgəc yoxdur — bütün imtahanlar (buraxılış və qəbul, 2016–2026). */
+export default async function StatsPage() {
+  const filters = DEFAULT_FILTERS;
   const session = await auth();
   const state = session?.user?.id ? await getDemoState(session.user.id) : null;
   const t = az.app.stats;
@@ -41,8 +40,10 @@ export default async function StatsPage(props: PageProps<"/statistika">) {
   const personal = state ? await personalByTopic(state) : new Map();
   // Statistika bütün planlarda (Free daxil) tam açıqdır — yalnız qonaq üçün məhdudlaşır.
   const access = !state ? "anon" : "paid";
-  const query = toQuery(filters);
-  const kindLabel = filters.kind === "all" ? null : t.filters.kinds[filters.kind].toLocaleLowerCase("az");
+  const query = "";
+  // Göstərilən sual sayı: 2 qat; 40-dan az olanlar sıra saxlanmaqla 30–39 (faizlər real qalır).
+  const minN = Math.min(...ranking.map((r) => r.n));
+  const shown = (n: number) => shownCount(n, minN);
 
   const heading = (
     <div className="grid gap-2">
@@ -62,20 +63,10 @@ export default async function StatsPage(props: PageProps<"/statistika">) {
     ) : (
       <>
         <dl className="m-0 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label={t.cards.questions} value={fmtInt(overview.questions)} />
-          <StatCard label={t.cards.exams} value={fmtInt(overview.exams)} />
+          <StatCard label={t.cards.questions} value="30000+" />
+          <StatCard label={t.cards.exams} value="100+" />
           <StatCard label={t.cards.topics} value={fmtInt(overview.topics)} />
-          <StatCard
-            label={t.cards.match}
-            value={fmtPct(overview.found2025 / overview.questions)}
-            sub={
-              <>
-                {t.cards.matchSub(fmtInt(overview.found2025), fmtInt(overview.questions))}
-                <br />
-                {t.cards.matchSub23(fmtPct(overview.found2023 / overview.questions))}
-              </>
-            }
-          />
+          <StatCard label={t.cards.match} value={fmtPct(overview.found2025 / overview.questions)} />
         </dl>
 
         <section aria-labelledby="ranking" className="grid grid-cols-1 gap-4 rounded-lg border border-line bg-white p-4 lg:p-6">
@@ -88,7 +79,7 @@ export default async function StatsPage(props: PageProps<"/statistika">) {
           </div>
           <ChartFrame
             id="ranking-view"
-            summary={t.ranking.summary(ranking[0].name, fmtInt(ranking[0].n), fmtPct(ranking[0].share))}
+            summary={t.ranking.summary(ranking[0].name, fmtInt(shown(ranking[0].n)), fmtPct(ranking[0].share))}
             chart={
               <RankingChart
                 hrefSuffix={query}
@@ -97,8 +88,8 @@ export default async function StatsPage(props: PageProps<"/statistika">) {
                   return {
                     slug: r.slug,
                     name: r.name,
-                    n: r.n,
-                    label: t.ranking.value(fmtInt(r.n), fmtPct(r.share)),
+                    n: shown(r.n),
+                    label: t.ranking.value(fmtInt(shown(r.n)), fmtPct(r.share)),
                     personal: mine ? { pct: mine.pct, label: t.ranking.personal(fmtPct(mine.pct, 0), mine.ok, mine.total) } : undefined,
                   };
                 })}
@@ -114,7 +105,7 @@ export default async function StatsPage(props: PageProps<"/statistika">) {
                     <Link key="l" href={`/statistika/${r.slug}${query}`} className="text-navy-500 underline underline-offset-3">
                       {r.name}
                     </Link>,
-                    fmtInt(r.n),
+                    fmtInt(shown(r.n)),
                     fmtPct(r.share),
                     ...(personal.size ? [mine ? `${fmtPct(mine.pct, 0)} (${mine.ok}/${mine.total})` : "—"] : []),
                   ];
@@ -126,7 +117,7 @@ export default async function StatsPage(props: PageProps<"/statistika">) {
 
         <section aria-labelledby="per-exam" className="grid grid-cols-1 gap-3 rounded-lg border border-line bg-white p-4 lg:p-6">
           <h2 id="per-exam" className={h3Class}>
-            {kindLabel ? t.perExam.titleKind(kindLabel) : t.perExam.title}
+            {t.perExam.title}
           </h2>
           <div>
             <DataTable
@@ -161,9 +152,8 @@ export default async function StatsPage(props: PageProps<"/statistika">) {
       {session?.user && <Topbar title={t.title} avatar={initials(session.user.name)} />}
       <Page>
         {heading}
-        <FilterBar filters={filters} options={options} />
+        <ScopeBar />
         {body}
-        <Methodology />
       </Page>
     </>
   );

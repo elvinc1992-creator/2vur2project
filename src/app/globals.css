@@ -150,3 +150,13 @@
 @utility tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* Səhv variant: qısa titrəyiş (İmtahan qarşılığı) */
+@keyframes shake {
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}

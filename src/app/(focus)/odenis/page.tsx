@@ -9,7 +9,7 @@ import { Card, KeyValues, Placeholder, Tag } from "@/components/ui/display";
 import { az } from "@/content/az";
 import { mockPayAction } from "@/lib/demo/actions";
 import { findExam } from "@/lib/demo/logic";
-import { PLANS, priceOf, tierOf } from "@/lib/demo/plans";
+import { BILLING_PERIODS, PLANS, priceOf, tierOf, yearlySavingPct, type BillingPeriod } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import type { PaidTier } from "@/lib/demo/state";
 import { cn } from "@/lib/cn";
@@ -24,12 +24,14 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
   const exam = examId ? findExam(examId) : undefined;
   if (examId && !exam) notFound();
   const tier: PaidTier = sp.plan === "premium" ? "premium" : "pro";
-  const { state } = await requireDemo(`/odenis${examId ? `?exam=${examId}` : `?plan=${tier}`}`);
+  const period: BillingPeriod = sp.period === "year" ? "year" : "month";
+  const { state } = await requireDemo(`/odenis${examId ? `?exam=${examId}` : `?plan=${tier}&period=${period}`}`);
   const current = tierOf(state);
   const t = az.app.payment;
   const kind = exam ? "exam" : "monthly";
-  const title = exam ? exam.title : t.planTitle(PLANS[tier].name);
-  const price = priceOf(exam ? "exam" : tier);
+  const title = exam ? exam.title : t.planTitle(PLANS[tier].name, period === "year");
+  const price = priceOf(exam ? "exam" : tier, period);
+  const perPeriod = (p: string) => (period === "year" ? t.perYear(p) : t.perMonth(p));
 
   return (
     <>
@@ -42,13 +44,32 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
           <input type="hidden" name="kind" value={kind} />
           {exam && <input type="hidden" name="exam" value={exam.id} />}
           {!exam && <input type="hidden" name="plan" value={tier} />}
+          {!exam && <input type="hidden" name="period" value={period} />}
+
+          {!exam && (
+            <nav aria-label={t.periodLabel} className="grid grid-cols-2 gap-2">
+              {BILLING_PERIODS.map((x) => (
+                <Link
+                  key={x}
+                  href={`/odenis?plan=${tier}&period=${x}`}
+                  aria-current={x === period ? "true" : undefined}
+                  className={cn(
+                    "grid min-h-12 place-items-center rounded-md border-[1.5px] px-3 py-2 text-center font-bold no-underline",
+                    x === period ? "border-navy-900 bg-navy-900 text-white" : "border-control-border bg-white text-navy-900",
+                  )}
+                >
+                  {x === "year" ? t.yearlyTab(yearlySavingPct(tier)) : t.monthlyTab}
+                </Link>
+              ))}
+            </nav>
+          )}
 
           {!exam && (
             <nav aria-label={t.planLabel} className="grid gap-2 sm:grid-cols-2">
               {TIERS.map((x) => (
                 <Link
                   key={x}
-                  href={`/odenis?plan=${x}`}
+                  href={`/odenis?plan=${x}&period=${period}`}
                   aria-current={x === tier ? "true" : undefined}
                   className={cn(
                     "grid content-start gap-2 rounded-lg border-2 p-4 text-inherit no-underline",
@@ -59,7 +80,7 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
                     <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{PLANS[x].name}</b>
                     {current === x && <Tag tone="success">{t.current}</Tag>}
                   </span>
-                  <b className="text-navy-900 tabular">{t.perMonth(priceOf(x))}</b>
+                  <b className="text-navy-900 tabular">{perPeriod(priceOf(x, period))}</b>
                   <ul className="m-0 grid list-none gap-1 p-0 text-small text-ink">
                     {t.planFeatures[x].map((f) => (
                       <li key={f} className="flex items-start gap-1.5">
@@ -82,8 +103,8 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
               </Link>
             </div>
             <div className="flex items-center justify-between gap-3 text-small">
-              <span className="text-ink-muted">{exam ? t.examNote : t.monthlyNote}</span>
-              <b className="whitespace-nowrap">{exam ? price : t.perMonth(price)}</b>
+              <span className="text-ink-muted">{exam ? t.examNote : period === "year" ? t.yearlyNote : t.monthlyNote}</span>
+              <b className="whitespace-nowrap">{exam ? price : perPeriod(price)}</b>
             </div>
           </Card>
 
@@ -139,7 +160,7 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
               <CheckIcon className="size-4" />
             </span>
             <span className="text-small">
-              {exam ? t.consentExam : t.consentMonthly}{" "}
+              {exam ? t.consentExam : period === "year" ? t.consentYearly : t.consentMonthly}{" "}
               <Link href="/geri-qaytarma" target="_blank">
                 {t.refund}
               </Link>
@@ -156,7 +177,7 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
           </p>
           <p className="text-center text-small text-ink-muted">
             {t.mockNote}{" "}
-            <Link href={`/odenis/ugursuz${exam ? `?exam=${exam.id}` : `?plan=${tier}`}`}>{t.demoFail}</Link>
+            <Link href={`/odenis/ugursuz${exam ? `?exam=${exam.id}` : `?plan=${tier}&period=${period}`}`}>{t.demoFail}</Link>
           </p>
         </form>
       </Page>

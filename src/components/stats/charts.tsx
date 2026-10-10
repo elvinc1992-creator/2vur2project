@@ -1,16 +1,33 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
-/** Kiçik sütun chart (illər üzrə). Hər sütunun üstündə rəqəm yazılır. */
-export function ColumnChart({ items }: { items: Array<{ label: string; value: number; text: string }> }) {
+/** Rəngli sütunlar üçün palitra (dizayn tokenləri). */
+const COLUMN_COLORS = [
+  "bg-navy-900",
+  "bg-coral-600",
+  "bg-success-700",
+  "bg-navy-500",
+  "bg-warning-700",
+  "bg-coral-500",
+  "bg-danger-700",
+];
+
+/** Kiçik sütun chart (illər üzrə). Hər sütunun üstündə rəqəm yazılır; `colorful` — hər sütun öz rəngində. */
+export function ColumnChart({
+  items,
+  colorful,
+}: {
+  items: Array<{ label: string; value: number; text: string }>;
+  colorful?: boolean;
+}) {
   const max = Math.max(1, ...items.map((i) => i.value));
   return (
-    <div className="flex h-44 items-end gap-3 border-b border-control-border px-1">
-      {items.map((i) => (
-        <div key={i.label} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-          <b className="text-small text-navy-900 tabular">{i.text}</b>
+    <div className="flex h-44 items-end gap-1.5 border-b border-control-border px-1 sm:gap-3">
+      {items.map((i, idx) => (
+        <div key={i.label} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
+          <b className="text-caption text-navy-900 tabular sm:text-small">{i.text}</b>
           <div
-            className="w-full max-w-14 rounded-t-[8px] bg-navy-900"
+            className={cn("w-full max-w-14 rounded-t-[8px]", colorful ? COLUMN_COLORS[idx % COLUMN_COLORS.length] : "bg-navy-900")}
             style={{ height: `${Math.max(2, (i.value / max) * 100)}%` }}
           />
           <span className="pt-1 text-caption font-semibold text-ink-muted">{i.label}</span>

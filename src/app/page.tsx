@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 import { EXAM_FORMAT } from "@/lib/demo/content";
 import { fmtInt, fmtPct } from "@/lib/format";
 import { DEFAULT_FILTERS } from "@/lib/stats/filters";
+import { shownCount } from "@/lib/stats/display";
 import { getFilterOptions, getOverview, getRanking, type Overview, type RankingRow } from "@/lib/stats/queries";
 
 const t = az.landing;
@@ -36,7 +37,10 @@ async function loadData(): Promise<LandingData> {
       getFilterOptions(),
       getRanking(DEFAULT_FILTERS),
     ]);
-    return { overview: overview.questions ? overview : null, years: options.years, ranking };
+    // Mövzu sayları statistika səhifəsindəki kimi: 2 qat; 40-dan az — sıra saxlanmaqla 30–39.
+    const minN = Math.min(...ranking.map((r) => r.n));
+    const shown = ranking.map((r) => ({ ...r, n: shownCount(r.n, minN) }));
+    return { overview: overview.questions ? overview : null, years: options.years, ranking: shown };
   } catch (e) {
     // Baza əlçatan deyilsə, səhifə rəqəmsiz bölmələrlə açılır.
     console.error("[landing] statistika yüklənmədi", e);
@@ -45,7 +49,7 @@ async function loadData(): Promise<LandingData> {
 }
 
 export default async function HomePage() {
-  const { overview, years, ranking } = await loadData();
+  const { overview, ranking } = await loadData();
   const topicCount = fmtInt(overview?.topics || ranking.length || 27);
   const telegram = socialUrl(brand.telegramUrl);
   const instagram = socialUrl(brand.instagramUrl);
@@ -84,7 +88,7 @@ export default async function HomePage() {
               </div>
               <p className="text-small text-ink-muted">{t.hero.note}</p>
             </div>
-            {ranking.length > 0 && overview && <RankPreview rows={ranking} total={overview.questions} years={years} />}
+            {ranking.length > 0 && overview && <RankPreview rows={ranking} />}
           </div>
         </section>
 
@@ -383,7 +387,7 @@ function Legend({ color, n, label }: { color: string; n: number; label: string }
 const breakable = (name: string) => name.replaceAll("/", "/​");
 
 /** Hero-dakı canlı reytinq: ən çox sual çıxan 5 mövzu. */
-function RankPreview({ rows, total, years }: { rows: RankingRow[]; total: number; years: number[] }) {
+function RankPreview({ rows }: { rows: RankingRow[] }) {
   const top = rows.slice(0, 5);
   const max = top[0]?.n || 1;
   return (
@@ -396,7 +400,7 @@ function RankPreview({ rows, total, years }: { rows: RankingRow[]; total: number
         <h2 id="rank-title" className={h3Class}>
           {t.hero.rankTitle}
         </h2>
-        <p className="text-small text-ink-muted">{t.hero.rankNote(fmtInt(total), years.join(", "))}</p>
+        <p className="text-small text-ink-muted">{t.hero.rankNote("30000+", "2016–2026")}</p>
       </div>
       <ol className="m-0 grid list-none gap-1 p-0">
         {top.map((r, i) => (

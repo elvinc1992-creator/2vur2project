@@ -190,6 +190,113 @@ export const tutorQuestions = sqliteTable(
   ],
 );
 
+/* ---------------- Sual bankı (müəllifin sualları, topic_questions/*.sql) ---------------- */
+
+/** Alt mövzu = test toplusunun bölməsi; start_page — kitabın səhifəsi. */
+export const subtopics = sqliteTable(
+  "subtopics",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    topicId: integer("topic_id")
+      .notNull()
+      .references(() => topics.id),
+    bookYear: integer("book_year").notNull(),
+    bookPart: text("book_part").notNull(),
+    title: text("title").notNull(),
+    startPage: integer("start_page"),
+    pageVerified: integer("page_verified", { mode: "boolean" }).notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [uniqueIndex("subtopics_topic_title_uq").on(t.topicId, t.title)],
+);
+
+export const TASK_FORMATS = ["closed", "matching", "open", "written"] as const;
+export type TaskFormat = (typeof TASK_FORMATS)[number];
+
+/**
+ * Müəllifin orijinal sualları (toplu tipləri əsasında, rəqəmlər dəyişdirilib).
+ * closed — A–E (options: [{key,text}]), matching — uyğunluq (options: {left,right}, matching_answer),
+ * open / written — açıq və yazılı cavab (answer_value).
+ */
+export const bankTasks = sqliteTable(
+  "bank_tasks",
+  {
+    code: text("code").primaryKey(),
+    topicId: integer("topic_id")
+      .notNull()
+      .references(() => topics.id),
+    subtopicId: integer("subtopic_id").references(() => subtopics.id),
+    format: text("format", { enum: TASK_FORMATS }).notNull(),
+    body: text("body").notNull(),
+    /** JSON. */
+    options: text("options"),
+    correctOption: text("correct_option"),
+    /** JSON: {"1":["b"],...}. */
+    matchingAnswer: text("matching_answer"),
+    answerValue: text("answer_value"),
+    solution: text("solution").notNull(),
+    imageUrl: text("image_url"),
+    imageAlt: text("image_alt"),
+    difficulty: integer("difficulty"),
+    basedOnYear: integer("based_on_year"),
+    basedOnPart: text("based_on_part"),
+    basedOnPage: integer("based_on_page"),
+    basedOnTaskNo: integer("based_on_task_no"),
+    status: text("status").notNull().default("draft"),
+    author: text("author"),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [
+    index("bank_tasks_topic_idx").on(t.topicId, t.sortOrder),
+    index("bank_tasks_ref_idx").on(t.basedOnPart, t.basedOnPage, t.basedOnTaskNo),
+    check("bank_tasks_format_check", sql`${t.format} in ('closed','matching','open','written')`),
+  ],
+);
+
+/** Real imtahan sualı nümunələri (hər mövzudan biri) və onların toplu istinadı. */
+export const examSamples = sqliteTable("exam_samples", {
+  n: integer("n").primaryKey(),
+  topicId: integer("topic_id")
+    .notNull()
+    .references(() => topics.id),
+  year: integer("year").notNull(),
+  exam: text("exam").notNull(),
+  questionNo: integer("question_no").notNull(),
+  type: text("type").notNull(),
+  /** "II h. səh.257 №26" — toplu istinadı (2025). */
+  toplu: text("toplu").notNull(),
+  matchLevel: text("match_level").notNull(),
+  question: text("question").notNull(),
+  /** JSON: 5 variant (A–E sırası ilə). */
+  options: text("options").notNull(),
+  answer: text("answer").notNull(),
+});
+
+/**
+ * İmtahan sualının bizim saytdakı qarşılıqları (bir imtahan sualına bir neçə qarşılıq ola bilər).
+ * Mənbə: imtahan_*.json → `qarsiligi`.
+ */
+export const examCounterparts = sqliteTable(
+  "exam_counterparts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    examN: integer("exam_n")
+      .notNull()
+      .references(() => examSamples.n),
+    topicId: integer("topic_id")
+      .notNull()
+      .references(() => topics.id),
+    question: text("question").notNull(),
+    /** JSON: 5 variant (A–E sırası ilə). */
+    options: text("options").notNull(),
+    answer: text("answer").notNull(),
+    /** TikZ şəkli (sadə alt çoxluq: xətlər, düzbucaqlı, çevrə, nöqtə adları). */
+    figureTikz: text("figure_tikz"),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [uniqueIndex("exam_counterparts_exam_sort_uq").on(t.examN, t.sortOrder), index("exam_counterparts_topic_idx").on(t.topicId)],
+);
+
 /** Mövzunun nəzəriyyəsi (Markdown + LaTeX). */
 export const tutorTheory = sqliteTable("tutor_theory", {
   topicId: integer("topic_id")

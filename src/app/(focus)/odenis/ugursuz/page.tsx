@@ -18,7 +18,9 @@ export default async function PaymentFailPage(props: PageProps<"/odenis/ugursuz"
   const exam = typeof sp.exam === "string" ? findExam(sp.exam) : undefined;
   await requireDemo("/odenis");
   const t = az.app.payment;
-  const tier = sp.plan === "premium" ? "premium" : "pro";  const retry = exam ? `/odenis?exam=${exam.id}` : `/odenis?plan=${tier}`;
+  const tier = sp.plan === "premium" ? "premium" : "pro";
+  const period = sp.period === "year" ? "year" : "month";
+  const retry = exam ? `/odenis?exam=${exam.id}` : `/odenis?plan=${tier}&period=${period}`;
 
   return (
     <Page>
@@ -31,10 +33,10 @@ export default async function PaymentFailPage(props: PageProps<"/odenis/ugursuz"
         </Alert>
         <Card tone="tint" className="grid gap-2 !p-4">
           <span className="text-small text-ink-muted">{t.selected}</span>
-          <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{exam ? exam.title : t.planTitle(PLANS[tier].name)}</b>
+          <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{exam ? exam.title : t.planTitle(PLANS[tier].name, period === "year")}</b>
           <div className="flex items-center justify-between gap-3 text-small">
             <span className="text-ink-muted">{exam ? t.examNote : t.monthlyNote}</span>
-            <b className="whitespace-nowrap">{exam ? priceOf("exam") : t.perMonth(priceOf(tier))}</b>
+            <b className="whitespace-nowrap">{exam ? priceOf("exam") : period === "year" ? t.perYear(priceOf(tier, "year")) : t.perMonth(priceOf(tier))}</b>
           </div>
         </Card>
         <ButtonLink href={retry} variant="primary" block>

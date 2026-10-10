@@ -2,7 +2,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { todayIn } from "@/lib/repetitor/plan";
-import { listRepetitorTopics, type RepetitorTopicWithQuestions } from "@/lib/repetitor/source";
+import { listQuestionPool, listRepetitorTopics, type RepetitorTopicWithQuestions } from "@/lib/repetitor/source";
 import { DAILY_PER_TOPIC, DAILY_TOPICS_PER_DAY } from "./content";
 import type { BankQuestion, DailyCtx } from "./logic";
 import { updateDemoState, type DailySet, type DemoState } from "./state";
@@ -54,7 +54,8 @@ export function buildDailyCtx(state: DemoState, bank: Bank): DailyCtx {
 
 /** Bu günün dəsti yoxdursa (yeni gün) — seçib saxlayır. */
 export async function ensureDaily(uid: string, now = new Date()): Promise<{ state: DemoState; ctx: DailyCtx }> {
-  const bank = await listRepetitorTopics();
+  // Yeni dəst — cari bankdan; dəstdəki suallar isə bütün hovuzdan tanınır (gün ərzində bank yenilənsə də işləsin).
+  const [bank, pool] = await Promise.all([listRepetitorTopics(), listQuestionPool()]);
   const today = todayIn(now);
   let state!: DemoState;
   await updateDemoState(uid, (s) => {
@@ -64,7 +65,7 @@ export async function ensureDaily(uid: string, now = new Date()): Promise<{ stat
     }
     state = s;
   });
-  return { state, ctx: buildDailyCtx(state, bank) };
+  return { state, ctx: buildDailyCtx(state, pool) };
 }
 
 /** Server komponentləri üçün: giriş yoxlaması + vəziyyət + bu günün sualları. */

@@ -425,30 +425,123 @@ test("abunəni ləğv et və bərpa et", async ({ page }) => {
 test("abunəliklər: menyuda; Free — Pro/Premium təklifi, Pro — yalnız idarə", async ({ page }) => {
   await page.getByRole("link", { name: "Abunəliklər" }).first().click();
   await expect(page).toHaveURL(/\/abunelikler$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Abunəliklər" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Hədəfinə uyğun planı seç" })).toBeVisible();
   const free = page.getByRole("region", { name: "Free" });
   await expect(free.getByText("Cari plan")).toBeVisible();
-  await expect(page.getByRole("region", { name: "Pro" })).toContainText("6.90 AZN / ay");
-  await expect(page.getByRole("region", { name: "Premium" })).toContainText("12.90 AZN / ay");
-  await expect(page.getByRole("link", { name: "Pro-ya keç" })).toHaveAttribute("href", "/odenis?plan=pro");
-  await expect(page.getByRole("link", { name: "Premium-a keç" })).toHaveAttribute("href", "/odenis?plan=premium");
-  await expect(page.getByText("Plandan əlavə tək sınaq almaq da olar — 3 AZN.")).toBeVisible();
-  // Desktop-da Pro və Premium düymələri bir xətdə (xüsusiyyət sayı fərqli olsa da)
+  const pro = page.getByRole("region", { name: "Pro" });
+  const premium = page.getByRole("region", { name: "Premium" });
+  await expect(premium.getByText("Ən çox seçilən")).toBeVisible();
+  await expect(pro.getByText("Ən çox seçilən")).toHaveCount(0);
+
+  // Kartlar ilk ekranda tam görünür (scroll lazım deyil) — 1366×768 noutbuk
+  await page.setViewportSize({ width: 1366, height: 768 });
+  for (const card of [free, pro, premium]) {
+    const box = (await card.boundingBox())!;
+    expect(box.y + box.height).toBeLessThanOrEqual(768);
+  }
   await page.setViewportSize({ width: 1280, height: 900 });
-  const proBtn = await page.getByRole("link", { name: "Pro-ya keç" }).boundingBox();
-  const premBtn = await page.getByRole("link", { name: "Premium-a keç" }).boundingBox();
+
+  // Aylıq (default): endirimli qiymətlər, köhnə qiymət üstündən xətlə
+  await expect(page.getByRole("button", { name: "Aylıq" })).toHaveAttribute("aria-pressed", "true");
+  await expect(pro).toContainText("6.90 AZN / ay");
+  await expect(premium).toContainText("12.90 AZN / ay");
+  await expect(pro.locator("s")).toHaveText(/11\.90 AZN \/ ay/);
+  await expect(pro).toContainText("−42% endirim");
+  await expect(premium.locator("s")).toHaveText(/21\.90 AZN \/ ay/);
+  await expect(premium).toContainText("−41% endirim");
+  await expect(page.getByRole("link", { name: "Pro-ya keç · aylıq" })).toHaveAttribute("href", "/odenis?plan=pro&period=month");
+  await expect(page.getByRole("link", { name: "Premium-a keç · aylıq" })).toHaveAttribute("href", "/odenis?plan=premium&period=month");
+  // Desktop-da Pro və Premium düymələri bir xətdə
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const proBtn = await page.getByRole("link", { name: "Pro-ya keç · aylıq" }).boundingBox();
+  const premBtn = await page.getByRole("link", { name: "Premium-a keç · aylıq" }).boundingBox();
   expect(Math.abs(proBtn!.y - premBtn!.y)).toBeLessThan(2);
   await page.screenshot({ path: "screenshots/abunelikler-1280.png", fullPage: true });
 
+  // İllik: 49.90 / 89.90 AZN, 12 ay, qənaət
+  await page.getByRole("button", { name: /İllik/ }).click();
+  await expect(page.getByRole("button", { name: /İllik/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(pro).toContainText("49.90 AZN / il");
+  await expect(pro).toContainText("illik — 40% qənaət");
+  await expect(premium).toContainText("89.90 AZN / il");
+  await expect(page.getByRole("link", { name: "Pro-ya keç · illik" })).toHaveAttribute("href", "/odenis?plan=pro&period=year");
+  await page.screenshot({ path: "screenshots/abunelikler-illik-1280.png", fullPage: true });
+
+  // Müqayisə cədvəli
+  const table = page.getByRole("table", { name: "Planlar üzrə imkanlar" });
+  await expect(table.getByRole("rowheader", { name: "Onlayn repetitor" })).toBeVisible();
+  await expect(page.getByText("Plandan əlavə tək sınaq almaq da olar — 3 AZN.")).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 900 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1280, height: 900 });
   await subscribe(page);
   await page.goto("/abunelikler");
   await expect(page.getByRole("region", { name: "Pro" }).getByText("Cari plan")).toBeVisible();
-  await expect(page.getByRole("link", { name: /keç$/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Abunəni idarə et" })).toHaveAttribute("href", "/profil");
-  // Profildə də plan dəyişmə yoxdur — yalnız ləğv
+  // Pro → Premium-a keçmək olar (Pro kartında keçid yoxdur)
+  // Cari (aylıq) Pro kartında başqa plana keçid yoxdur, yalnız "İllik paketə keç"
+  const proCard = page.getByRole("region", { name: "Pro" });
+  await expect(proCard.getByRole("link", { name: /· aylıq|İllik al/ })).toHaveCount(0);
+  await expect(proCard.getByRole("link", { name: "İllik paketə keç · 49.90 AZN" })).toBeVisible();
+  await page.getByRole("link", { name: "Premium-a keç · aylıq" }).click();
+  await expect(page).toHaveURL(/\/odenis\?plan=premium&period=month$/);
+  await page.getByRole("button", { name: /ödə/ }).click();
+  await expect(page).toHaveURL(/\/odenis\/ugurlu/);
+  await page.goto("/abunelikler");
+  await expect(page.getByRole("region", { name: "Premium" }).getByText("Cari plan")).toBeVisible();
+  // Aylıq Premium → illik Premium
+  await expect(premium.getByRole("link", { name: "İllik paketə keç · 89.90 AZN" })).toHaveAttribute(
+    "href",
+    "/odenis?plan=premium&period=year",
+  );
+  // ...və əksinə: Premium → Pro
+  await expect(page.getByRole("link", { name: "Pro-ya keç · aylıq" })).toHaveAttribute("href", "/odenis?plan=pro&period=month");
+  // Profildə plan dəyişmə yoxdur — yalnız ləğv
   await page.goto("/profil");
   await expect(page.getByRole("button", { name: "Abunəni ləğv et" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /keç$/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /keç/ })).toHaveCount(0);
+});
+test("illik abunə: 49.90 AZN, 12 ay aktiv; profil və qəbzdə illik", async ({ page }) => {
+  await page.goto("/odenis?plan=pro&period=year");
+  await expect(page.getByRole("link", { name: "İllik · −40%" })).toHaveAttribute("aria-current", "true");
+  await expect(page.getByText("12 ay aktivdir, hər il avtomatik yenilənir")).toBeVisible();
+  await expect(page.getByText("Abunənin hər il avtomatik yenilənməsi ilə razıyam.")).toBeVisible();
+  await page.getByRole("button", { name: "49.90 AZN ödə" }).click();
+  await expect(page).toHaveURL(/\/odenis\/ugurlu\?r=/);
+
+  // Qəbz: müddət — bu gündən gələn ilin eyni tarixinə qədər
+  const today = new Date().toISOString().slice(0, 10);
+  const [y, m, d] = today.split("-");
+  const end = `${d}.${m}.${Number(y) + 1}`;
+  await expect(page.getByText("Pro · illik abunə")).toBeVisible();
+  await expect(page.getByText(`${d}.${m}.${y} – ${end}`)).toBeVisible();
+
+  await page.goto("/profil");
+  await expect(page.getByText("Pro · illik abunə").first()).toBeVisible();
+  await expect(page.getByText("49.90 AZN / il")).toBeVisible();
+  await page.goto("/abunelikler");
+  await expect(page.getByRole("region", { name: "Pro" })).toContainText("İllik abunə (12 ay)");
+  // İllik abunədə "illik paketə keç" yoxdur
+  await expect(page.getByRole("link", { name: /İllik paketə keç/ })).toHaveCount(0);
+});
+
+test("aylıq → illik: eyni plan illiyə keçir, qalan günlər itmir", async ({ page }) => {
+  await subscribe(page); // Pro, aylıq: bu gün + 30 gün
+  await page.goto("/abunelikler");
+  await page.getByRole("region", { name: "Pro" }).getByRole("link", { name: "İllik paketə keç · 49.90 AZN" }).click();
+  await expect(page).toHaveURL(/\/odenis\?plan=pro&period=year$/);
+  await page.getByRole("button", { name: "49.90 AZN ödə" }).click();
+  await expect(page).toHaveURL(/\/odenis\/ugurlu/);
+  await page.goto("/abunelikler");
+  const pro = page.getByRole("region", { name: "Pro" });
+  await expect(pro).toContainText("İllik abunə (12 ay)");
+  // Növbəti ödəniş: (bu gün + 30 gün) + 12 ay + 1 gün
+  const end = new Date();
+  end.setUTCDate(end.getUTCDate() + 30);
+  end.setUTCFullYear(end.getUTCFullYear() + 1);
+  end.setUTCDate(end.getUTCDate() + 1);
+  const [y, m, d] = end.toISOString().slice(0, 10).split("-");
+  await expect(pro).toContainText(`${d}.${m}.${y}`);
 });
 test("demo sıfırlama hər şeyi sıfıra qaytarır", async ({ page }) => {
   await page.goto("/gunun-suallari/faiz-nisbet-tenasub/1");

@@ -49,7 +49,7 @@ export type ExamResult = {
   finishedAt: number;
 };
 
-export type Payment = { id: string; title: string; date: string; method: string; examId?: string; amount?: string };
+export type Payment = { id: string; title: string; date: string; method: string; examId?: string; amount?: string; period?: "month" | "year" };
 
 export type PaidTier = "pro" | "premium";
 
@@ -65,7 +65,7 @@ export type DemoState = {
    * "none" — heç abunə olmayıb (Free plan); periodEnd boşdur.
    * tier — Pro və ya Premium (köhnə abunələrdə yoxdur → Premium sayılır).
    */
-  sub: { status: "active" | "canceled" | "none"; periodEnd: string; tier?: PaidTier };
+  sub: { status: "active" | "canceled" | "none"; periodEnd: string; tier?: PaidTier; period?: "month" | "year" };
   payments: Payment[];
   /** Günün sualı: id → düzgündürmü (bankdan yoxlanılıb). Köhnə cavablarda yoxdur — DAILY_KEYS-dən. */
   dailyOk?: Record<string, boolean>;

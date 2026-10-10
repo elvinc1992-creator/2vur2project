@@ -2,7 +2,7 @@ import "server-only";
 import { EXAM_QUESTIONS, TOPICS, type Letter, type TopicSlug } from "@/lib/demo/content";
 import { EXAM_KEYS } from "@/lib/demo/keys";
 import { DEMO_TO_REAL } from "@/lib/demo/personal";
-import { getRepetitorKey, listRepetitorTopics } from "@/lib/repetitor/source";
+import { getRepetitorKey, listQuestionPool } from "@/lib/repetitor/source";
 
 // Səhvlərim üçün vahid sual modeli: sual bankı (q:id — günün sualları və repetitor eyni bankdandır)
 // və sınağın qapalı sualları (e:n). Cavab açarı ayrıca və yalnız serverdə (getPracticeKey).
@@ -42,7 +42,7 @@ const REAL_SLUG: Record<string, string> = {
 };
 
 export async function practicePool(): Promise<PracticeQuestion[]> {
-  const bank: PracticeQuestion[] = (await listRepetitorTopics()).flatMap((t) =>
+  const bank: PracticeQuestion[] = (await listQuestionPool()).flatMap((t) =>
     t.questions.map((q) => ({
       ref: `q:${q.id}`,
       source: "bank" as const,

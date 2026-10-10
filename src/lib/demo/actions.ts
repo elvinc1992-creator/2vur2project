@@ -7,7 +7,6 @@ import { getRepetitorKey } from "@/lib/repetitor/source";
 import { CARD_LABEL, LETTERS, type Letter } from "./content";
 import { ensureDaily } from "./daily";
 import {
-  addDays,
   daysLeft,
   examStatus,
   findExam,
@@ -18,7 +17,7 @@ import {
   typeStats,
 } from "./logic";
 import { finalizeAttempt } from "./exam-session";
-import { EXAM_PRICE, examQuota, PLANS } from "./plans";
+import { EXAM_PRICE, examQuota, periodEndFrom, PLANS, priceOf, type BillingPeriod } from "./plans";
 import { resetDemoState, updateDemoState, type PaidTier } from "./state";
 
 async function userId(): Promise<string> {
@@ -110,14 +109,15 @@ export async function finishExamAction(id: string, timedOut = false): Promise<{ 
 export async function mockPayAction(formData: FormData) {
   const kind = formData.get("kind") === "exam" ? "exam" : "monthly";
   const examId = String(formData.get("exam") ?? "");
+  const tier: PaidTier = formData.get("plan") === "pro" ? "pro" : "premium";
+  const period: BillingPeriod = formData.get("period") === "year" ? "year" : "month";
   if (formData.get("consent") !== "on") {
-    redirect(`/odenis?${kind === "exam" ? `exam=${examId}` : "plan=monthly"}&consent=0`);
+    redirect(`/odenis?${kind === "exam" ? `exam=${examId}` : `plan=${tier}&period=${period}`}&consent=0`);
   }
 
   const uid = await userId();
   const exam = kind === "exam" ? findExam(examId) : undefined;
   if (kind === "exam" && !exam) redirect("/sinaqlar");
-  const tier: PaidTier = formData.get("plan") === "pro" ? "pro" : "premium";
   const today = todayIso();
   const receiptId = `${Date.now().toString().slice(-8, -4)}-${Date.now().toString().slice(-4)}`;
   await updateDemoState(uid, (state) => {
@@ -125,16 +125,17 @@ export async function mockPayAction(formData: FormData) {
       if (!state.purchased.includes(examId)) state.purchased.push(examId);
       state.payments.unshift({ id: receiptId, title: exam.title, date: today, method: CARD_LABEL, examId, amount: EXAM_PRICE });
     } else {
-      // Eyni plan uzadılır; plan dəyişəndə yeni dövr bu gündən başlayır.
+      // Eyni plan uzadılır; plan dəyişəndə yeni dövr bu gündən başlayır. İllik — 12 ay, aylıq — 30 gün.
       const sameTier = state.sub.status !== "none" && (state.sub.tier ?? "premium") === tier;
       const base = sameTier && state.sub.periodEnd > today ? state.sub.periodEnd : today;
-      state.sub = { status: "active", periodEnd: addDays(base, 30), tier };
+      state.sub = { status: "active", periodEnd: periodEndFrom(base, period), tier, period };
       state.payments.unshift({
         id: receiptId,
-        title: `${PLANS[tier].name} · aylıq abunə`,
+        title: `${PLANS[tier].name} · ${period === "year" ? "illik" : "aylıq"} abunə`,
         date: today,
         method: CARD_LABEL,
-        amount: PLANS[tier].price ?? undefined,
+        amount: priceOf(tier, period),
+        period,
       });
     }
   });

@@ -13,6 +13,7 @@ export const azLanding = {
     exams: "Sınaqlar",
     pricing: "Qiymətlər",
     login: "Daxil ol",
+    toPanel: "Panelə keç",
     telegram: "Telegram",
     signup: "Pulsuz başla",
     menu: "Menyu",

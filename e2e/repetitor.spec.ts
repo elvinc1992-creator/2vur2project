@@ -148,7 +148,8 @@ test("mövzular bitir → ✓, 2 mövzudan sonra 20 suallıq sınaq → nəticə
   await expect(plan.locator("li").nth(1)).toContainText("Bitib");
   await expect(plan.getByLabel("Mövzu bitib")).toHaveCount(2);
   await expect(plan.locator("li").nth(2)).toContainText("Sınaq hazırdır");
-  await expect(page.getByText("2 / 8 mövzu bitib")).toBeVisible();
+  // 11 mövzuda sual var: 8 ilkin + müəllifin bankından 3 yeni mövzu (Natural, Adi və onluq kəsrlər, Həqiqi ədədlər)
+  await expect(page.getByText("2 / 11 mövzu bitib")).toBeVisible();
 
   await page.getByRole("link", { name: /Sınağa başla: Sınaq 1/ }).first().click();
   await expect(page).toHaveURL(/\/onlayn-repetitor\/sinaq\/1$/);

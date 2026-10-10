@@ -164,13 +164,18 @@ export default async function ProfilePage() {
               ) : (
                 <Card className="grid gap-4">
                   <div className="flex items-center justify-between gap-3">
-                    <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{t.plan} · {PLANS[paidTier].name}</b>
+                    <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{az.app.payment.planTitle(PLANS[paidTier].name, state.sub.period === "year")}</b>
                     <Tag tone="success">{t.active}</Tag>
                   </div>
                   <KeyValues
                     rows={[
                       [t.nextPayment, formatDate(addDays(state.sub.periodEnd, 1))],
-                      [t.amount, az.app.payment.perMonth(priceOf(paidTier))],
+                      [
+                        t.amount,
+                        state.sub.period === "year"
+                          ? az.app.payment.perYear(priceOf(paidTier, "year"))
+                          : az.app.payment.perMonth(priceOf(paidTier)),
+                      ],
                       [t.method, CARD_LABEL],
                     ]}
                   />

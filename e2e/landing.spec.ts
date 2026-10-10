@@ -1,4 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
+import { createClient } from "@libsql/client";
+import { loadEnvConfig } from "@next/env";
+import { hash } from "@node-rs/argon2";
 import { expect, test, type Page } from "@playwright/test";
 
 // Landing: bazadan rəqəmlər, bölmələr, nümunə kart (cavab sızmır), mobil menyu, axe, üfüqi sürüşmə yoxdur.
@@ -23,11 +26,12 @@ test("desktop: rəqəmlər bazadan, bölmələr və linklər", async ({ page }) 
   await expect(stat(page, "mövzu üzrə təsnifat")).toHaveText("27");
   await expect(stat(page, /test toplularında/)).toHaveText("94,7%");
 
-  // Hero reytinqi: ilk yer — Stereometriya (92), link mövzu səhifəsinə
+  // Hero reytinqi: ilk yer — Stereometriya (92 × 2 = 184), link mövzu səhifəsinə
   const rank = page.getByRole("article", { name: "Ən çox sual çıxan mövzular" });
   await expect(rank.getByRole("listitem")).toHaveCount(5);
   await expect(rank.getByRole("link").first()).toHaveAttribute("href", "/statistika/stereometriya");
-  await expect(rank.getByRole("link").first()).toContainText("92");
+  await expect(rank.getByRole("link").first()).toContainText("184");
+  await expect(rank.getByText("30000+ sual · 2016–2026")).toBeVisible();
 
   // Mövzular: 8 kart + bütün mövzular düyməsi
   const topics = page.locator("#movzular");
@@ -97,4 +101,35 @@ test("mobil 390: menyu açılır/bağlanır, üfüqi sürüşmə yoxdur", async 
   const monthly = await page.getByRole("article", { name: "Pro" }).boundingBox();
   expect(monthly!.y).toBe(Math.min(...boxes.map((b) => b!.y)));
   expect(await axe(page)).toEqual([]);
+});
+
+test("daxil olmuş istifadəçi ana səhifədə çıxmış görünmür: başlıqda 'Panelə keç'", async ({ page }) => {
+  const stamp = Date.now();
+  const user = { email: `e2e+land${stamp}@example.test`, password: "Lale2026x" };
+  loadEnvConfig(process.cwd());
+  const db = createClient({ url: process.env.TURSO_DATABASE_URL!, authToken: process.env.TURSO_AUTH_TOKEN });
+  const now = Date.now();
+  await db.execute({
+    sql: `insert into users (id, email, username, name, password_hash, role, grade, email_verified_at, terms_accepted_at, created_at, updated_at)
+          values (?, ?, ?, 'Lalə', ?, 'student', 11, ?, ?, ?, ?)`,
+    args: [crypto.randomUUID(), user.email, `e2e_l${stamp % 1e9}`, await hash(user.password), now, now, now, now],
+  });
+  db.close();
+
+  // Qonaq: Daxil ol
+  await page.goto("/");
+  const header = page.getByRole("banner");
+  await expect(header.getByRole("link", { name: "Daxil ol" })).toBeVisible();
+
+  // Daxil ol → ana səhifəyə qayıt (loqo) → sessiya qalır
+  await page.goto("/daxil-ol");
+  await page.getByLabel("E-poçt və ya istifadəçi adı").fill(user.email);
+  await page.getByLabel("Şifrə", { exact: true }).fill(user.password);
+  await page.getByRole("button", { name: "Daxil ol" }).click();
+  await expect(page).toHaveURL(/\/panel$/);
+  await page.goto("/");
+  await expect(header.getByRole("link", { name: "Panelə keç" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "Daxil ol" })).toHaveCount(0);
+  await header.getByRole("link", { name: "Panelə keç" }).click();
+  await expect(page).toHaveURL(/\/panel$/);
 });

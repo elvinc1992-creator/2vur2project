@@ -14,7 +14,7 @@ vi.mock("@/lib/repetitor/source", async () => {
   const questions = [...m.MOCK_QUESTIONS, ...DAILY.map((q) => ({ ...q, topic: real[q.topic] }))];
   const slugs = [...new Set(questions.map((q) => q.topic))];
   return {
-    listRepetitorTopics: async () => slugs.map((slug) => ({ slug, name: slug, questions: questions.filter((q) => q.topic === slug) })),
+    listQuestionPool: async () => slugs.map((slug) => ({ slug, name: slug, questions: questions.filter((q) => q.topic === slug) })),
     getRepetitorKey: async (id: string) => m.MOCK_KEYS[id] ?? (DAILY_KEYS[id] ? { ...DAILY_KEYS[id], hint: "" } : null),
   };
 });
