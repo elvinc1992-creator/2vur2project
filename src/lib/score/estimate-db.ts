@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { userAnswers } from "@/db/schema";
 import { EXAM_QUESTIONS, type TopicSlug } from "@/lib/demo/content";
 import { DEMO_TO_REAL } from "@/lib/demo/personal";
-import { listRepetitorTopics } from "@/lib/repetitor/source";
+import { listQuestionPool } from "@/lib/repetitor/source";
 import type { ScoreStats } from "./estimate";
 
 /**
@@ -28,7 +28,7 @@ export async function getScoreStats(userId: string): Promise<ScoreStats> {
       .select({ source: userAnswers.source, ref: userAnswers.questionRef, correct: userAnswers.correct })
       .from(userAnswers)
       .where(eq(userAnswers.userId, userId)),
-    listRepetitorTopics(),
+    listQuestionPool(),
   ]);
   const bankTopic = new Map(bank.flatMap((t) => t.questions.map((q) => [q.id, t.name] as const)));
   const topics = new Set<string>();

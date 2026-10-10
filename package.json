@@ -16,7 +16,8 @@
     "db:studio": "drizzle-kit studio",
     "test:e2e": "playwright test",
     "db:seed-demo": "node scripts/seed-demo.mts",
-    "stats:import": "node scripts/import-stats.mts"
+    "stats:import": "node scripts/import-stats.mts",
+    "bank:import": "node scripts/import-question-bank.mts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

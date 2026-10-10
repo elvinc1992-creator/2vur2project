@@ -8,7 +8,8 @@ import { EmptyState } from "@/components/ui/empty-art";
 import { az } from "@/content/az";
 import { startExamAction } from "@/lib/demo/actions";
 
-import { addDays, examStatus, formatDate } from "@/lib/demo/logic";
+import { examStatus, formatDate } from "@/lib/demo/logic";
+import { periodEndFrom } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import { PrintButton } from "./print-button";
 
@@ -42,7 +43,7 @@ export default async function PaymentSuccessPage(props: PageProps<"/odenis/ugurl
               [t.receiptNo, p.id],
               [t.date, formatDate(p.date)],
               [t.plan, p.title],
-              ...(isExam ? [] : [[t.period, `${formatDate(p.date)} – ${formatDate(addDays(p.date, 30))}`] as [string, string]]),
+              ...(isExam ? [] : [[t.period, `${formatDate(p.date)} – ${formatDate(periodEndFrom(p.date, p.period ?? "month"))}`] as [string, string]]),
               [az.app.profile.method, p.method],
             ]}
           />

@@ -1,0 +1,817 @@
+[
+ {
+  "n": 1,
+  "topic": "Stereometriya",
+  "year": 2023,
+  "exam": "Buraxılış 02.04.2023",
+  "qno": 5,
+  "type": "Mail və müstəvi arasındakı bucaq",
+  "toplu": "II h. səh.257 №26",
+  "match": "EYNİ",
+  "q": "Müstəvidən $4$ sm hündürlükdə yerləşən $A$ nöqtəsindən müstəviyə çəkilmiş maili $8$ sm-dir. Mailin müstəvi ilə əmələ gətirdiyi bucağı tapın.",
+  "opts": [
+   "$45^\\circ$",
+   "$60^\\circ$",
+   "$30^\\circ$",
+   "$15^\\circ$",
+   "$75^\\circ$"
+  ],
+  "ans": "C",
+  "qarsiligi": {
+   "q": "Müstəvidən $6$ sm hündürlükdə yerləşən $A$ nöqtəsindən müstəviyə çəkilmiş maili $6\\sqrt2$ sm-dir. Mailin müstəvi ilə əmələ gətirdiyi bucağı tapın.",
+   "opts": [
+    "$30^\\circ$",
+    "$45^\\circ$",
+    "$60^\\circ$",
+    "$15^\\circ$",
+    "$75^\\circ$"
+   ],
+   "ans": "B",
+   "sekil_tikz": "\\begin{tikzpicture}[scale=1,font=\\small]\\draw(0,0)--(4,0)--(5,1)--(1,1)--cycle;\\coordinate(H)at(2.2,0.45);\\coordinate(B)at(4.0,0.5);\\coordinate(A)at(2.2,2.7);\\draw[dashed](A)--(H);\\draw[dashed](H)--(B);\\draw(A)--(B);\\node[above]at(A){$A$};\\node[below left]at(H){$H$};\\node[right]at(B){$B$};\\node at(1.5,1.6){$6$};\\node at(3.4,1.6){$6\\sqrt2$};\\end{tikzpicture}"
+  }
+ },
+ {
+  "n": 2,
+  "topic": "Limit, törəmə, inteqral",
+  "year": 2023,
+  "exam": "Qəbul 04.06.2023 (I qrup)",
+  "qno": 12,
+  "type": "Müəyyən inteqral",
+  "toplu": "II h. səh.152 №60",
+  "match": "EYNİ",
+  "q": "$\\displaystyle\\int_0^2(3x^2+2x)\\,dx$ inteqralını hesablayın.",
+  "opts": [
+   "$12$",
+   "$10$",
+   "$14$",
+   "$8$",
+   "$16$"
+  ],
+  "ans": "A",
+  "qarsiligi": {
+   "q": "$\\displaystyle\\int_0^3(2x^2+4x)\\,dx$ inteqralını hesablayın.",
+   "opts": [
+    "$30$",
+    "$42$",
+    "$24$",
+    "$36$",
+    "$48$"
+   ],
+   "ans": "D"
+  }
+ },
+ {
+  "n": 3,
+  "topic": "Loqarifm, üstlü tənlik/bərabərsizlik",
+  "year": 2023,
+  "exam": "Buraxılış 02.04.2023",
+  "qno": 2,
+  "type": "Loqarifmin hesablanması",
+  "toplu": "II h. səh.88 №45",
+  "match": "EYNİ",
+  "q": "$\\log_2 32+\\log_3\\dfrac19$ ifadəsinin qiymətini tapın.",
+  "opts": [
+   "$7$",
+   "$2$",
+   "$5$",
+   "$1$",
+   "$3$"
+  ],
+  "ans": "E",
+  "qarsiligi": {
+   "q": "$\\log_3 81+\\log_2\\dfrac18$ ifadəsinin qiymətini tapın.",
+   "opts": [
+    "$1$",
+    "$7$",
+    "$-1$",
+    "$4$",
+    "$0$"
+   ],
+   "ans": "A"
+  }
+ },
+ {
+  "n": 4,
+  "topic": "Çoxbucaqlılar. Dördbucaqlılar",
+  "year": 2023,
+  "exam": "Buraxılış 02.04.2023",
+  "qno": 1,
+  "type": "Kvadratın diaqonalı",
+  "toplu": "səh.166 №12, 13",
+  "match": "Çox yaxın",
+  "q": "Kvadratın diaqonalı $6\\sqrt2$ sm-dir. Kvadratın sahəsini (sm$^2$) tapın.",
+  "opts": [
+   "$72$",
+   "$36$",
+   "$18$",
+   "$24$",
+   "$36 \\sqrt{2}$"
+  ],
+  "ans": "B",
+  "qarsiligi": {
+   "q": "Kvadratın diaqonalı $8\\sqrt2$ sm-dir. Kvadratın sahəsini (sm$^2$) tapın.",
+   "opts": [
+    "$128$",
+    "$32$",
+    "$16$",
+    "$64\\sqrt{2}$",
+    "$64$"
+   ],
+   "ans": "E",
+   "sekil_tikz": "\\begin{tikzpicture}[scale=1,font=\\small]\\draw(0,0)rectangle(2.4,2.4);\\draw(0,0)--(2.4,2.4);\\node[below left]at(0,0){$A$};\\node[below right]at(2.4,0){$B$};\\node[above right]at(2.4,2.4){$C$};\\node[above left]at(0,2.4){$D$};\\node[above left]at(1.2,1.2){$8\\sqrt2$};\\end{tikzpicture}"
+  }
+ },
+ {
+  "n": 5,
+  "topic": "Triqonometriya",
+  "year": 2023,
+  "exam": "Buraxılış 02.04.2023",
+  "qno": 17,
+  "type": "Triqonometrik tənlik, parçada köklər",
+  "toplu": "II h. səh.82 №118",
+  "match": "EYNİ",
+  "q": "$2\\sin x-1=0$ tənliyinin $[0;2\\pi]$ parçasındakı köklərinin cəmini tapın.",
+  "opts": [
+   "$\\frac{\\pi}{2}$",
+   "$2 \\pi$",
+   "$\\frac{3 \\pi}{2}$",
+   "$\\pi$",
+   "$\\frac{\\pi}{3}$"
+  ],
+  "ans": "D",
+  "qarsiligi": {
+   "q": "$2\\cos x-1=0$ tənliyinin $[0;2\\pi]$ parçasındakı köklərinin cəmini tapın.",
+   "opts": [
+    "$\\pi$",
+    "$\\frac{3\\pi}{2}$",
+    "$2\\pi$",
+    "$\\frac{4\\pi}{3}$",
+    "$\\frac{\\pi}{2}$"
+   ],
+   "ans": "C"
+  }
+ },
+ {
+  "n": 6,
+  "topic": "Üçbucaqlar",
+  "year": 2025,
+  "exam": "Buraxılış 2025",
+  "qno": 71,
+  "type": "Bucaqlar və tərəflərin müqayisəsi",
+  "toplu": "səh.144 №7, 8",
+  "match": "Çox yaxın",
+  "q": "$ABC$ üçbucağında $\\angle A=50^\\circ$, $\\angle B=60^\\circ$-dir. Üçbucağın ən böyük tərəfini göstərin.",
+  "opts": [
+   "$BC$",
+   "$AC$",
+   "$AB$",
+   "$AB = BC$",
+   "$BC = AC$"
+  ],
+  "ans": "C",
+  "qarsiligi": {
+   "q": "$ABC$ üçbucağında $\\angle A=40^\\circ$, $\\angle B=75^\\circ$-dir. Üçbucağın ən böyük tərəfini göstərin.",
+   "opts": [
+    "$BC$",
+    "$AC$",
+    "$AB$",
+    "$AB = BC$",
+    "$AB = AC$"
+   ],
+   "ans": "B",
+   "sekil_tikz": "\\begin{tikzpicture}[scale=1,font=\\small]\\coordinate(A)at(0,0);\\coordinate(B)at(2.2,2.2);\\coordinate(C)at(4.4,0);\\draw(A)--(B)--(C)--cycle;\\node[below left]at(A){$A$};\\node[above]at(B){$B$};\\node[below right]at(C){$C$};\\node at(0.7,0.2){$40^\\circ$};\\node at(2.2,1.7){$75^\\circ$};\\end{tikzpicture}"
+  }
+ },
+ {
+  "n": 7,
+  "topic": "Birməchullu tənliklər və məsələlər",
+  "year": 2023,
+  "exam": "Buraxılış 02.04.2023",
+  "qno": 14,
+  "type": "Rasional tənlik",
+  "toplu": "səh.70 №34, 35",
+  "match": "Çox yaxın",
+  "q": "$\\dfrac{x+1}{x-2}=\\dfrac{x+7}{x+2}$ tənliyini həll edin.",
+  "opts": [
+   "$8$",
+   "$6$",
+   "$-8$",
+   "$4$",
+   "$10$"
+  ],
+  "ans": "A",
+  "qarsiligi": {
+   "q": "$\\dfrac{x+2}{x-1}=\\dfrac{x+6}{x+1}$ tənliyini həll edin.",
+   "opts": [
+    "$-4$",
+    "$8$",
+    "$6$",
+    "$4$",
+    "$2$"
+   ],
+   "ans": "D"
+  }
+ },
+ {
+  "n": 8,
+  "topic": "Çevrə və dairə",
+  "year": 2025,
+  "exam": "Buraxılış 2025",
+  "qno": 84,
+  "type": "Kəsişən vətərlər",
+  "toplu": "səh.183 №11",
+  "match": "EYNİ",
+  "q": "Çevrənin $AB$ və $CD$ vətərləri $P$ nöqtəsində kəsişir. $AP=6$, $PB=4$, $CP=3$ olarsa, $PD$ neçədir?",
+  "opts": [
+   "$6$",
+   "$4$",
+   "$12$",
+   "$2$",
+   "$8$"
+  ],
+  "ans": "E",
+  "qarsiligi": {
+   "q": "Çevrənin $AB$ və $CD$ vətərləri $P$ nöqtəsində kəsişir. $AP=8$, $PB=3$, $CP=4$ olarsa, $PD$ neçədir?",
+   "opts": [
+    "$6$",
+    "$4$",
+    "$12$",
+    "$3$",
+    "$8$"
+   ],
+   "ans": "A",
+   "sekil_tikz": "\\begin{tikzpicture}[scale=1,font=\\small]\\draw(0,0)circle(2);\\coordinate(A)at(-1.93,0.52);\\coordinate(B)at(1.93,0.52);\\coordinate(C)at(-0.9,-1.79);\\coordinate(D)at(0.9,1.79);\\draw(A)--(B);\\draw(C)--(D);\\node[left]at(A){$A$};\\node[right]at(B){$B$};\\node[below]at(C){$C$};\\node[above]at(D){$D$};\\node[below right]at(0.0,0.55){$P$};\\end{tikzpicture}"
+  }
+ },
+ {
+  "n": 9,
+  "topic": "Funksiya və qrafiklər",
+  "year": 2023,
+  "exam": "Qəbul 04.06.2023 (I qrup)",
+  "qno": 27,
+  "type": "Qrafiklər: tək/cüt funksiya (uyğunluq)",
+  "toplu": "II h. səh.15 №45, 46; səh.13 №42–44",
+  "match": "Çox yaxın",
+  "q": "$f$ cüt, $g$ isə tək funksiyadır. $f(-3)=5$, $g(-3)=2$ olarsa, $f(3)+g(3)$ neçədir?",
+  "opts": [
+   "$7$",
+   "$3$",
+   "$-3$",
+   "$-7$",
+   "$10$"
+  ],
+  "ans": "B",
+  "qarsiligi": {
+   "q": "$f$ cüt, $g$ isə tək funksiyadır. $f(-2)=7$, $g(-2)=3$ olarsa, $f(2)+g(2)$ neçədir?",
+   "opts": [
+    "$10$",
+    "$-4$",
+    "$-10$",
+    "$3$",
+    "$4$"
+   ],
+   "ans": "E"
+  }
+ },
+ {
+  "n": 10,
+  "topic": "Faiz. Nisbət. Tənasüb",
+  "year": 2023,
+  "exam": "Buraxılış 02.04.2023",
+  "qno": 11,
+  "type": "Faizə aid mətnli məsələ",
+  "toplu": "səh.22 №7, 8",
+  "match": "Çox yaxın",
+  "q": "Malın qiyməti əvvəlcə $20\\%$ artırıldı, sonra yeni qiymət $20\\%$ azaldıldı. Son qiymət $240$ manatdırsa, ilkin qiymət neçə manat olmuşdur?",
+  "opts": [
+   "$240$",
+   "$260$",
+   "$200$",
+   "$250$",
+   "$300$"
+  ],
+  "ans": "D",
+  "qarsiligi": {
+   "q": "Malın qiyməti əvvəlcə $25\\%$ artırıldı, sonra yeni qiymət $40\\%$ azaldıldı. Son qiymət $450$ manatdırsa, ilkin qiymət neçə manat olmuşdur?",
+   "opts": [
+    "$450$",
+    "$500$",
+    "$600$",
+    "$550$",
+    "$700$"
+   ],
+   "ans": "C"
+  }
+ },
+ {
+  "n": 11,
+  "topic": "Bərabərsizliklər və sistemləri",
+  "year": 2023,
+  "exam": "Buraxılış 02.04.2023",
+  "qno": 3,
+  "type": "Xətti bərabərsizlik",
+  "toplu": "səh.99 №22, 23",
+  "match": "Çox yaxın",
+  "q": "$3(x-2)<5x+4$ bərabərsizliyinin ən kiçik tam həllini tapın.",
+  "opts": [
+   "$-5$",
+   "$-6$",
+   "$-4$",
+   "$5$",
+   "$0$"
+  ],
+  "ans": "C",
+  "qarsiligi": {
+   "q": "$4(x-1)<6x+10$ bərabərsizliyinin ən kiçik tam həllini tapın.",
+   "opts": [
+    "$-7$",
+    "$-6$",
+    "$-8$",
+    "$7$",
+    "$0$"
+   ],
+   "ans": "B"
+  }
+ },
+ {
+  "n": 12,
+  "topic": "Kvadrat köklər. Həqiqi üstlü qüvvət",
+  "year": 2025,
+  "exam": "Buraxılış 02.03.2025 (1-ci zona)",
+  "qno": 68,
+  "type": "Kvadrat kök iki ardıcıl tam ədəd arasında [qapalı]",
+  "toplu": "səh.57 №42–45",
+  "match": "Çox yaxın",
+  "q": "$\\sqrt{47}$ ədədi ardıcıl $n$ və $n+1$ natural ədədləri arasındadır. $n+(n+1)$ cəmini tapın.",
+  "opts": [
+   "$13$",
+   "$11$",
+   "$15$",
+   "$17$",
+   "$12$"
+  ],
+  "ans": "A",
+  "qarsiligi": {
+   "q": "$\\sqrt{83}$ ədədi ardıcıl $n$ və $n+1$ natural ədədləri arasındadır. $n+(n+1)$ cəmini tapın.",
+   "opts": [
+    "$17$",
+    "$21$",
+    "$18$",
+    "$19$",
+    "$20$"
+   ],
+   "ans": "D"
+  }
+ },
+ {
+  "n": 13,
+  "topic": "Tam cəbri ifadələr",
+  "year": 2023,
+  "exam": "Buraxılış 02.04.2023",
+  "qno": 19,
+  "type": "Çoxhədlilər (bölmə), paralelepiped",
+  "toplu": "səh.44 №41",
+  "match": "EYNİ",
+  "q": "$P(x)=x^3-2x^2+3x-5$ çoxhədlisini $x-2$-yə böldükdə qalıq neçə olar?",
+  "opts": [
+   "$-1$",
+   "$3$",
+   "$-5$",
+   "$5$",
+   "$1$"
+  ],
+  "ans": "E",
+  "qarsiligi": {
+   "q": "$P(x)=x^3-3x^2+2x-7$ çoxhədlisini $x-3$-ə böldükdə qalıq neçə olar?",
+   "opts": [
+    "$-1$",
+    "$1$",
+    "$-7$",
+    "$7$",
+    "$3$"
+   ],
+   "ans": "A"
+  }
+ },
+ {
+  "n": 14,
+  "topic": "Ədədi ardıcıllıqlar. Silsilələr",
+  "year": 2023,
+  "exam": "Buraxılış 02.04.2023",
+  "qno": 9,
+  "type": "Ədədi silsilə (mətnli məsələ)",
+  "toplu": "səh.126 №15, 16",
+  "match": "Çox yaxın",
+  "q": "Zalın birinci cərgəsində $5$ oturacaq var, hər növbəti cərgədə əvvəlkindən $3$ çox oturacaq var. $10$ cərgəli zalda cəmi neçə oturacaq var?",
+  "opts": [
+   "$175$",
+   "$185$",
+   "$195$",
+   "$150$",
+   "$190$"
+  ],
+  "ans": "B",
+  "qarsiligi": {
+   "q": "Zalın birinci cərgəsində $4$ oturacaq var, hər növbəti cərgədə əvvəlkindən $2$ çox oturacaq var. $12$ cərgəli zalda cəmi neçə oturacaq var?",
+   "opts": [
+    "$168$",
+    "$190$",
+    "$150$",
+    "$200$",
+    "$180$"
+   ],
+   "ans": "E"
+  }
+ },
+ {
+  "n": 15,
+  "topic": "Həndəsənin əsas anlayışları",
+  "year": 2023,
+  "exam": "Qəbul 21.05.2023 (II qrup)",
+  "qno": 15,
+  "type": "Bucaq növləri (kor, iti), bərabərsizlik",
+  "toplu": "səh.136 №29, 30",
+  "match": "Çox yaxın",
+  "q": "İki qonşu bucağın cəmi $180^\\circ$-dir və onlardan biri digərindən $40^\\circ$ böyükdür. Kor bucağın ölçüsünü tapın.",
+  "opts": [
+   "$70^\\circ$",
+   "$100^\\circ$",
+   "$140^\\circ$",
+   "$110^\\circ$",
+   "$120^\\circ$"
+  ],
+  "ans": "D",
+  "qarsiligi": {
+   "q": "İki qonşu bucağın cəmi $180^\\circ$-dir və onlardan biri digərindən $30^\\circ$ böyükdür. Kor bucağın ölçüsünü tapın.",
+   "opts": [
+    "$75^\\circ$",
+    "$120^\\circ$",
+    "$105^\\circ$",
+    "$150^\\circ$",
+    "$90^\\circ$"
+   ],
+   "ans": "C"
+  }
+ },
+ {
+  "n": 16,
+  "topic": "Koordinat və vektorlar",
+  "year": 2023,
+  "exam": "Buraxılış 02.04.2023",
+  "qno": 21,
+  "type": "Çevrə tənliyi, parametr",
+  "toplu": "II h. səh.243 №36, 37",
+  "match": "Çox yaxın",
+  "q": "$x^2+y^2-6x+4y+m=0$ tənliyi radiusu $4$ olan çevrənin tənliyidirsə, $m$ neçədir?",
+  "opts": [
+   "$3$",
+   "$-13$",
+   "$-3$",
+   "$29$",
+   "$-29$"
+  ],
+  "ans": "C",
+  "qarsiligi": {
+   "q": "$x^2+y^2-4x+8y+m=0$ tənliyi radiusu $6$ olan çevrənin tənliyidirsə, $m$ neçədir?",
+   "opts": [
+    "$16$",
+    "$-16$",
+    "$-56$",
+    "$56$",
+    "$-20$"
+   ],
+   "ans": "B"
+  }
+ },
+ {
+  "n": 17,
+  "topic": "Natural ədədlər",
+  "year": 2023,
+  "exam": "Qəbul 04.06.2023 (I qrup)",
+  "qno": 26,
+  "type": "ƏKOB və ƏBOB",
+  "toplu": "səh.8 №31",
+  "match": "EYNİ",
+  "q": "$18$, $24$ və $30$ ədədlərinin ən kiçik ortaq bölünəni (ƏKOB) tapın.",
+  "opts": [
+   "$360$",
+   "$180$",
+   "$720$",
+   "$240$",
+   "$120$"
+  ],
+  "ans": "A",
+  "qarsiligi": {
+   "q": "$12$, $18$ və $20$ ədədlərinin ən kiçik ortaq bölünəni (ƏKOB) tapın.",
+   "opts": [
+    "$360$",
+    "$90$",
+    "$120$",
+    "$180$",
+    "$240$"
+   ],
+   "ans": "D"
+  }
+ },
+ {
+  "n": 18,
+  "topic": "Kombinatorika və ehtimal",
+  "year": 2023,
+  "exam": "Buraxılış 02.04.2023",
+  "qno": 6,
+  "type": "Yerdəyişmə / kombinatorika",
+  "toplu": "II h. səh.170 №15, 16",
+  "match": "Çox yaxın",
+  "q": "$6$ nəfər düz cərgədə düzülür. Müəyyən iki nəfərin həmişə yanaşı durması şərti ilə neçə müxtəlif düzülüş mümkündür?",
+  "opts": [
+   "$120$",
+   "$720$",
+   "$480$",
+   "$360$",
+   "$240$"
+  ],
+  "ans": "E",
+  "qarsiligi": {
+   "q": "$7$ nəfər düz cərgədə düzülür. Müəyyən iki nəfərin həmişə yanaşı durması şərti ilə neçə müxtəlif düzülüş mümkündür?",
+   "opts": [
+    "$1440$",
+    "$720$",
+    "$5040$",
+    "$2880$",
+    "$840$"
+   ],
+   "ans": "A"
+  }
+ },
+ {
+  "n": 19,
+  "topic": "Tənliklər sistemi",
+  "year": 2023,
+  "exam": "Qəbul 04.06.2023 (I qrup)",
+  "qno": 15,
+  "type": "Simmetrik tənliklər sistemi",
+  "toplu": "səh.92 №37, 38",
+  "match": "Çox yaxın",
+  "q": "$\\begin{cases}x+y=7\\\\ xy=10\\end{cases}$ sisteminin həllərindən $x^2+y^2$ ifadəsinin qiymətini tapın.",
+  "opts": [
+   "$39$",
+   "$29$",
+   "$49$",
+   "$19$",
+   "$24$"
+  ],
+  "ans": "B",
+  "qarsiligi": {
+   "q": "$\\begin{cases}x+y=9\\\\ xy=14\\end{cases}$ sisteminin həllərindən $x^2+y^2$ ifadəsinin qiymətini tapın.",
+   "opts": [
+    "$67$",
+    "$39$",
+    "$81$",
+    "$45$",
+    "$53$"
+   ],
+   "ans": "E"
+  }
+ },
+ {
+  "n": 20,
+  "topic": "Çoxluqlar",
+  "year": 2023,
+  "exam": "Qəbul 04.06.2023 (I qrup)",
+  "qno": 19,
+  "type": "n(A\\B)+n(B\\A)",
+  "toplu": "səh.130 №26",
+  "match": "Çox yaxın",
+  "q": "$n(A)=14$, $n(B)=11$, $n(A\\cap B)=5$ olarsa, $n(A\\setminus B)+n(B\\setminus A)$ neçədir?",
+  "opts": [
+   "$20$",
+   "$9$",
+   "$25$",
+   "$15$",
+   "$10$"
+  ],
+  "ans": "D",
+  "qarsiligi": {
+   "q": "$n(A)=18$, $n(B)=13$, $n(A\\cap B)=7$ olarsa, $n(A\\setminus B)+n(B\\setminus A)$ neçədir?",
+   "opts": [
+    "$24$",
+    "$11$",
+    "$17$",
+    "$31$",
+    "$13$"
+   ],
+   "ans": "C"
+  }
+ },
+ {
+  "n": 21,
+  "topic": "Rasional kəsrlər",
+  "year": 2023,
+  "exam": "Buraxılış 02.04.2023",
+  "qno": 4,
+  "type": "Cəbri kəsrlərin bölünməsi",
+  "toplu": "səh.47 №2, 3",
+  "match": "Çox yaxın",
+  "q": "$\\dfrac{x^2-9}{x+2}:\\dfrac{x+3}{x^2-4}$ ifadəsini sadələşdirib $x=5$ üçün qiymətini tapın.",
+  "opts": [
+   "$8$",
+   "$10$",
+   "$6$",
+   "$12$",
+   "$3$"
+  ],
+  "ans": "C",
+  "qarsiligi": {
+   "q": "$\\dfrac{x^2-16}{x+3}:\\dfrac{x+4}{x^2-9}$ ifadəsini sadələşdirib $x=7$ üçün qiymətini tapın.",
+   "opts": [
+    "$14$",
+    "$12$",
+    "$10$",
+    "$8$",
+    "$21$"
+   ],
+   "ans": "B"
+  }
+ },
+ {
+  "n": 22,
+  "topic": "Adi və onluq kəsrlər",
+  "year": 2026,
+  "exam": "OTK sınağı 04.10.2026 (IX–X sinif, 1-ci qrup)",
+  "qno": 14,
+  "type": "Çənin hissəsi, götürülən miqdar və tutum",
+  "toplu": "səh.17 №5–8",
+  "match": "Çox yaxın",
+  "q": "Çənin $\\dfrac38$ hissəsində $45$ litr su var. Çənin tutumu neçə litrdir?",
+  "opts": [
+   "$120$",
+   "$135$",
+   "$100$",
+   "$150$",
+   "$90$"
+  ],
+  "ans": "A",
+  "qarsiligi": {
+   "q": "Çənin $\\dfrac56$ hissəsində $60$ litr su var. Çənin tutumu neçə litrdir?",
+   "opts": [
+    "$50$",
+    "$80$",
+    "$65$",
+    "$72$",
+    "$90$"
+   ],
+   "ans": "D"
+  }
+ },
+ {
+  "n": 23,
+  "topic": "Kompleks ədədlər",
+  "year": 2025,
+  "exam": "Buraxılış 02.03.2025 (1-ci zona)",
+  "qno": 61,
+  "type": "Kompleks ədəd, qoşma [qapalı]",
+  "toplu": "II h. səh.165 №2, 3",
+  "match": "Çox yaxın",
+  "q": "$z=(1+2i)(3-i)$ olarsa, $\\bar z$ ədədinin xəyali hissəsini tapın.",
+  "opts": [
+   "$5$",
+   "$-10$",
+   "$1$",
+   "$10$",
+   "$-5$"
+  ],
+  "ans": "E",
+  "qarsiligi": {
+   "q": "$z=(2+i)(1-3i)$ olarsa, $\\bar z$ ədədinin xəyali hissəsini tapın.",
+   "opts": [
+    "$5$",
+    "$-5$",
+    "$-1$",
+    "$1$",
+    "$10$"
+   ],
+   "ans": "A"
+  }
+ },
+ {
+  "n": 24,
+  "topic": "Çoxhədlinin vuruqlara ayrılması",
+  "year": 2023,
+  "exam": "Qəbul 04.06.2023 (I qrup)",
+  "qno": 5,
+  "type": "Çoxhədlini vuruqlara ayırma",
+  "toplu": "səh.42 №12",
+  "match": "EYNİ",
+  "q": "$a^2-b^2=48$ və $a-b=4$ olarsa, $a+b$ neçədir?",
+  "opts": [
+   "$8$",
+   "$12$",
+   "$14$",
+   "$16$",
+   "$52$"
+  ],
+  "ans": "B",
+  "qarsiligi": {
+   "q": "$a^2-b^2=84$ və $a-b=6$ olarsa, $a+b$ neçədir?",
+   "opts": [
+    "$10$",
+    "$12$",
+    "$18$",
+    "$78$",
+    "$14$"
+   ],
+   "ans": "E"
+  }
+ },
+ {
+  "n": 25,
+  "topic": "Həqiqi ədədlər",
+  "year": 2025,
+  "exam": "Buraxılış 02.03.2025 (1-ci zona)",
+  "qno": 79,
+  "type": "Ədədi orta [yazılı]",
+  "toplu": "səh.34 №21–28",
+  "match": "Çox yaxın",
+  "q": "Beş ədədin ədədi ortası $12$-dir. Onlardan üçünün cəmi $30$-dur. Qalan iki ədədin ədədi ortasını tapın.",
+  "opts": [
+   "$12$",
+   "$18$",
+   "$10$",
+   "$15$",
+   "$30$"
+  ],
+  "ans": "D",
+  "qarsiligi": {
+   "q": "Beş ədədin ədədi ortası $14$-dür. Onlardan üçünün cəmi $36$-dır. Qalan iki ədədin ədədi ortasını tapın.",
+   "opts": [
+    "$14$",
+    "$34$",
+    "$17$",
+    "$12$",
+    "$20$"
+   ],
+   "ans": "C"
+  }
+ },
+ {
+  "n": 26,
+  "topic": "Situasiya",
+  "year": 2025,
+  "exam": "Qəbul 06.07.2025 (II qrup)",
+  "qno": 29,
+  "type": "Ətraflı yazılı",
+  "toplu": "səh.34 №21–28",
+  "match": "Çox yaxın",
+  "q": "A taksisinin tarifi: yola düşmə $2$ manat + hər km üçün $0{,}6$ manat. B taksisinin tarifi: $1$ manat + hər km üçün $0{,}8$ manat. Neçə km məsafədə hər iki taksiyə eyni məbləğ ödənilir?",
+  "opts": [
+   "$4$ km",
+   "$6$ km",
+   "$5$ km",
+   "$10$ km",
+   "$2.5$ km"
+  ],
+  "ans": "C",
+  "qarsiligi": {
+   "q": "A taksisinin tarifi: yola düşmə $3$ manat + hər km üçün $0{,}6$ manat. B taksisinin tarifi: $1$ manat + hər km üçün $0{,}8$ manat. Neçə km məsafədə hər iki taksiyə eyni məbləğ ödənilir?",
+   "opts": [
+    "$8$ km",
+    "$10$ km",
+    "$12$ km",
+    "$5$ km",
+    "$15$ km"
+   ],
+   "ans": "B"
+  }
+ },
+ {
+  "n": 27,
+  "topic": "İsbat məsələləri",
+  "year": 2023,
+  "exam": "Qəbul 04.06.2023 (I qrup)",
+  "qno": 30,
+  "type": "İsbat: tənbölən, konqruent üçbucaqlar",
+  "toplu": "səh.194 №4",
+  "match": "Çox yaxın",
+  "q": "$ABC$ üçbucağında $AB=AC$, $AD$ isə $\\angle A$-nın tənbölənidir ($D\\in BC$). $BD=DC$ olduğunu isbat etmək üçün hansı üçbucaqlar hansı əlamətlə konqruent götürülür?",
+  "opts": [
+   "$\\triangle ABD\\cong\\triangle ACD$ (T-B-T)",
+   "$\\triangle ABD\\cong\\triangle ACD$ (B-B-B)",
+   "$\\triangle ABC\\cong\\triangle ADC$ (T-B-T)",
+   "$\\triangle ABD\\cong\\triangle DBC$ (B-T-B)",
+   "$\\triangle ABD\\cong\\triangle ACD$ (T-T-T)"
+  ],
+  "ans": "A",
+  "qarsiligi": {
+   "q": "$MNK$ üçbucağında $MN=MK$, $MP$ isə $\\angle M$-in tənbölənidir ($P\\in NK$). $NP=PK$ olduğunu isbat etmək üçün hansı üçbucaqlar hansı əlamətlə konqruent götürülür?",
+   "opts": [
+    "$\\triangle MNP\\cong\\triangle MKP$ (B-B-B)",
+    "$\\triangle MNK\\cong\\triangle MPK$ (T-B-T)",
+    "$\\triangle MNP\\cong\\triangle PNK$ (B-T-B)",
+    "$\\triangle MNP\\cong\\triangle MKP$ (T-B-T)",
+    "$\\triangle MNP\\cong\\triangle MKP$ (T-T-T)"
+   ],
+   "ans": "D",
+   "sekil_tikz": "\\begin{tikzpicture}[scale=1,font=\\small]\\coordinate(N)at(0,0);\\coordinate(K)at(4,0);\\coordinate(M)at(2,3);\\coordinate(P)at(2,0);\\draw(N)--(M)--(K)--cycle;\\draw(M)--(P);\\node[below left]at(N){$N$};\\node[below right]at(K){$K$};\\node[above]at(M){$M$};\\node[below]at(P){$P$};\\end{tikzpicture}"
+  }
+ }
+]

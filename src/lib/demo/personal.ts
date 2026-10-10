@@ -1,5 +1,5 @@
 import "server-only";
-import { listRepetitorTopics } from "@/lib/repetitor/source";
+import { listQuestionPool } from "@/lib/repetitor/source";
 import type { TopicSlug } from "./content";
 import { isCorrectDaily } from "./logic";
 import type { DemoState } from "./state";
@@ -23,7 +23,7 @@ export type Personal = { ok: number; total: number; pct: number };
 /** İstifadəçinin real mövzu adı üzrə düzgün cavab faizi: günün sualları (bankdan) + bitmiş sınaqlar. */
 export async function personalByTopic(state: DemoState): Promise<Map<string, Personal>> {
   const topicOf = new Map<string, string>();
-  for (const t of await listRepetitorTopics()) for (const q of t.questions) topicOf.set(q.id, t.name);
+  for (const t of await listQuestionPool()) for (const q of t.questions) topicOf.set(q.id, t.name);
 
   const acc = new Map<string, { ok: number; total: number }>();
   const add = (name: string | undefined, ok: number, total: number) => {
