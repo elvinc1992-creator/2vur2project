@@ -6,10 +6,12 @@ import { auth } from "@/auth";
 import { getRepetitorKey } from "@/lib/repetitor/source";
 import { CARD_LABEL, LETTERS, type Letter } from "./content";
 import { ensureDaily } from "./daily";
+import { db } from "@/db";
+import { payments } from "@/db/schema";
+import { findExam } from "@/lib/exams/source";
 import {
   daysLeft,
   examStatus,
-  findExam,
   isCorrectDaily,
   isDailyOpen,
   nextDailyHref,
@@ -17,7 +19,7 @@ import {
   typeStats,
 } from "./logic";
 import { afterExamFinished } from "@/lib/weak/hooks";
-import { finalizeAttempt } from "./exam-session";
+import { finalizeAttempt, loadExamCtx } from "./exam-session";
 import { EXAM_PRICE, examQuota, periodEndFrom, PLANS, priceOf, type BillingPeriod } from "./plans";
 import { cleanMeta, rememberMeta, resetDemoState, updateDemoState, type AnswerMeta, type PaidTier } from "./state";
 
@@ -69,9 +71,10 @@ export async function answerDailyAction(id: string, choice: string, meta?: Answe
 
 /** Plan üzrə sınaq seçimi: Free — ayda 1, Pro — həftədə 1 (Premium — hamısı açıqdır). */
 export async function claimExamAction(id: string) {
-  if (!findExam(id)) redirect("/sinaqlar");
+  const exam = await findExam(id);
+  if (!exam) redirect("/sinaqlar");
   const ok = await updateDemoState(await userId(), (state) => {
-    if (examStatus(state, id) !== "locked") return true;
+    if (examStatus(state, exam) !== "locked") return true;
     const q = examQuota(state);
     if (q.kind === "all" || q.left <= 0) return false;
     state.purchased.push(id);
@@ -85,9 +88,10 @@ export async function claimExamAction(id: string) {
 // Sayğac yalnız sınaq səhifəsi açıq olanda gedir (timer.ts, exam-session.ts).
 
 export async function startExamAction(id: string) {
-  if (!findExam(id)) redirect("/sinaqlar");
+  const exam = await findExam(id);
+  if (!exam) redirect("/sinaqlar");
   const target = await updateDemoState(await userId(), (state) => {
-    const status = examStatus(state, id);
+    const status = examStatus(state, exam);
     if (status === "locked") return `/odenis?exam=${id}`;
     if (status === "done") return `/sinaq/${id}/netice`;
     if (status === "purchased") {
@@ -101,11 +105,13 @@ export async function startExamAction(id: string) {
 
 export async function finishExamAction(id: string, timedOut = false): Promise<{ answered: number }> {
   const uid = await userId();
+  const exam = await loadExamCtx(id);
+  if (!exam) redirect("/sinaqlar");
   const res = await updateDemoState(uid, (state) => {
     if (!state.attempts[id]) return { answered: Object.keys(state.results[id]?.answers ?? {}).length };
-    return { answered: finalizeAttempt(state, id, timedOut) };
+    return { answered: finalizeAttempt(state, exam, timedOut) };
   });
-  await afterExamFinished(uid);
+  await afterExamFinished(uid, exam.questions);
   return res;
 }
 
@@ -121,10 +127,13 @@ export async function mockPayAction(formData: FormData) {
   }
 
   const uid = await userId();
-  const exam = kind === "exam" ? findExam(examId) : undefined;
+  const exam = kind === "exam" ? await findExam(examId) : undefined;
   if (kind === "exam" && !exam) redirect("/sinaqlar");
   const today = todayIso();
   const receiptId = `${Date.now().toString().slice(-8, -4)}-${Date.now().toString().slice(-4)}`;
+  const payment = exam
+    ? { kind: "exam" as const, title: exam.title, amount: EXAM_PRICE, examId, tier: null, period: null }
+    : { kind: "subscription" as const, title: `${PLANS[tier].name} · ${period === "year" ? "illik" : "aylıq"} abunə`, amount: priceOf(tier, period), examId: null, tier, period };
   await updateDemoState(uid, (state) => {
     if (exam) {
       if (!state.purchased.includes(examId)) state.purchased.push(examId);
@@ -144,6 +153,11 @@ export async function mockPayAction(formData: FormData) {
       });
     }
   });
+  // Qazanc hesabatı üçün (admin) — ödəniş ayrıca cədvələ də yazılır.
+  await db
+    .insert(payments)
+    .values({ id: `${uid}:${receiptId}`, userId: uid, ...payment, amount: Number(payment.amount.replace(/[^\d.]/g, "")) })
+    .onConflictDoNothing();
   redirect(`/odenis/ugurlu?r=${receiptId}`);
 }
 

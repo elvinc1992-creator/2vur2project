@@ -2,8 +2,6 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { userAnswers } from "@/db/schema";
-import { EXAM_QUESTIONS, type TopicSlug } from "@/lib/demo/content";
-import { DEMO_TO_REAL } from "@/lib/demo/personal";
 import { listQuestionPool } from "@/lib/repetitor/source";
 import type { ScoreStats } from "./estimate";
 
@@ -13,10 +11,6 @@ import type { ScoreStats } from "./estimate";
  * sınaq — "examId:n" (sınaq məzmunundakı mövzu).
  */
 export function topicOfAnswer(source: string, ref: string, bankTopic: Map<string, string>): string | undefined {
-  if (source === "exam") {
-    const q = EXAM_QUESTIONS.find((x) => x.n === Number(ref.split(":")[1]));
-    return q ? DEMO_TO_REAL[q.topic as TopicSlug] : undefined;
-  }
   const id = ref.includes(":") ? ref.slice(ref.lastIndexOf(":") + 1) : ref;
   return bankTopic.get(id);
 }

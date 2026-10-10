@@ -45,7 +45,7 @@ export const listExamPairs = cache(async (): Promise<ExamPairView[]> => {
       .select({ s: examSamples, topicSlug: topics.slug, topicName: topics.name })
       .from(examSamples)
       .innerJoin(topics, eq(topics.id, examSamples.topicId))
-      .orderBy(asc(topics.sortOrder), asc(examSamples.n)),
+      .orderBy(asc(topics.curriculumOrder), asc(examSamples.n)),
     db.select().from(examCounterparts).orderBy(asc(examCounterparts.examN), asc(examCounterparts.sortOrder)),
     db.select({ topicId: bankTasks.topicId, n: count() }).from(bankTasks).groupBy(bankTasks.topicId),
     listQuestionPool(),

@@ -26,7 +26,7 @@ const PROTECTED = [
 ];
 // /daxil-ol və /qeydiyyat daxil olmuş istifadəçiyə də açıqdır: başqa hesabla daxil olmaq və ya
 // yeni hesab yaratmaq sessiyanı həmin hesaba keçirir (səhifədə xəbərdarlıq göstərilir).
-const STAFF_ROLES = new Set(["teacher", "editor", "admin"]);
+// /admin: rol bazadan yoxlanılır (src/app/admin/layout.tsx) — sessiyadakı rol köhnə ola bilər.
 
 const matches = (path: string, prefixes: string[]) =>
   prefixes.some((p) => path === p || path.startsWith(`${p}/`));
@@ -39,9 +39,6 @@ export default auth((req) => {
     const url = new URL("/daxil-ol", req.nextUrl);
     url.searchParams.set("next", `${pathname}${search}`);
     return NextResponse.redirect(url);
-  }
-  if (user && matches(pathname, ["/admin"]) && !STAFF_ROLES.has(user.role)) {
-    return NextResponse.redirect(new URL("/panel", req.nextUrl));
   }
   return NextResponse.next();
 });

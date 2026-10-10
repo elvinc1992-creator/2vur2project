@@ -65,3 +65,22 @@ export async function fixDaily(userId: string, patch: Record<string, unknown> = 
   });
   db.close();
 }
+
+/** Sınağın n-ci sualı: kod, format, düzgün cavab (hərf və ya ədəd), həll və mətn (bazadan). */
+export async function examItem(examId: string, n: number) {
+  const db = connect();
+  const r = await db.execute({
+    sql: `select i.task_code code, i.format, b.correct_option, b.answer_value, b.solution, b.body
+          from exam_items i join bank_tasks b on b.code = i.task_code where i.exam_id = ? and i.n = ?`,
+    args: [examId, n],
+  });
+  db.close();
+  const x = r.rows[0];
+  return {
+    code: String(x.code),
+    format: String(x.format),
+    answer: String(x.format === "closed" ? x.correct_option : x.answer_value),
+    solution: String(x.solution ?? ""),
+    body: String(x.body),
+  };
+}

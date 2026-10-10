@@ -7,8 +7,8 @@ import { Card, FormatBar, h3Class } from "@/components/ui/display";
 import { EmptyState } from "@/components/ui/empty-art";
 import { az } from "@/content/az";
 import { claimExamAction, startExamAction } from "@/lib/demo/actions";
-import { EXAM_FORMAT, EXAM_QUESTIONS } from "@/lib/demo/content";
-import { answeredCount, examStatus, findExam, formatDate, remainingMs, todayIso } from "@/lib/demo/logic";
+import { answeredCount, examStatus, formatDate, remainingMs, todayIso } from "@/lib/demo/logic";
+import { findExam, getExamQuestions } from "@/lib/exams/source";
 import { EXAM_PRICE, examQuota } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import { ExamRunner } from "./exam-runner";
@@ -18,17 +18,17 @@ export const metadata: Metadata = { title: az.app.nav.exams };
 
 export default async function ExamPage(props: PageProps<"/sinaq/[id]">) {
   const { id } = await props.params;
-  const exam = findExam(id);
+  const exam = await findExam(id);
   if (!exam) notFound();
   const { user, state } = await requireDemo(`/sinaq/${id}`);
-  const status = examStatus(state, id);
+  const status = examStatus(state, exam);
   const quota = examQuota(state);
   const t = az.app;
 
   if (status === "done") redirect(`/sinaq/${id}/netice`);
 
   if (status === "locked" || status === "purchased") {
-    const { closed, coded, written } = EXAM_FORMAT;
+    const { closed, coded, written } = exam.counts;
     return (
       <>
         <Topbar title={exam.title} back="/sinaqlar" />
@@ -55,7 +55,7 @@ export default async function ExamPage(props: PageProps<"/sinaq/[id]">) {
               <span className="text-small text-ink-muted">{exam.group}</span>
               <h1 className={h3Class}>{exam.title}</h1>
               <p className="text-ink-muted">
-                {t.store.questions(EXAM_QUESTIONS.length)} · {t.store.minutes(exam.durationMin)}
+                {t.store.questions(exam.total)} · {t.store.minutes(exam.durationMin)}
               </p>
               <FormatBar closed={closed} coded={coded} written={written} label={t.store.format(closed, coded, written)} />
               <p className="text-small text-ink-muted">{t.store.format(closed, coded, written)}</p>
@@ -79,7 +79,7 @@ export default async function ExamPage(props: PageProps<"/sinaq/[id]">) {
   return (
     <ExamRunner
       exam={exam}
-      questions={EXAM_QUESTIONS}
+      questions={await getExamQuestions(id)}
       initialAnswers={attempt.answers}
       initialFlags={attempt.flags}
       remaining={remainingMs(attempt, exam)}

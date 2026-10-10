@@ -6,7 +6,6 @@ import { Page, Topbar } from "@/components/app/topbar";
 import { CalcIcon, CapIcon, ChevronIcon, ClockIcon, FlameIcon, LockIcon, RetryIcon } from "@/components/icons";
 import { Card, Meter, Ring, Tag, Week, h1Class, h3Class, listClass } from "@/components/ui/display";
 import { az } from "@/content/az";
-import { EXAMS, EXAM_QUESTIONS } from "@/lib/demo/content";
 import { requireDaily } from "@/lib/demo/daily";
 import {
   answeredCount,
@@ -14,7 +13,6 @@ import {
   dailyPager,
   daysLeft,
   examStatus,
-  findExam,
   formatDate,
   planStatus,
   remainingMs,
@@ -27,6 +25,7 @@ import { tutorOf } from "@/lib/repetitor/progress";
 import { listMistakes } from "@/lib/review/mistakes";
 import { practicePool } from "@/lib/review/pool";
 import { listRepetitorTopics } from "@/lib/repetitor/source";
+import { listExams } from "@/lib/exams/source";
 
 export const metadata: Metadata = { title: az.app.panel.title };
 
@@ -49,13 +48,15 @@ export default async function PanelPage() {
   const progress = progressTopic ? typeProgress(state, ctx, progressTopic.slug) : [];
 
   // Vaxtı bitmiş sınaq "Davam et"-də göstərilmir.
-  const inProgressId = Object.keys(state.attempts).find((id) => examStatus(state, id) === "in_progress");
-  const inProgress = inProgressId ? findExam(inProgressId) : undefined;
-  const attempt = inProgressId ? state.attempts[inProgressId] : undefined;
-  const doneCount = EXAMS.filter((e) => ["done", "expired"].includes(examStatus(state, e.id))).length;
-  const progressCount = EXAMS.filter((e) => examStatus(state, e.id) === "in_progress").length;
-  const newNames = EXAMS.filter((e) => examStatus(state, e.id) === "locked")
-    .map((e) => e.title.replace(/^.*(№\d+)$/, "$1"))
+  const exams = await listExams();
+  const inProgress = exams.find((e) => examStatus(state, e) === "in_progress");
+  const attempt = inProgress ? state.attempts[inProgress.id] : undefined;
+  const doneCount = exams.filter((e) => ["done", "expired"].includes(examStatus(state, e))).length;
+  const progressCount = exams.filter((e) => examStatus(state, e) === "in_progress").length;
+  const newNames = exams
+    .filter((e) => examStatus(state, e) === "locked")
+    .slice(0, 4)
+    .map((e) => `${{ "9": "9-cu", "11": "11-ci", blok: "Blok" }[e.examType]} №${e.number}`)
     .join(", ");
 
   return (
@@ -254,13 +255,13 @@ export default async function PanelPage() {
                   <div className="h-1.5 overflow-hidden rounded-pill bg-white/20">
                     <i
                       className="block h-full rounded-pill bg-coral-500"
-                      style={{ width: `${(answeredCount(attempt) / EXAM_QUESTIONS.length) * 100}%` }}
+                      style={{ width: `${(answeredCount(attempt) / inProgress.total) * 100}%` }}
                     />
                   </div>
                   <span className="text-small text-on-navy-muted">
                     {t.examProgress(
                       answeredCount(attempt),
-                      EXAM_QUESTIONS.length,
+                      inProgress.total,
                       Math.ceil(remainingMs(attempt, inProgress) / 60_000),
                     )}
                   </span>

@@ -3,7 +3,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { AngleDeco, ArrowIcon, CameraIcon, ChartIcon, CheckIcon, ChevronIcon, CloseIcon, SendIcon } from "@/components/icons";
 import { FooterDark } from "@/components/landing/footer-dark";
-import { SampleCard } from "@/components/landing/sample-card";
+import { SampleCard, type SampleQuestion } from "@/components/landing/sample-card";
+import { listAllRepetitorTopics } from "@/lib/repetitor/source";
 import { SiteHeader } from "@/components/landing/site-header";
 import { TopicIcon } from "@/components/landing/topic-icon";
 import { buttonClass, ButtonLink } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Card, FormatBar, Placeholder, Tag, eyebrowClass, h1Class, h3Class } fro
 import { brand, socialUrl } from "@/config/brand";
 import { az } from "@/content/az";
 import { cn } from "@/lib/cn";
-import { EXAM_FORMAT } from "@/lib/demo/content";
+import { examFormatOf } from "@/lib/exams/blueprint";
 import { fmtInt, fmtPct } from "@/lib/format";
 import { DEFAULT_FILTERS } from "@/lib/stats/filters";
 import { shownCount } from "@/lib/stats/display";
@@ -29,6 +30,17 @@ export const metadata: Metadata = {
 export const revalidate = 600;
 
 type LandingData = { overview: Overview | null; years: number[]; ranking: RankingRow[] };
+
+/** Nümunə sual — saytın sual bankından (cavab brauzerə getmir). */
+async function sampleQuestion(): Promise<SampleQuestion | null> {
+  try {
+    const topic = (await listAllRepetitorTopics()).find((x) => x.slug === "faiz-nisbet-tenasub");
+    const q = topic?.questions.find((x) => !x.imageUrl);
+    return topic && q ? { topic: topic.name, type: q.type, text: q.text, options: q.options, ref: q.ref } : null;
+  } catch {
+    return null;
+  }
+}
 
 async function loadData(): Promise<LandingData> {
   try {
@@ -49,7 +61,7 @@ async function loadData(): Promise<LandingData> {
 }
 
 export default async function HomePage() {
-  const { overview, ranking } = await loadData();
+  const [{ overview, ranking }, EXAM_FORMAT, sample] = await Promise.all([loadData(), examFormatOf("buraxilis-11"), sampleQuestion()]);
   const topicCount = fmtInt(overview?.topics || ranking.length || 27);
   const telegram = socialUrl(brand.telegramUrl);
   const instagram = socialUrl(brand.instagramUrl);
@@ -142,7 +154,7 @@ export default async function HomePage() {
               <p className="text-lead text-ink-muted">{t.card.lead}</p>
               <FeatureList items={t.card.features} className="mt-2" />
             </div>
-            <SampleCard id="numune-kart" />
+            <SampleCard id="numune-kart" q={sample} />
           </div>
         </Section>
 

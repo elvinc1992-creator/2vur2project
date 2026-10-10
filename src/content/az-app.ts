@@ -273,6 +273,9 @@ export const azApp = {
     title: "Sınaq mağazası",
     subtitle: "Planına görə sınağı özün seçirsən: Free — ayda 1, Pro — həftədə 1, Premium — bütün sınaqlar. Seçdiyin sınaq hesabında qalır.",
     filters: { all: "Hamısı", owned: "Açıq", new: "Yeni" },
+    typesLabel: "İmtahan növü",
+    typesAll: "Bütün imtahanlar",
+    types: { "9": "9-cu sinif buraxılış", "11": "11-ci sinif buraxılış", blok: "Blok (qəbul)" } as Record<string, string>,
     quotaAll: "Premium: bütün sınaqlar açıqdır.",
     quotaLeft: (period: "month" | "week") =>
       period === "month" ? "Bu ay 1 pulsuz sınaq seçə bilərsən." : "Bu həftə 1 sınaq seçə bilərsən.",

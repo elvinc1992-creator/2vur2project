@@ -46,7 +46,7 @@ export const listBankTasks = cache(async (): Promise<BankTaskView[]> => {
     .from(bankTasks)
     .innerJoin(topics, eq(topics.id, bankTasks.topicId))
     .leftJoin(subtopics, eq(subtopics.id, bankTasks.subtopicId))
-    .orderBy(asc(topics.sortOrder), asc(bankTasks.sortOrder));
+    .orderBy(asc(topics.curriculumOrder), asc(bankTasks.sortOrder));
 
   return rows.map(({ t, topicSlug, topicName, subtopic }) => {
     const raw = t.options ? (JSON.parse(t.options) as unknown) : null;

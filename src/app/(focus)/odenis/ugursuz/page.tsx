@@ -8,14 +8,14 @@ import { EmptyState } from "@/components/ui/empty-art";
 import { brand } from "@/config/brand";
 import { az } from "@/content/az";
 import { PLANS, priceOf } from "@/lib/demo/plans";
-import { findExam } from "@/lib/demo/logic";
+import { findExam } from "@/lib/exams/source";
 import { requireDemo } from "@/lib/demo/session";
 
 export const metadata: Metadata = { title: az.app.payment.failTitle };
 
 export default async function PaymentFailPage(props: PageProps<"/odenis/ugursuz">) {
   const sp = await props.searchParams;
-  const exam = typeof sp.exam === "string" ? findExam(sp.exam) : undefined;
+  const exam = typeof sp.exam === "string" ? await findExam(sp.exam) : undefined;
   await requireDemo("/odenis");
   const t = az.app.payment;
   const tier = sp.plan === "premium" ? "premium" : "pro";

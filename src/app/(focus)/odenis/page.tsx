@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, KeyValues, Placeholder, Tag } from "@/components/ui/display";
 import { az } from "@/content/az";
 import { mockPayAction } from "@/lib/demo/actions";
-import { findExam } from "@/lib/demo/logic";
+import { findExam } from "@/lib/exams/source";
 import { BILLING_PERIODS, PLANS, priceOf, tierOf, yearlySavingPct, type BillingPeriod } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import type { PaidTier } from "@/lib/demo/state";
@@ -21,7 +21,7 @@ const TIERS: PaidTier[] = ["pro", "premium"];
 export default async function PaymentPage(props: PageProps<"/odenis">) {
   const sp = await props.searchParams;
   const examId = typeof sp.exam === "string" ? sp.exam : null;
-  const exam = examId ? findExam(examId) : undefined;
+  const exam = examId ? await findExam(examId) : undefined;
   if (examId && !exam) notFound();
   const tier: PaidTier = sp.plan === "premium" ? "premium" : "pro";
   const period: BillingPeriod = sp.period === "year" ? "year" : "month";

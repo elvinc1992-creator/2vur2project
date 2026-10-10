@@ -15,7 +15,8 @@ import { finishExamAction } from "@/lib/demo/actions";
 import { examApi } from "@/lib/demo/exam-api";
 import type { TickResult } from "@/lib/demo/exam-session";
 import { HEARTBEAT_MS } from "@/lib/demo/timer";
-import { CODE_LEN, LETTERS, type ExamMeta, type ExamQuestion, type Letter } from "@/lib/demo/content";
+import { CODE_LEN, LETTERS, type Letter } from "@/lib/demo/content";
+import type { ExamMeta, ExamQuestion } from "@/lib/exams/types";
 import { cn } from "@/lib/cn";
 
 const t = az.app.exam;
@@ -54,6 +55,8 @@ function fmt(ms: number) {
 export function ExamRunner({ exam, questions, initialAnswers, initialFlags, remaining, studentName, today }: Props) {
   const router = useRouter();
   const total = questions.length;
+  /** İmtahan kitabçasındakı son nömrə (9-cu sinif: 85) — "Sual 61 / 85". */
+  const lastN = questions[questions.length - 1]?.n ?? total;
   const [current, setCurrent] = useState(() => {
     const firstEmpty = questions.findIndex((q) => !initialAnswers[q.n]);
     return firstEmpty >= 0 ? firstEmpty : 0;
@@ -230,7 +233,7 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
       <div className="sticky top-0 z-10 flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-4 py-3 lg:px-8">
         <div>
           <h1 className="text-small font-normal text-ink-muted">{exam.title}</h1>
-          <b className="text-navy-900 tabular">{t.question(q.n, total)}</b>
+          <b className="text-navy-900 tabular">{t.question(q.n, lastN)}</b>
         </div>
         <div className="flex items-center gap-2">
           <span
@@ -263,7 +266,7 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
               <ExamQuestionView
                 key={q.n}
                 examId={exam.id}
-                total={total}
+                total={lastN}
                 q={q}
                 value={answers[q.n] ?? ""}
                 flagged={flags.has(q.n)}
@@ -390,8 +393,9 @@ function ExamQuestionView({
         n={q.n}
         total={total}
         text={q.text}
-        image={Boolean(q.image)}
-        imageLabel={t.imagePlaceholder}
+        imageUrl={q.imageUrl}
+        imageAlt={q.imageAlt}
+        qid={q.code}
         aside={
           <>
             <Tag tone={q.format === "coded" ? "coral" : q.format === "written" ? "type" : "topic"}>
@@ -992,7 +996,7 @@ function AnswerSheet({
   onGo: (idx: number) => void;
   onFinish: () => void;
 }) {
-  const total = questions.length;
+  const total = questions[questions.length - 1]?.n ?? questions.length;
   const groups = useMemo(
     () => (["closed", "coded", "written"] as const).map((f) => ({ f, qs: questions.filter((q) => q.format === f) })),
     [questions],

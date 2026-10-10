@@ -124,7 +124,7 @@ test("daxil olmuş (Free daxil): statistika tam açıqdır — şəxsi faiz, pri
   await expect(page.getByText("Prioritet plan abunə ilə açılır")).toHaveCount(0);
 
   // Sınaq (Free: ayın sınağı): 1-ci (faiz) düzgün, qalanı boş → bitir
-  await page.goto("/sinaq/1");
+  await page.goto("/sinaq/b11-1");
   await page.getByRole("button", { name: "Bu ayın sınağı kimi seç" }).click();
   await page.getByRole("button", { name: "Başla" }).click();
   await page.keyboard.press("c");

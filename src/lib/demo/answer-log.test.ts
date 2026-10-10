@@ -5,7 +5,7 @@ vi.mock("@/db", () => ({ db: {} }));
 
 const { newAnswers } = await import("./answer-log");
 const { seedState } = await import("./state");
-const { gradeExam } = await import("./logic");
+const { gradeExam } = await import("@/lib/exams/grade");
 
 describe("newAnswers", () => {
   it("yalnız yeni cavabları qaytarır, skip-i saymır", () => {
@@ -25,12 +25,26 @@ describe("newAnswers", () => {
   it("bitmiş sınağın qapalı/kodlaşdırılan cavablarını yazır, yazılıları yox", () => {
     const prev = seedState("u");
     const next = structuredClone(prev);
-    next.results["1"] = { ...gradeExam({ "1": "C", "2": "A", "14": "42", "21": "w" }), meta: { "2": { ms: 5000, ch: 3 } }, flags: [2] };
-    const e = { source: "exam", examId: "1" };
+    const q = (n: number, code: string, format: "closed" | "coded" | "written") =>
+      ({ n, code, format, topic: "t", topicName: "T", type: "tip", text: "", ref: "" }) as const;
+    const questions = [q(1, "AA-1", "closed"), q(2, "AA-2", "closed"), q(14, "AA-14", "coded"), q(21, "AA-21", "written")];
+    const keys = new Map([
+      [1, { code: "AA-1", format: "closed" as const, answer: "C", steps: [] }],
+      [2, { code: "AA-2", format: "closed" as const, answer: "B", steps: [] }],
+      [14, { code: "AA-14", format: "coded" as const, answer: "42", steps: [] }],
+      [21, { code: "AA-21", format: "written" as const, answer: "", steps: [] }],
+    ]);
+    next.results["b11-1"] = {
+      ...gradeExam(questions, keys, { "1": "C", "2": "A", "14": "42", "21": "w" }),
+      meta: { "2": { ms: 5000, ch: 3 } },
+      flags: [2],
+    };
+    const e = { source: "exam", examId: "b11-1" };
+    // İstinad — sualın bank kodu (sınaq dəyişsə də mövzu tapılır)
     expect(newAnswers(prev, next)).toEqual([
-      { ...e, questionRef: "1:1", correct: true, chosen: "C", flagged: false },
-      { ...e, questionRef: "1:2", correct: false, chosen: "A", flagged: true, timeMs: 5000, changes: 3 },
-      { ...e, questionRef: "1:14", correct: true, chosen: "42", flagged: false },
+      { ...e, questionRef: "b11-1:AA-1", correct: true, chosen: "C", flagged: false },
+      { ...e, questionRef: "b11-1:AA-2", correct: false, chosen: "A", flagged: true, timeMs: 5000, changes: 3 },
+      { ...e, questionRef: "b11-1:AA-14", correct: true, chosen: "42", flagged: false },
     ]);
     // Eyni nəticə ikinci dəfə yazılmır
     expect(newAnswers(next, structuredClone(next))).toEqual([]);

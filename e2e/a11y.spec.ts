@@ -42,21 +42,21 @@ async function axe(page: Page) {
 test("axe: sınaq, nəticə, profil, statistika", async ({ page, browser }) => {
   await login(page);
   // Sınaq: al, başla, bir cavab ver
-  await page.goto("/odenis?exam=1");
+  await page.goto("/odenis?exam=b11-1");
   await page.getByRole("button", { name: /ödə/ }).click();
   await page.getByRole("button", { name: "Sınağa başla" }).click();
-  await expect(page).toHaveURL(/\/sinaq\/1$/);
+  await expect(page).toHaveURL(/\/sinaq\/b11-1$/);
   await page.keyboard.press("c");
   const results: Record<string, string[]> = {};
-  results["/sinaq/1"] = await axe(page);
+  results["/sinaq/b11-1"] = await axe(page);
   // Cavab vərəqi və bitir dialoqu da yoxlanılır
   await page.getByRole("button", { name: "Cavab vərəqi" }).first().click();
-  results["/sinaq/1 (vərəq)"] = await axe(page);
+  results["/sinaq/b11-1 (vərəq)"] = await axe(page);
   await page.getByRole("button", { name: "Sınağı bitir" }).last().click();
-  results["/sinaq/1 (dialoq)"] = await axe(page);
+  results["/sinaq/b11-1 (dialoq)"] = await axe(page);
   await page.getByRole("button", { name: "Bitir", exact: true }).click();
-  await expect(page).toHaveURL(/\/sinaq\/1\/netice$/);
-  results["/sinaq/1/netice"] = await axe(page);
+  await expect(page).toHaveURL(/\/sinaq\/b11-1\/netice$/);
+  results["/sinaq/b11-1/netice"] = await axe(page);
   for (const p of [
     "/profil",
     "/statistika",
@@ -90,14 +90,14 @@ test("axe: sınaq, nəticə, profil, statistika", async ({ page, browser }) => {
 test("ekran görüntüləri: sınaq, nəticə, profil, statistika", async ({ page }) => {
   await login(page);
   // Nəticə (sınaq 1) əvvəlki testdə bitib; yarımçıq sınaq üçün 2-ni başladırıq.
-  await page.goto("/odenis?exam=2");
+  await page.goto("/odenis?exam=b11-2");
   await page.getByRole("button", { name: /ödə/ }).click();
   await page.getByRole("button", { name: "Sınağa başla" }).click();
-  await expect(page).toHaveURL(/\/sinaq\/2$/);
+  await expect(page).toHaveURL(/\/sinaq\/b11-2$/);
   // 1-ci sınaq bu kontekstdə yoxdursa, onu da bitiririk
-  await page.goto("/sinaq/1/netice");
+  await page.goto("/sinaq/b11-1/netice");
   if (!page.url().endsWith("/netice")) {
-    await page.goto("/odenis?exam=1");
+    await page.goto("/odenis?exam=b11-1");
     await page.getByRole("button", { name: /ödə/ }).click();
     await page.getByRole("button", { name: "Sınağa başla" }).click();
     await page.keyboard.press("c");
@@ -107,8 +107,8 @@ test("ekran görüntüləri: sınaq, nəticə, profil, statistika", async ({ pag
     await expect(page).toHaveURL(/\/netice$/);
   }
   const pages: Array<[string, string]> = [
-    ["sinaq", "/sinaq/2"],
-    ["netice", "/sinaq/1/netice"],
+    ["sinaq", "/sinaq/b11-2"],
+    ["netice", "/sinaq/b11-1/netice"],
     ["profil", "/profil"],
     ["statistika", "/statistika"],
   ];

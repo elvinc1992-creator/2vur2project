@@ -35,7 +35,7 @@ const isClosed = (b: BankTaskView) => b.format === "closed" && b.options !== nul
 
 const loadSources = cache(async () => {
   const [topicRows, bank] = await Promise.all([
-    db.select({ id: topics.id, slug: topics.slug, name: topics.name }).from(topics).orderBy(asc(topics.sortOrder)),
+    db.select({ id: topics.id, slug: topics.slug, name: topics.name }).from(topics).orderBy(asc(topics.curriculumOrder)),
     listBankTasks(),
   ]);
   return { topicRows, bank: bank.filter(isClosed) };

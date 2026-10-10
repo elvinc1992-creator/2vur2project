@@ -5,9 +5,11 @@ import { hash } from "@node-rs/argon2";
 import { expect, test, type Page } from "@playwright/test";
 import { bankKeys, topicCodes, wrongOf } from "./daily-fixture";
 
-// Repetitor sualları müəllifin sual bankındandır: ilk mövzu — Loqarifm (69 sual → 2 dərs), sonra Triqonometriya.
-const LOQ = "loqarifm-ustlu-tenlik-berabersizlik";
-const LOQ_NAME = "Loqarifm, üstlü tənlik/bərabərsizlik";
+// Repetitor sualları müəllifin sual bankındandır; mövzular tədris sırası ilə (tasks_01 — Natural ədədlər, sonra
+// Adi və onluq kəsrlər; hər biri 1 dərs), sonra Sınaq 1. Düzgün cavablar bazadan oxunur.
+const LOQ = "natural-ededler";
+const LOQ_NAME = "Natural ədədlər";
+const SECOND = "adi-ve-onluq-kesrler";
 
 // Onlayn repetitor (Pro): həftəlik qrafik → mövzular sıra ilə açılır → ✓ → hər 2 mövzudan sonra sınaq.
 test.describe.configure({ mode: "serial" });
@@ -67,7 +69,7 @@ test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı 
   await expect(page.getByRole("heading", { level: 1, name: "Onlayn repetitor Premium planı ilə açılır" })).toBeVisible();
   await expect(page.locator("#tutor-topics + ul > li")).toHaveCount(27);
   const html = await (await page.request.get(`/onlayn-repetitor/${LOQ}/1`)).text();
-  expect(html).not.toContain("funksiyasının təyin oblastını tapın");
+  expect(html).not.toMatch(/"answer":"[A-E]"/);
 
   // Pro repetitoru açmır — yalnız Premium
   await page.goto("/odenis?plan=pro");
@@ -102,46 +104,48 @@ test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı 
   await expect(plan.locator("li").nth(0)).toContainText(LOQ_NAME);
   await expect(plan.locator("li").nth(0)).toContainText("Açıqdır");
   await expect(plan.locator("li").nth(1)).toContainText("açılacaq");
-  await expect(plan.locator("li").nth(3)).toContainText("Sınaq 1");
+  await expect(plan.locator("li").nth(2)).toContainText("Sınaq 1");
   await expect(page.getByRole("heading", { name: "Tezliklə" })).toBeVisible();
   expect(await axe(page)).toEqual([]);
 
   // Bağlı mövzunun sualı açılmır
-  await page.goto("/onlayn-repetitor/triqonometriya/1");
-  await expect(page).toHaveURL(/\/onlayn-repetitor\/triqonometriya$/);
+  await page.goto(`/onlayn-repetitor/${SECOND}/1`);
+  await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${SECOND}$`));
   await expect(page.getByText(/tarixində açılacaq/)).toBeVisible();
 
   // İlk mövzu: nəzəriyyə → praktiki testlər
   await page.goto("/onlayn-repetitor");
-  await page.getByRole("link", { name: /Dərsə başla: Loqarifm/ }).first().click();
+  await page.getByRole("link", { name: /Dərsə başla: Natural ədədlər/ }).first().click();
   await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${LOQ}$`));
   await expect(page.getByRole("heading", { name: "Nəzəriyyə" })).toBeVisible();
   await page.getByRole("link", { name: "Dərsə başla" }).click();
   await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${LOQ}/1$`));
   const qHtml = await (await page.request.get(`/onlayn-repetitor/${LOQ}/1`)).text();
-  expect(qHtml).toContain("funksiyasının təyin oblastını tapın");
-  expect(qHtml).not.toContain("Üstlü funksiya hər yerdə təyin olunub");
+  expect(qHtml).not.toMatch(/"answer":"[A-E]"/);
+  const [c1, c2] = (await topicCodes(LOQ)).slice(0, 2);
+  const keys = await bankKeys([c1, c2]);
 
-  // Bankdakı suallarda ipucu yoxdur — düymə göstərilmir. LOQ-0001 düzgün: C.
+  // Bankdakı suallarda ipucu yoxdur — düymə göstərilmir. 1-ci sual — düzgün cavab.
   await expect(page.getByRole("button", { name: "İpucu" })).toHaveCount(0);
-  await pick(page, "C");
+  await pick(page, keys.get(c1)!.answer);
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
   await expect(page.getByText("Düzgündür!")).toBeVisible();
   expect(await axe(page)).toEqual([]);
 
   await page.getByRole("link", { name: "Növbəti sual" }).click();
   await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${LOQ}/2$`));
-  // LOQ-0002 düzgün: A — yanlış seçirik
-  await pick(page, "B");
+  // 2-ci sual — yanlış seçirik
+  const right = keys.get(c2)!.answer;
+  await pick(page, wrongOf(right));
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
-  await expect(page.getByText("Yanlışdır. Düzgün cavab: A")).toBeVisible();
+  await expect(page.getByText(`Yanlışdır. Düzgün cavab: ${right}`)).toBeVisible();
 });
 
 test("mövzular bitir → ✓, 2 mövzudan sonra 20 suallıq sınaq → nəticə", async ({ page }) => {
-  // Qrafik 3 gün əvvəl başlayıb (hər gün) → 4 dərs açıqdır; ilk iki mövzunun (Loqarifm — 2 dərs, Triqonometriya)
+  // Qrafik 3 gün əvvəl başlayıb (hər gün) → 4 dərs açıqdır; ilk iki mövzunun (hər biri 1 dərs)
   // bütün suallarını cavablanmış edirik.
   const start = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
-  const ids = [...(await topicCodes(LOQ)), ...(await topicCodes("triqonometriya"))];
+  const ids = [...(await topicCodes(LOQ)), ...(await topicCodes(SECOND))];
   await patchState((s) => {
     s.tutorPlan = { days: [1, 2, 3, 4, 5, 6, 7], start, offset: 0 };
     s.tutor = Object.fromEntries(ids.map((id, i) => [id, { a: "A", ok: i === 0 }]));
@@ -149,8 +153,8 @@ test("mövzular bitir → ✓, 2 mövzudan sonra 20 suallıq sınaq → nəticə
   await login(page);
   await page.goto("/onlayn-repetitor");
   const plan = page.locator("#curriculum + ol");
-  for (const i of [0, 1, 2]) await expect(plan.locator("li").nth(i)).toContainText("Bitib");
-  await expect(plan.locator("li").nth(3)).toContainText("Sınaq hazırdır");
+  for (const i of [0, 1]) await expect(plan.locator("li").nth(i)).toContainText("Bitib");
+  await expect(plan.locator("li").nth(2)).toContainText("Sınaq hazırdır");
   // Sualı olan bütün mövzular (müəllifin bankı)
   const topicsWithQuestions = new Set([...(await bankKeys()).values()].map((k) => k.topic)).size;
   await expect(page.getByText(`2 / ${topicsWithQuestions} mövzu bitib`)).toBeVisible();
@@ -173,7 +177,7 @@ test("mövzular bitir → ✓, 2 mövzudan sonra 20 suallıq sınaq → nəticə
   await expect(page.getByText(/^Cavab verilməyib/)).toHaveCount(18);
 
   await page.goto("/onlayn-repetitor");
-  await expect(plan.locator("li").nth(3)).toContainText("Nəticə: 1 / 20");
+  await expect(plan.locator("li").nth(2)).toContainText("Nəticə: 1 / 20");
 });
 
 test("mobil 390: üfüqi sürüşmə yoxdur, alt menyuda Repetitor var", async ({ page }) => {

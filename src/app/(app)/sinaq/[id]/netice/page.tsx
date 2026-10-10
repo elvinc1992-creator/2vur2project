@@ -7,9 +7,8 @@ import { ButtonLink } from "@/components/ui/button";
 import { Card, Meter, Tag, h3Class } from "@/components/ui/display";
 import { MathText } from "@/components/ui/math-text";
 import { az } from "@/content/az";
-import { EXAM_QUESTIONS, TOPICS } from "@/lib/demo/content";
-import { EXAM_KEYS } from "@/lib/demo/keys";
-import { findExam, normalizeCoded } from "@/lib/demo/logic";
+import { isCorrect } from "@/lib/exams/grade";
+import { findExam, getExamKeys, getExamQuestions } from "@/lib/exams/source";
 import { requireDemo } from "@/lib/demo/session";
 import { cn } from "@/lib/cn";
 
@@ -17,12 +16,13 @@ export const metadata: Metadata = { title: az.app.result.title };
 
 export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">) {
   const { id } = await props.params;
-  const exam = findExam(id);
+  const exam = await findExam(id);
   if (!exam) notFound();
   const { state } = await requireDemo(`/sinaq/${id}/netice`);
   const r = state.results[id];
   if (!r) redirect(`/sinaq/${id}`);
   const t = az.app.result;
+  const [questions, keys] = await Promise.all([getExamQuestions(id), getExamKeys(id)]);
 
   return (
     <>
@@ -62,12 +62,12 @@ export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">)
                 const pct = Math.round((x.ok / x.total) * 100);
                 return (
                   <div key={x.topic} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5">
-                    <span>{TOPICS[x.topic].name}</span>
+                    <span>{x.name}</span>
                     <b className="tabular">{t.topicRow(x.ok, x.total, pct)}</b>
                     <Meter
                       className="col-span-2"
                       value={pct}
-                      label={TOPICS[x.topic].name}
+                      label={x.name}
                       tone={pct === 100 ? "success" : pct < 50 ? "coral" : "navy"}
                     />
                   </div>
@@ -87,13 +87,15 @@ export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">)
               {r.weak.map((w) => (
                 <Card key={w.type} tone="flat" className="grid gap-2">
                   <div className="flex flex-wrap gap-2">
-                    <Tag tone="coral">{TOPICS[w.topic].name}</Tag>
+                    <Tag tone="coral">{w.topicName}</Tag>
                     <Tag tone="type">{w.type}</Tag>
                   </div>
-                  <div className="flex items-center gap-2 font-semibold text-navy-900">
-                    <BookIcon className="size-5 flex-none" />
-                    {w.ref}
-                  </div>
+                  {w.ref && (
+                    <div className="flex items-center gap-2 font-semibold text-navy-900">
+                      <BookIcon className="size-5 flex-none" />
+                      {w.ref}
+                    </div>
+                  )}
                 </Card>
               ))}
             </section>
@@ -111,15 +113,11 @@ export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">)
             {t.solutionsTitle}
           </h2>
           <div className="grid gap-3 md:grid-cols-2">
-            {EXAM_QUESTIONS.map((q) => {
+            {questions.map((q) => {
               const given = r.answers[q.n];
-              const key = EXAM_KEYS[q.n];
+              const key = keys.get(q.n) ?? { code: q.code, format: q.format, answer: "", steps: [] };
               const auto = q.format !== "written";
-              const ok =
-                given !== undefined &&
-                (q.format === "closed"
-                  ? given === key.answer
-                  : q.format === "coded" && normalizeCoded(given) === normalizeCoded(key.answer));
+              const ok = isCorrect(q, key, given) === true;
               const status = !given ? "empty" : !auto ? "pending" : ok ? "correct" : "wrong";
               return (
                 <Card
@@ -141,7 +139,7 @@ export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">)
                       <span className="sr-only">{t.questionNo(q.n)}</span>
                     </h3>
                     <Tag tone="type">{az.app.exam.formats[q.format]}</Tag>
-                    <Tag>{TOPICS[q.topic].name}</Tag>
+                    <Tag>{q.topicName}</Tag>
                   </div>
                   <p className="text-small leading-[1.6]">
                     <MathText text={q.text} />
@@ -169,7 +167,7 @@ export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">)
                     </dd>
                     <dt className="text-ink-muted">{auto ? t.key : t.sample}</dt>
                     <dd className="m-0 font-semibold">
-                      <MathText text={key.answer} displayStyle />
+                      {key.answer ? <MathText text={q.format === "closed" && q.options ? `${key.answer}) ${q.options[key.answer as keyof typeof q.options]}` : key.answer} displayStyle /> : "—"}
                     </dd>
                   </dl>
                   <ol className="m-0 grid gap-0.5 pl-5 text-small text-ink-muted">
