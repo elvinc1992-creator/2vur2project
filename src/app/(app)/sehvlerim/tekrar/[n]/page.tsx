@@ -6,6 +6,7 @@ import { RetryIcon } from "@/components/icons";
 import { Tag } from "@/components/ui/display";
 import { QuestionCard } from "@/components/ui/question";
 import { az } from "@/content/az";
+import { feedbackOf } from "@/lib/bank/check";
 import type { PagerItem } from "@/lib/demo/logic";
 import { requireDemo } from "@/lib/demo/session";
 import { getPracticeKey, practicePool } from "@/lib/review/pool";
@@ -68,16 +69,13 @@ export default async function ReviewQuestionPage(props: PageProps<"/sehvlerim/te
           key={item.ref}
           n={idx + 1}
           kind={item.kind}
-          options={q.options}
+          q={q}
           bookRef={q.bookRef}
           last={idx + 1 === total}
           initial={
             given
               ? {
-                  chosen: given.a,
-                  correct: given.ok,
-                  answer: key.answer,
-                  steps: key.steps,
+                  ...feedbackOf(key, given.a),
                   fixedNow: given.ok && item.kind === "mistake",
                   nextHref,
                 }

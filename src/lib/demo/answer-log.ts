@@ -1,5 +1,6 @@
 import "server-only";
 import type { AnswerSource } from "@/db/schema";
+import { isPendingSelf, SKIP } from "@/lib/bank/check";
 import type { AnswerMeta, DemoState } from "./state";
 
 export type AnswerEvent = {
@@ -14,6 +15,9 @@ export type AnswerEvent = {
   examId?: string | null;
 };
 
+/** Loqa düşən cavab: "keç" və qiymət verilməmiş özünüyoxlama ("self") sayılmır. */
+const counts = (a: string | undefined) => Boolean(a) && a !== SKIP && !isPendingSelf(a);
+
 const withMeta = (meta: AnswerMeta | undefined) => (meta ? { timeMs: meta.ms, changes: meta.ch } : {});
 
 /**
@@ -25,7 +29,7 @@ export function newAnswers(prev: DemoState | null, next: DemoState): AnswerEvent
   const meta = next.answerMeta ?? {};
 
   for (const [id, a] of Object.entries(next.daily)) {
-    if (a === "skip" || prev?.daily[id]) continue;
+    if (!counts(a) || counts(prev?.daily[id])) continue;
     out.push({
       source: "daily",
       questionRef: id,
@@ -36,7 +40,7 @@ export function newAnswers(prev: DemoState | null, next: DemoState): AnswerEvent
   }
 
   for (const [id, p] of Object.entries(next.tutor ?? {})) {
-    if (!p.a || p.a === "skip" || prev?.tutor?.[id]?.a) continue;
+    if (!counts(p.a) || counts(prev?.tutor?.[id]?.a)) continue;
     out.push({ source: "tutor", questionRef: id, correct: Boolean(p.ok), chosen: p.a, ...withMeta(meta[`tutor:${id}`]) });
   }
 
@@ -44,7 +48,7 @@ export function newAnswers(prev: DemoState | null, next: DemoState): AnswerEvent
     // Yeni təkrar seansı — köhnə seansın cavabları nəzərə alınmır.
     const before = prev?.review?.startedAt === next.review.startedAt ? prev.review.answers : {};
     for (const [ref, r] of Object.entries(next.review.answers)) {
-      if (r.a === "skip" || before[ref]) continue;
+      if (!counts(r.a) || counts(before[ref]?.a)) continue;
       out.push({ source: "review", questionRef: ref, correct: r.ok, chosen: r.a, ...withMeta(meta[`review:${ref}`]) });
     }
   }

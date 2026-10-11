@@ -1,10 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { auth } from "@/auth";
 import { getRepetitorKey } from "@/lib/repetitor/source";
-import { CARD_LABEL, LETTERS, type Letter } from "./content";
+import { acceptsAnswer, checkAnswer, feedbackOf, isValidGiven, type AnswerFeedback } from "@/lib/bank/check";
+import { CARD_LABEL } from "./content";
 import { ensureDaily } from "./daily";
 import { db } from "@/db";
 import { payments } from "@/db/schema";
@@ -12,7 +12,6 @@ import { findExam } from "@/lib/exams/source";
 import {
   daysLeft,
   examStatus,
-  isCorrectDaily,
   isDailyOpen,
   nextDailyHref,
   todayIso,
@@ -31,19 +30,14 @@ async function userId(): Promise<string> {
 
 /* ---------------- Günün sualı ---------------- */
 
-export type DailyResult = {
-  chosen: Letter | "skip";
-  correct: boolean;
-  answer: Letter;
-  steps: string[];
+export type DailyResult = AnswerFeedback & {
   stats: { ok: number; total: number };
   nextHref: string | null;
 };
 
 export async function answerDailyAction(id: string, choice: string, meta?: AnswerMeta): Promise<DailyResult> {
-  const parsed = z.enum([...LETTERS, "skip"]).safeParse(choice);
   const key = await getRepetitorKey(id);
-  if (!key || !parsed.success) throw new Error("Yanlış sorğu");
+  if (!key || !isValidGiven(key.format, key.selfCheck, choice)) throw new Error("Yanlış sorğu");
   const uid = await userId();
   const { ctx } = await ensureDaily(uid);
   const q = ctx.byId.get(id);
@@ -52,17 +46,15 @@ export async function answerDailyAction(id: string, choice: string, meta?: Answe
   return updateDemoState(uid, (state) => {
     // Bu günün dəstində olmayan və ya kilidli sual (Free plan) — nə cavab qəbul olunur, nə də açar qaytarılır.
     if (!isDailyOpen(state, ctx, id)) throw new Error("Bu sual Pro planı ilə açılır");
-    // Artıq cavablanıbsa, ilk cavab qalır.
-    if (!state.daily[id]) {
-      state.daily[id] = parsed.data;
-      (state.dailyOk ??= {})[id] = parsed.data === key.answer;
-      rememberMeta(state, `daily:${id}`, cleanMeta(meta));
+    // Artıq cavablanıbsa, ilk cavab qalır (özünüyoxlamada — qiymət bir dəfə verilir).
+    if (acceptsAnswer(state.daily[id], choice)) {
+      const first = !state.daily[id];
+      state.daily[id] = choice;
+      (state.dailyOk ??= {})[id] = checkAnswer(key, choice);
+      if (first) rememberMeta(state, `daily:${id}`, cleanMeta(meta));
     }
     return {
-      chosen: state.daily[id],
-      correct: isCorrectDaily(state, id),
-      answer: key.answer,
-      steps: key.steps,
+      ...feedbackOf(key, state.daily[id]),
       stats: typeStats(state, ctx, q.type),
       nextHref: nextDailyHref(state, ctx, id),
     };

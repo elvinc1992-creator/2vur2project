@@ -13,7 +13,7 @@ export const MOCK_TOPICS: RepetitorTopic[] = [
   { slug: "ucbucaqlar", name: "Üçbucaqlar" },
 ];
 
-export const MOCK_QUESTIONS: RepetitorQuestion[] = [
+export const MOCK_QUESTIONS: RepetitorQuestion[] = ([
   // Stereometriya
   { id: "st1", topic: "stereometriya", type: "Prizma", freq: 6, ref: "2025 toplu, II hissə, səh.210 №4–9",
     text: "Düzgün dördbucaqlı prizmanın oturacağının tərəfi 3, hündürlüyü 5-dir. Prizmanın tam səthinin sahəsini tapın.",
@@ -79,9 +79,9 @@ export const MOCK_QUESTIONS: RepetitorQuestion[] = [
   { id: "uc4", topic: "ucbucaqlar", type: "Üçbucağın sahəsi", freq: 5, ref: "2025 toplu, II hissə, səh.158 №1–6",
     text: "Tərəfləri 5, 5 və 6 olan üçbucağın sahəsini tapın.",
     options: { A: "12", B: "15", C: "24", D: "30", E: "10" } },
-];
+] satisfies Array<Omit<RepetitorQuestion, "format">>).map((q) => ({ ...q, format: "closed" as const }));
 
-export const MOCK_KEYS: Record<string, RepetitorKey> = {
+const KEYS: Record<string, Pick<RepetitorKey, "answer" | "hint" | "steps">> = {
   st1: {
     answer: "C",
     hint: "Tam səth = iki oturacaq + yan səth. Yan səth = oturacağın perimetri × hündürlük.",
@@ -186,3 +186,7 @@ export const MOCK_KEYS: Record<string, RepetitorKey> = {
     steps: ["Hündürlük: $h = \\sqrt{5^2 - 3^2} = 4$.", "$S = \\frac{1}{2} \\cdot 6 \\cdot 4 =$ **12**."],
   },
 };
+
+export const MOCK_KEYS: Record<string, RepetitorKey> = Object.fromEntries(
+  Object.entries(KEYS).map(([id, k]) => [id, { ...k, format: "closed", answerText: k.answer, selfCheck: false }]),
+);

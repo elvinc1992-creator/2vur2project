@@ -3,7 +3,7 @@ import { createClient } from "@libsql/client";
 import { loadEnvConfig } from "@next/env";
 import { hash } from "@node-rs/argon2";
 import { expect, test, type Page } from "@playwright/test";
-import { bankKeys, fixDaily, wrongOf } from "./daily-fixture";
+import { answerBank, bankKeys, fixDaily } from "./daily-fixture";
 
 // Səhvlərim: səhv cavablar toplanır, "Səhvlərimi təkrar et" — həmin suallar + oxşar suallar.
 test.describe.configure({ mode: "serial" });
@@ -118,8 +118,10 @@ test("Pro: səhv + oxşar suallar; oxşara səhv cavab da Səhvlərimə düşür
   await expect(page.getByText(subtopic, { exact: true })).toBeVisible();
   const ref = (await page.locator("[data-qid]").getAttribute("data-qid"))!;
   const key = (await bankKeys([ref.replace(/^q:/, "")])).values().next().value!;
-  await answer(page, wrongOf(key.answer));
-  await expect(page.getByText(`Yanlışdır. Düzgün cavab: ${key.answer}`)).toBeVisible();
+  // Oxşar sual istənilən formatda ola bilər (qapalı, açıq, uyğunluq).
+  await answerBank(page, key, false);
+  await page.getByRole("button", { name: "Cavabı yoxla" }).click();
+  await expect(page.getByText(/^Yanlışdır\. Düzgün cavab: /)).toBeVisible();
   expect(await axe(page)).toEqual([]);
 
   // Yarımçıq seans: davam et

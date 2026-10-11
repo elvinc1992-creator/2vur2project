@@ -8,7 +8,8 @@ import { Card, h1Class } from "@/components/ui/display";
 import { MathText } from "@/components/ui/math-text";
 import { az } from "@/content/az";
 import { cn } from "@/lib/cn";
-import { LETTERS } from "@/lib/demo/content";
+import { FormAnswerFields } from "@/components/ui/form-answer";
+import { givenText, isLetter } from "@/lib/bank/check";
 import { canUseRepetitor } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import { submitTutorExamAction } from "@/lib/repetitor/actions";
@@ -57,7 +58,7 @@ export default async function TutorExamPage(props: PageProps<"/onlayn-repetitor/
               {questions.map((q, i) => {
                 const ok = record.results[q.id];
                 const given = record.answers[q.id];
-                const answer = keys.get(q.id)?.answer ?? "";
+                const answer = keys.get(q.id)?.answerText ?? "";
                 return (
                   <li key={q.id}>
                     <Card className="grid gap-2">
@@ -76,7 +77,13 @@ export default async function TutorExamPage(props: PageProps<"/onlayn-repetitor/
                           {ok ? t.examCorrect : given ? t.examWrong(answer) : t.examEmpty(answer)}
                           {given && !ok && (
                             <span className="block font-normal text-ink-muted">
-                              {t.examYour(given)}: <MathText text={q.options[given]} />
+                              {q.options && isLetter(given) ? (
+                                <>
+                                  {t.examYour(given)}: <MathText text={q.options[given]} />
+                                </>
+                              ) : (
+                                t.examYour(givenText(q.format, given))
+                              )}
                             </span>
                           )}
                         </span>
@@ -108,25 +115,7 @@ export default async function TutorExamPage(props: PageProps<"/onlayn-repetitor/
                     className="h-auto max-h-[280px] w-auto max-w-full justify-self-center rounded-md border border-line bg-white object-contain p-2"
                   />
                 )}
-                <fieldset className="m-0 grid min-w-0 gap-2 border-0 p-0 sm:grid-cols-5">
-                  <legend className="sr-only">
-                    {t.optionsLabel}: {i + 1}
-                  </legend>
-                  {LETTERS.map((l) => (
-                    <label
-                      key={l}
-                      className={cn(
-                        "flex min-h-12 cursor-pointer items-center gap-2 rounded-md border-[1.5px] px-3 py-2",
-                        "border-control-border bg-white text-navy-900 has-checked:border-navy-900 has-checked:bg-navy-900 has-checked:text-white",
-                        "has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-navy-500",
-                      )}
-                    >
-                      <input type="radio" name={`q-${q.id}`} value={l} className="sr-only" />
-                      <b>{l})</b>
-                      <MathText text={q.options[l]} />
-                    </label>
-                  ))}
-                </fieldset>
+                <FormAnswerFields name={`q-${q.id}`} legend={`${t.optionsLabel}: ${i + 1}`} q={q} />
               </Card>
             ))}
             <Button type="submit" block>

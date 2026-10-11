@@ -5,9 +5,10 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { taskOptionErrors, topics, userAnswers, userTopicStats, weakPracticeSets } from "@/db/schema";
+import { checkAnswer, isLetter, readFormAnswer } from "@/lib/bank/check";
 import { LETTERS, type Letter } from "@/lib/demo/content";
 import { addDaysIso, todayIn } from "@/lib/repetitor/plan";
-import { getRepetitorKeys, getRepetitorTopic } from "@/lib/repetitor/source";
+import { findRepetitorQuestion, getRepetitorKeys, getRepetitorTopic } from "@/lib/repetitor/source";
 import { fixSize, GROWING_BELOW } from "./compute";
 import { canonical, refreshWeakTopics } from "./data";
 import { spreadCorrect, type LetterMap } from "./spread";
@@ -55,7 +56,8 @@ async function createSet(uid: string, slug: string, kind: "fix" | "recheck") {
     .from(userTopicStats)
     .where(and(eq(userTopicStats.userId, uid), eq(userTopicStats.topicId, meta.id)));
   const recent = await recentCodes(uid);
-  const all = topic.questions;
+  // İsbat (özünüyoxlama) sualları formada avtomatik yoxlanmır — məşqə düşmür.
+  const all = topic.questions.filter((q) => !q.selfCheck);
   const fresh = all.filter((q) => !recent.has(q.id));
   const pool = fresh.length >= RECHECK_SIZE ? fresh : all;
 
@@ -82,13 +84,15 @@ async function createSet(uid: string, slug: string, kind: "fix" | "recheck") {
     chosen = shuffle([...first, ...rest]);
   }
 
-  // Düzgün cavablar A–E üzrə paylanır (variantların yeri dəyişdirilir).
+  // Qapalı suallarda düzgün cavablar A–E üzrə paylanır (variantların yeri dəyişdirilir); digərlərində yer dəyişmir.
   const keys = await getRepetitorKeys(chosen.map((q) => q.id));
+  const closed = chosen.filter((q) => q.format === "closed");
   const maps = spreadCorrect(
-    chosen.map((q) => keys.get(q.id)?.answer ?? "A"),
+    closed.map((q) => (keys.get(q.id)?.answer ?? "A") as Letter),
     Math.floor(Math.random() * LETTERS.length),
   );
-  const items: SetItem[] = chosen.map((q, i) => ({ code: q.id, map: maps[i] }));
+  const identity = Object.fromEntries(LETTERS.map((l) => [l, l])) as LetterMap;
+  const items: SetItem[] = chosen.map((q) => ({ code: q.id, map: q.format === "closed" ? maps[closed.indexOf(q)] : identity }));
   const id = crypto.randomUUID();
   await db.insert(weakPracticeSets).values({
     id,
@@ -119,15 +123,19 @@ export async function submitPracticeAction(setId: string, formData: FormData) {
   const items = JSON.parse(set.questionIds) as SetItem[];
   const keys = await getRepetitorKeys(items.map((i) => i.code));
   const [topic] = await db.select({ slug: topics.slug }).from(topics).where(eq(topics.id, set.topicId));
-  const answers: Record<string, Letter> = {};
+  const answers: Record<string, string> = {};
   let correct = 0;
   const rows: Array<typeof userAnswers.$inferInsert> = [];
   for (const it of items) {
-    const shown = formData.get(`q-${it.code}`);
-    if (typeof shown !== "string" || !(LETTERS as readonly string[]).includes(shown)) continue;
-    const original = it.map[shown as Letter];
-    const ok = original === keys.get(it.code)?.answer;
-    answers[it.code] = shown as Letter;
+    const key = keys.get(it.code);
+    const q = await findRepetitorQuestion(it.code);
+    if (!key || !q) continue;
+    // Qapalı sualda göstərilən hərf orijinal hərfə çevrilir.
+    const shown = readFormAnswer(formData, `q-${it.code}`, q);
+    if (!shown) continue;
+    const original = key.format === "closed" && isLetter(shown) ? it.map[shown] : shown;
+    const ok = checkAnswer(key, original);
+    answers[it.code] = shown;
     if (ok) correct++;
     rows.push({
       userId: uid,

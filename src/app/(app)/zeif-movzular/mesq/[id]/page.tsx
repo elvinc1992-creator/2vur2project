@@ -11,12 +11,15 @@ import { az } from "@/content/az";
 import { db } from "@/db";
 import { topics, weakPracticeSets } from "@/db/schema";
 import { cn } from "@/lib/cn";
-import { LETTERS, type Letter } from "@/lib/demo/content";
+import { FormAnswerFields } from "@/components/ui/form-answer";
+import { checkAnswer, isLetter } from "@/lib/bank/check";
+import type { Letter } from "@/lib/demo/content";
 import { requireDemo } from "@/lib/demo/session";
 import { findRepetitorQuestion, getRepetitorKeys } from "@/lib/repetitor/source";
+import type { RepetitorKey } from "@/lib/repetitor/types";
 import { submitPracticeAction, type SetItem } from "@/lib/weak/actions";
 import { GROWING_BELOW } from "@/lib/weak/compute";
-import { shownLetter } from "@/lib/weak/spread";
+import { shownLetter, type LetterMap } from "@/lib/weak/spread";
 
 export const metadata: Metadata = { title: az.app.weak.title };
 
@@ -37,7 +40,7 @@ export default async function PracticeSetPage(props: PageProps<"/zeif-movzular/m
   const questions = (await Promise.all(items.map((it) => findRepetitorQuestion(it.code)))).map((q, i) => ({ q, it: items[i] }));
   const done = Boolean(set.s.finishedAt);
   const keys = done ? await getRepetitorKeys(items.map((i) => i.code)) : null;
-  const answers = JSON.parse(set.s.answers) as Record<string, Letter>;
+  const answers = JSON.parse(set.s.answers) as Record<string, string>;
   const title = set.s.kind === "fix" ? t.setFix(set.topic) : t.setRecheck(set.topic);
   const passed = done && items.length > 0 && (set.s.correct ?? 0) / items.length >= GROWING_BELOW;
 
@@ -82,25 +85,15 @@ export default async function PracticeSetPage(props: PageProps<"/zeif-movzular/m
                     className="h-auto max-h-[280px] w-auto max-w-full justify-self-center rounded-md border border-line bg-white object-contain p-2"
                   />
                 )}
-                <fieldset className="m-0 grid min-w-0 gap-2 border-0 p-0 sm:grid-cols-2" disabled={done}>
-                  <legend className="sr-only">{t.setOptions(i + 1)}</legend>
-                  {LETTERS.map((l) => (
-                    <label
-                      key={l}
-                      className={cn(
-                        "flex min-h-12 cursor-pointer items-center gap-2 rounded-md border-[1.5px] px-3 py-2",
-                        "border-control-border bg-white text-navy-900 has-checked:border-navy-900 has-checked:bg-navy-900 has-checked:text-white",
-                      )}
-                    >
-                      <input type="radio" name={`q-${it.code}`} value={l} defaultChecked={answers[it.code] === l} className="sr-only" />
-                      <b>{l})</b>
-                      <MathText text={q.options[it.map[l]]} displayStyle />
-                    </label>
-                  ))}
-                </fieldset>
-                {done && keys && (
-                  <Result given={answers[it.code]} correct={shownLetter(it.map, keys.get(it.code)!.answer)} />
-                )}
+                <FormAnswerFields
+                  name={`q-${it.code}`}
+                  legend={t.setOptions(i + 1)}
+                  q={q}
+                  optionText={q.options ? (l) => q.options![it.map[l]] : undefined}
+                  defaultValue={answers[it.code]}
+                  disabled={done}
+                />
+                {done && keys?.get(it.code) && <Result given={answers[it.code]} map={it.map} k={keys.get(it.code)!} />}
               </Card>
             ) : null,
           )}
@@ -119,8 +112,11 @@ export default async function PracticeSetPage(props: PageProps<"/zeif-movzular/m
   );
 }
 
-function Result({ given, correct }: { given: Letter | undefined; correct: Letter }) {
-  const ok = given === correct;
+function Result({ given, map, k }: { given: string | undefined; map: LetterMap; k: RepetitorKey }) {
+  // Qapalı sual: düzgün cavab dəstdə göstərilən hərflə; digər formatlarda — cavabın özü.
+  const closed = k.format === "closed" && isLetter(k.answer);
+  const correct = closed ? shownLetter(map, k.answer as Letter) : k.answerText;
+  const ok = Boolean(given) && (closed ? given === correct : checkAnswer(k, given!));
   return (
     <p className={cn("m-0 flex items-center gap-2 text-small font-semibold", ok ? "text-success-700" : "text-danger-700")}>
       {ok ? <CheckCircleIcon className="size-5 flex-none" /> : <XCircleIcon className="size-5 flex-none" />}

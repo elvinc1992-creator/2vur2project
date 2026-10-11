@@ -3,34 +3,35 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { ArrowIcon, BookIcon, BulbIcon, CheckCircleIcon, XCircleIcon } from "@/components/icons";
-import { AnswerOptions } from "@/components/ui/answer-options";
+import { BankAnswerInput, canSubmit, SelfGrade, type BankQuestionShape } from "@/components/ui/bank-answer";
 import { useAnswerMeta } from "@/components/ui/use-answer-meta";
 import { Button, buttonClass } from "@/components/ui/button";
 import { MathText } from "@/components/ui/math-text";
 import { az } from "@/content/az";
-import type { Letter } from "@/lib/demo/content";
+import { SELF_NO, SELF_OK, SELF_PENDING, SKIP } from "@/lib/bank/check";
 import { answerReviewAction, type ReviewResult } from "@/lib/review/actions";
 import { cn } from "@/lib/cn";
 
 type Props = {
   n: number;
   kind: "mistake" | "similar";
-  options: Record<Letter, string>;
+  q: BankQuestionShape;
   bookRef: string;
   last: boolean;
   initial: ReviewResult | null;
 };
 
 /** Təkrar sualı: cavab → düz/səhv (səhv düzəldildisə — qeyd) → həll → növbəti. */
-export function ReviewAnswer({ n, kind, options, bookRef, last, initial }: Props) {
+export function ReviewAnswer({ n, kind, q, bookRef, last, initial }: Props) {
   const t = az.app.mistakes;
   const td = az.app.daily;
-  const [selected, setSelected] = useState<Letter | null>(null);
+  const [value, setValue] = useState("");
   const timing = useAnswerMeta();
   const [result, setResult] = useState<ReviewResult | null>(initial);
   const [pending, startTransition] = useTransition();
+  const ready = canSubmit(q, value);
 
-  const submit = (choice: Letter | "skip") =>
+  const submit = (choice: string) =>
     startTransition(async () => {
       setResult(await answerReviewAction(n, choice, timing.meta()));
     });
@@ -41,27 +42,27 @@ export function ReviewAnswer({ n, kind, options, bookRef, last, initial }: Props
       ? result.fixedNow
         ? t.fixedNow
         : t.correctSimilar
-      : result.chosen === "skip"
-        ? td.skipped(result.answer)
-        : kind === "mistake"
-          ? t.wrongMistake(result.answer)
-          : t.wrongSimilar(result.answer);
+      : result.selfCheck
+        ? az.app.answer.selfWrong
+        : result.chosen === SKIP
+          ? td.skipped(result.answerText)
+          : kind === "mistake"
+            ? t.wrongMistake(result.answerText)
+            : t.wrongSimilar(result.answerText);
 
   return (
     <>
-      <AnswerOptions
+      <BankAnswerInput
         name={`review-${n}`}
-        label={td.optionsLabel}
-        options={options}
-        value={selected}
-        onChange={(l) => {
-          timing.track(l);
-          setSelected(l);
+        q={q}
+        value={value}
+        onChange={(v) => {
+          if (q.format !== "open" && q.format !== "written") timing.track(v);
+          setValue(v);
         }}
-        onClear={() => setSelected(null)}
-        clearLabel={td.clearSelection}
+        onClear={() => setValue("")}
         disabled={pending}
-        feedback={result ? { answer: result.answer, chosen: result.chosen, correct: result.correct } : null}
+        feedback={result && !result.pendingSelf ? result : null}
       />
 
       {!result && (
@@ -70,18 +71,24 @@ export function ReviewAnswer({ n, kind, options, bookRef, last, initial }: Props
             type="button"
             block
             loading={pending}
-            aria-disabled={!selected || undefined}
-            onClick={() => selected && submit(selected)}
+            aria-disabled={!ready || undefined}
+            onClick={() => ready && submit(q.selfCheck ? SELF_PENDING : value.trim())}
           >
-            {td.check}
+            {q.selfCheck ? az.app.answer.selfReveal : td.check}
           </Button>
-          <Button type="button" variant="ghost" block disabled={pending} onClick={() => submit("skip")}>
-            {td.dontKnow}
-          </Button>
+          {!q.selfCheck && (
+            <Button type="button" variant="ghost" block disabled={pending} onClick={() => submit(SKIP)}>
+              {td.dontKnow}
+            </Button>
+          )}
         </>
       )}
 
-      {result && (
+      {result?.pendingSelf && (
+        <SelfGrade steps={result.steps} pending={pending} onGrade={(ok) => submit(ok ? SELF_OK : SELF_NO)} />
+      )}
+
+      {result && !result.pendingSelf && (
         <>
           <div
             role="status"
@@ -97,7 +104,7 @@ export function ReviewAnswer({ n, kind, options, bookRef, last, initial }: Props
             )}
             <div className="text-ink">
               <b className={cn("block", result.correct ? "text-success-700" : "text-danger-700")}>{title}</b>
-              {!result.correct && (result.chosen === "skip" ? t.skippedText : t.wrongText)}
+              {!result.correct && (result.chosen === SKIP ? t.skippedText : t.wrongText)}
             </div>
           </div>
 

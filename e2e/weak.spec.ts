@@ -126,15 +126,27 @@ test("hədəfli məşq: dəst yaranır, düzgün cavablar A–E üzrə paylanır
   const set = (await db.execute({ sql: "select question_ids from weak_practice_sets where id = ?", args: [setId] })).rows[0];
   const items = JSON.parse(String(set.question_ids)) as Array<{ code: string; map: Record<string, string> }>;
   const keys = await db.execute({
-    sql: `select code, correct_option from bank_tasks where code in (${items.map(() => "?").join(",")})`,
+    sql: `select code, format, correct_option, answer_value, matching_answer from bank_tasks where code in (${items.map(() => "?").join(",")})`,
     args: items.map((i) => i.code),
   });
   db.close();
-  const key = new Map(keys.rows.map((r) => [String(r.code), String(r.correct_option)]));
-  const shown = items.map((it) => Object.keys(it.map).find((l) => it.map[l] === key.get(it.code))!);
-  expect(new Set(shown).size).toBeGreaterThanOrEqual(Math.min(5, items.length));
-  for (const [i, it] of items.entries()) {
-    await page.locator(`section[aria-labelledby="wq-${it.code}"] label`, { hasText: `${shown[i]})` }).click();
+  const key = new Map(keys.rows.map((r) => [String(r.code), r]));
+  // Qapalı suallarda düzgün cavablar A–E üzrə paylanır; açıq və uyğunluq sualları da məşqə düşür.
+  const closed = items.filter((it) => key.get(it.code)!.format === "closed");
+  const shown = closed.map((it) => Object.keys(it.map).find((l) => it.map[l] === String(key.get(it.code)!.correct_option))!);
+  expect(new Set(shown).size).toBeGreaterThanOrEqual(Math.min(5, closed.length));
+  for (const it of items) {
+    const k = key.get(it.code)!;
+    const section = page.locator(`section[aria-labelledby="wq-${it.code}"]`);
+    if (k.format === "closed") {
+      await section.locator("label", { hasText: `${shown[closed.indexOf(it)]})` }).click();
+    } else if (k.format === "matching") {
+      for (const [n, ls] of Object.entries(JSON.parse(String(k.matching_answer)) as Record<string, string[]>)) {
+        for (const l of ls) await section.getByRole("checkbox", { name: `Bənd ${n}: ${l}` }).check({ force: true });
+      }
+    } else {
+      await section.getByRole("textbox").fill(String(k.answer_value));
+    }
   }
   await page.getByRole("button", { name: "Bitir" }).click();
   await expect(page.getByText(`Nəticə: ${items.length} / ${items.length}`)).toBeVisible();

@@ -9,7 +9,8 @@ import { Card, Freq, Tag } from "@/components/ui/display";
 import { QuestionCard } from "@/components/ui/question";
 import { az } from "@/content/az";
 import { requireDaily } from "@/lib/demo/daily";
-import { dailyPager, dailyTopic, isCorrectDaily, isDailyOpen, nextDailyHref, typeStats } from "@/lib/demo/logic";
+import { feedbackOf } from "@/lib/bank/check";
+import { dailyPager, dailyTopic, isDailyOpen, nextDailyHref, typeStats } from "@/lib/demo/logic";
 import { getRepetitorKey } from "@/lib/repetitor/source";
 import { DailyAnswer } from "./daily-answer";
 
@@ -36,10 +37,7 @@ export default async function DailyQuestionPage(props: PageProps<"/gunun-suallar
   const initial =
     chosen && key
       ? {
-          chosen,
-          correct: isCorrectDaily(state, q.id),
-          answer: key.answer,
-          steps: key.steps,
+          ...feedbackOf(key, chosen),
           stats: typeStats(state, ctx, q.type),
           nextHref: nextDailyHref(state, ctx, q.id),
         }
@@ -79,7 +77,7 @@ export default async function DailyQuestionPage(props: PageProps<"/gunun-suallar
               imageAlt={q.imageAlt}
               qid={q.id}
             />
-            <DailyAnswer key={q.id} id={q.id} options={q.options} refText={q.ref} initial={initial} />
+            <DailyAnswer key={q.id} id={q.id} q={q} refText={q.ref} initial={initial} />
           </>
         ) : (
           <LockedQuestion n={Number(n)} freeHref={nextDailyHref(state, ctx) ?? "/gunun-suallari"} />

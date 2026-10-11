@@ -5,7 +5,6 @@ import { userAnswers, userState } from "@/db/schema";
 import { newAnswers } from "./answer-log";
 import { answerTopicResolver } from "./answer-topic";
 import type { TutorExamRecord, TutorPlan } from "@/lib/repetitor/plan";
-import type { Letter } from "./content";
 
 // İSTİFADƏÇİ VƏZİYYƏTİ — bazada, userId-yə bağlı (user_state: alışlar, cavablar, nəticələr, abunə).
 // Hər yeni cavab həm də user_answers cədvəlinə ayrıca sətir kimi yazılır (vaxtı ilə).
@@ -13,16 +12,20 @@ import type { Letter } from "./content";
 // Versiya dəyişəndə köhnə vəziyyət nəzərə alınmır — hamı sıfırdan başlayır.
 const VERSION = 3;
 
-export type DailyAnswer = Letter | "skip";
+/**
+ * Bank sualına cavab: hərf (qapalı), ədəd(lər) (açıq/yazılı), "1:ad;2:b" (uyğunluq),
+ * "self" / "self:1" / "self:0" (isbat — özünüyoxlama) və ya "skip". Bax: lib/bank/check.ts.
+ */
+export type DailyAnswer = string;
 
 export type ReviewSession = {
   items: Array<{ ref: string; kind: "mistake" | "similar" }>;
-  answers: Record<string, { a: Letter | "skip"; ok: boolean }>;
+  answers: Record<string, { a: string; ok: boolean }>;
   startedAt: number;
 };
 
 /** Onlayn repetitor: cavab (və düz olub-olmadığı) və ipucuna baxılıb-baxılmadığı. */
-export type TutorProgress = { a?: Letter | "skip"; ok?: boolean; hint?: boolean };
+export type TutorProgress = { a?: string; ok?: boolean; hint?: boolean };
 
 export type Attempt = {
   /** Server vaxtı (ms): ilk başlanğıc. */
@@ -90,7 +93,7 @@ export type DemoState = {
   /** Təkrarda düzgün həll olunmuş səhvlər: ref → vaxt. */
   fixed?: Record<string, number>;
   /** Təkrarda oxşar suala verilmiş səhv cavablar — onlar da "Səhvlərim"ə düşür. */
-  practiceMistakes?: Record<string, Letter | "skip">;
+  practiceMistakes?: Record<string, string>;
   /** Onlayn repetitor: sual id → proqres (köhnə kukilərdə yoxdur). */
   tutor?: Record<string, TutorProgress>;
   /** Onlayn repetitor (Pro): həftəlik qrafik. */

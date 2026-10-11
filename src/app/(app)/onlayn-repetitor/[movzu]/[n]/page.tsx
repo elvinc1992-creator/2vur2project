@@ -6,6 +6,7 @@ import { ChartIcon } from "@/components/icons";
 import { Freq, Tag } from "@/components/ui/display";
 import { QuestionCard } from "@/components/ui/question";
 import { az } from "@/content/az";
+import { feedbackOf } from "@/lib/bank/check";
 import { canUseRepetitor } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import { nextRepetitorHref, repetitorPager, tutorContext, tutorOf } from "@/lib/repetitor/progress";
@@ -35,10 +36,7 @@ export default async function RepetitorQuestionPage(props: PageProps<"/onlayn-re
   // Cavab və izah yalnız cavabdan sonra, ipucu — yalnız istənibsə brauzerə gedir.
   const initial = p?.a
     ? {
-        chosen: p.a,
-        correct: Boolean(p.ok),
-        answer: key.answer,
-        steps: key.steps,
+        ...feedbackOf(key, p.a),
         hintUsed: Boolean(p.hint),
         nextHref: nextRepetitorHref(state, ctx.topics, q, ctx.isOpen),
       }
@@ -71,7 +69,7 @@ export default async function RepetitorQuestionPage(props: PageProps<"/onlayn-re
         <TutorAnswer
           key={q.id}
           id={q.id}
-          options={q.options}
+          q={q}
           refText={q.ref}
           statsHref={`/statistika/${topic.slug}`}
           hasHint={Boolean(key.hint)}

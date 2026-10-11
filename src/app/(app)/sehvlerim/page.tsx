@@ -7,7 +7,7 @@ import { Card, Tag, h1Class } from "@/components/ui/display";
 import { EmptyState } from "@/components/ui/empty-art";
 import { MathText } from "@/components/ui/math-text";
 import { az } from "@/content/az";
-import type { Letter } from "@/lib/demo/content";
+import { givenText, isLetter } from "@/lib/bank/check";
 import { canPracticeSimilar } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import type { ReviewSession } from "@/lib/demo/state";
@@ -145,7 +145,17 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
 function MistakeCard({ m }: { m: Mistake }) {
   const t = az.app.mistakes;
-  const opt = (l: Letter | "skip") => (l === "skip" ? null : m.q.options[l]);
+  // Qapalı sual — "B · variantın mətni"; digər formatlar — cavabın özü.
+  const show = (a: string) => {
+    const text = m.q.options && isLetter(a) ? m.q.options[a] : null;
+    return text !== null ? (
+      <>
+        <b>{a}</b> · <MathText text={text} />
+      </>
+    ) : (
+      <b>{m.q.selfCheck ? az.app.answer.selfNo : givenText(m.q.format, a)}</b>
+    );
+  };
   return (
     <Card as="article" aria-label={`${m.q.topicName}: ${m.q.type}`} className="grid h-full content-start gap-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -163,20 +173,12 @@ function MistakeCard({ m }: { m: Mistake }) {
       <dl className="m-0 grid gap-2 text-small sm:grid-cols-2">
         <div className="grid gap-0.5 rounded-md bg-danger-100 px-3 py-2">
           <dt className="font-semibold text-danger-700">{t.yourAnswer}</dt>
-          <dd className="m-0 font-semibold text-ink">
-            {m.chosen === "skip" ? (
-              t.skipped
-            ) : (
-              <>
-                <b className="text-danger-700">{m.chosen}</b> · <MathText text={opt(m.chosen) ?? ""} />
-              </>
-            )}
-          </dd>
+          <dd className="m-0 font-semibold text-ink [&_b]:text-danger-700">{m.chosen === "skip" ? t.skipped : show(m.chosen)}</dd>
         </div>
         <div className="grid gap-0.5 rounded-md bg-success-100 px-3 py-2">
           <dt className="font-semibold text-success-700">{t.correctAnswer}</dt>
-          <dd className="m-0 font-semibold text-ink">
-            <b className="text-success-700">{m.correct}</b> · <MathText text={m.q.options[m.correct]} />
+          <dd className="m-0 font-semibold text-ink [&_b]:text-success-700">
+            {m.q.selfCheck ? <b>{t.toSolution}</b> : show(m.correct)}
           </dd>
         </div>
       </dl>

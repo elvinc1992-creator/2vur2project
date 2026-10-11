@@ -35,8 +35,8 @@ type LandingData = { overview: Overview | null; years: number[]; ranking: Rankin
 async function sampleQuestion(): Promise<SampleQuestion | null> {
   try {
     const topic = (await listAllRepetitorTopics()).find((x) => x.slug === "faiz-nisbet-tenasub");
-    const q = topic?.questions.find((x) => !x.imageUrl);
-    return topic && q ? { topic: topic.name, type: q.type, text: q.text, options: q.options, ref: q.ref } : null;
+    const q = topic?.questions.find((x) => !x.imageUrl && x.options);
+    return topic && q?.options ? { topic: topic.name, type: q.type, text: q.text, options: q.options, ref: q.ref } : null;
   } catch {
     return null;
   }
