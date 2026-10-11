@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { userAnswers, userState } from "@/db/schema";
+import { isPassive } from "@/lib/auth/account";
 import { newAnswers } from "./answer-log";
 import { answerTopicResolver } from "./answer-topic";
 import type { TutorExamRecord, TutorPlan } from "@/lib/repetitor/plan";
@@ -199,6 +200,8 @@ async function saveDemoState(state: DemoState): Promise<boolean> {
  * ona görə fn-in yeganə yan təsiri vəziyyəti dəyişmək olmalıdır (redirect — çağırışdan sonra).
  */
 export async function updateDemoState<T>(uid: string, fn: (state: DemoState) => T | Promise<T>): Promise<T> {
+  // Passiv hesab (admin deaktiv edib) heç nə yaza bilməz — server action-lar da bloklanır.
+  if (await isPassive(uid)) throw new Error("Hesab deaktiv edilib");
   for (let attempt = 0; ; attempt++) {
     const state = await getDemoState(uid);
     const result = await fn(state);

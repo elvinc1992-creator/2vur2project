@@ -1,8 +1,10 @@
 import { and, asc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { ensureActive } from "@/lib/auth/account";
 import { ContestFrame } from "@/components/contest/contest-frame";
 import { MathText } from "@/components/ui/math-text";
 import { db } from "@/db";
@@ -25,6 +27,7 @@ export default async function ResultPage(props: PageProps<"/yaris/[slug]/netice"
   if (!c || c.status === "draft") notFound();
   const session = await auth();
   if (!session?.user?.id) redirect(`/daxil-ol?next=${encodeURIComponent(`/yaris/${slug}/netice`)}`);
+  await ensureActive(session.user.id);
   const reg = await registrationOf(c.id, session.user.id);
   if (!reg) redirect(`/yaris/${slug}#register`);
 
@@ -112,13 +115,16 @@ export default async function ResultPage(props: PageProps<"/yaris/[slug]/netice"
                     <b>{v.n}. </b>
                     <MathText text={v.text} />
                   </p>
+                  {v.imageUrl && (
+                    <Image src={v.imageUrl} alt={v.imageAlt ?? ""} width={420} height={300} className="h-auto max-h-[240px] w-auto max-w-full rounded-md border border-[#e6e9f2] bg-white object-contain p-2" />
+                  )}
                   <p className={cn("m-0 text-[14px] font-semibold", a?.correct ? "text-[#047857]" : "text-[#b91c1c]")}>
                     {a?.correct ? "✓ Düzgün" : a?.given ? `✗ Sənin cavabın: ${a.given}` : "✗ Cavabsız (vaxt bitib)"} · Düzgün cavab: {v.correct}){" "}
                     <MathText text={options[v.correct]} />
                   </p>
-                  {solution && (
+                  {(v.solution || solution) && (
                     <p className="m-0 rounded-[12px] bg-[#f5f3ff] p-3 text-[14px]">
-                      <MathText text={renderTemplate(solution, JSON.parse(v.values))} />
+                      <MathText text={v.solution ?? renderTemplate(solution, JSON.parse(v.values))} />
                     </p>
                   )}
                 </li>

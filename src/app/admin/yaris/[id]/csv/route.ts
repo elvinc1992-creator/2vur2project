@@ -19,8 +19,13 @@ export async function GET(req: Request, ctx: RouteContext<"/admin/yaris/[id]/csv
   const c = await contestById(id);
   if (!c) return new Response("Tapılmadı", { status: 404 });
   const sp = new URL(req.url).searchParams;
-  const { rows } = await listRegistrants(id, { q: sp.get("q") ?? undefined, grade: Number(sp.get("sinif")) || undefined, region: sp.get("rayon") ?? undefined }, 100_000);
-  const head = ["Ad", "Soyad", "Sinif", "Rayon", "Məktəb", "E-poçt", "Dəvət kodu", "Dəvət edənin kodu", "E-poçta razılıq", "İmtina", "Bal", "Yer", "Finalçı", "DQ", "Qeydiyyat tarixi"];
+  const st = sp.get("st");
+  const { rows } = await listRegistrants(
+    id,
+    { q: sp.get("q") ?? undefined, grade: Number(sp.get("sinif")) || undefined, region: sp.get("rayon") ?? undefined, status: st === "active" || st === "passive" ? st : undefined },
+    100_000,
+  );
+  const head = ["Ad", "Soyad", "Sinif", "Rayon", "Məktəb", "E-poçt", "Dəvət kodu", "Dəvət edənin kodu", "E-poçta razılıq", "İmtina", "Bal", "Yer", "Finalçı", "DQ", "Qeydiyyat tarixi", "Status"];
   const lines = rows.map(({ reg, res }) =>
     [
       reg.firstName,
@@ -38,6 +43,7 @@ export async function GET(req: Request, ctx: RouteContext<"/admin/yaris/[id]/csv
       res?.finalist ? "bəli" : "",
       res?.disqualified ? res.dqReason ?? "bəli" : "",
       reg.createdAt.toISOString().slice(0, 16).replace("T", " "),
+      reg.status === "active" ? "aktiv" : "passiv",
     ]
       .map(cell)
       .join(";"),

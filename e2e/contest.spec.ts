@@ -50,8 +50,8 @@ test.beforeAll(async () => {
     [CID, SLUG, now - 86_400_000, now + 86_400_000, now + 2 * 60 * MIN, now],
   );
   await sql(
-    `insert into contest_templates (contest_id, n, topic_id, body, vars, condition, answer, distractors, solution, time_sec)
-     select ?, n, topic_id, body, vars, condition, answer, distractors, solution, 20 from contest_templates where contest_id = 'acilis-2026' and n <= 3`,
+    `insert into contest_templates (contest_id, n, source, topic_id, body, vars, condition, answer, distractors, solution, time_sec)
+     select ?, n, 'bank', topic_id, body, vars, condition, answer, distractors, solution, 20 from contest_templates where contest_id = 'acilis-2026' and n <= 3`,
     [CID],
   );
 });
@@ -156,8 +156,17 @@ test("tur: vaxtdan əvvəl gözləmə; suallar bir-bir, yeniləmədə vaxt davam
   // Düzgün cavablar bazadan (brauzerə göndərilmir)
   const html = await (await page.request.get(`/yaris/${SLUG}/tur`)).text();
   const reg = (await sql("select id from contest_registrations where contest_id = ? and user_id = ?", [CID, A.id])).rows[0].id;
-  const vs = (await sql("select n, correct, options from contest_variants where registration_id = ? order by n", [reg])).rows;
+  const vs = (
+    await sql(
+      `select v.n, v.correct, v.options, v.task_code, b.topic_id bt, t.topic_id tt from contest_variants v
+       join bank_tasks b on b.code = v.task_code join contest_templates t on t.id = v.template_id where v.registration_id = ? order by v.n`,
+      [reg],
+    )
+  ).rows;
+  // Suallar sual bankındandır: hər yer öz mövzusunun qapalı sualı, təkrarsız
   expect(vs).toHaveLength(3);
+  for (const v of vs) expect(v.bt).toBe(v.tt);
+  expect(new Set(vs.map((v) => v.task_code)).size).toBe(3);
   expect(html).not.toContain('"correct"');
   const letters = vs.map((v) => String(v.correct));
 
@@ -233,4 +242,36 @@ test("nəticələr: sıralama, reytinq, nəticə məktubu yalnız razılıq ver�
   expect(cert.headers()["content-type"]).toContain("image/svg+xml");
   expect(await cert.text()).toContain("Aysel Məmmədova");
   expect(await axe(page)).toEqual([]);
+  await page.context().clearCookies();
+
+  // Admin qeydiyyatı passiv edir: iştirakçı sayda və reytinqdə yoxdur, səhifədə səbəb göstərilir
+  await login(page, ADMIN);
+  await page.goto(`/admin/yaris/${CID}?tab=istirakcilar&q=murad`);
+  const row = page.getByRole("table", { name: "Qeydiyyatçılar" }).locator("tbody tr");
+  await expect(row).toContainText("Aktiv");
+  await row.getByRole("button", { name: /passiv et/ }).click();
+  await expect(page.getByText("Yadda saxlanıldı.")).toBeVisible();
+  await expect(row).toContainText("Passiv");
+  await page.goto(`/admin/yaris/${CID}?tab=istirakcilar&st=passive`);
+  await expect(row).toHaveCount(1);
+  expect(await axe(page)).toEqual([]);
+  await page.context().clearCookies();
+  await login(page, B);
+  await page.goto(`/yaris/${SLUG}`);
+  await expect(page.getByRole("heading", { name: "Qeydiyyatın deaktiv edilib" })).toBeVisible();
+  await expect(page.getByText(/👥\s*2 qeydiyyat/)).toBeVisible();
+  await page.goto(`/yaris/${SLUG}/tur`);
+  await expect(page.getByText("Qeydiyyatın admin tərəfindən deaktiv edilib.")).toBeVisible();
+  await page.context().clearCookies();
+
+  // Yarış passivdir: normal görünüşlü "tezliklə olacaq" səhifəsi və qısa məlumat
+  await sql("update contests set status = 'draft' where id = ?", [CID]);
+  await page.goto(`/yaris/${SLUG}`);
+  await expect(page.getByRole("status")).toHaveText(/Hal-hazırda yarış yoxdur · tezliklə olacaq/);
+  await expect(page.getByRole("heading", { level: 1, name: "2vur2 Riyaziyyat Yarışı" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Yarış necə keçirilir?" })).toBeVisible();
+  await expect(page.getByText("E2E Yarışı")).toHaveCount(0);
+  expect(await axe(page)).toEqual([]);
+  await page.setViewportSize({ width: 360, height: 780 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
 });

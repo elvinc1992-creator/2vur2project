@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { oauthAccounts, users, type UserRole } from "@/db/schema";
+import { oauthAccounts, users, type AccountStatus, type UserRole } from "@/db/schema";
 
 // Google ilə giriş: hesab e-poçta görə tapılır (və ya yaradılır) və oauth_accounts-a bağlanır.
 // Sessiyada həmişə bizim users.id saxlanılır (Google sub yox).
@@ -40,12 +40,12 @@ async function uniqueUsername(email: string): Promise<string> {
 }
 
 /** Google profili → bizim istifadəçi (yoxdursa yaradılır). Təsdiqlənməmiş Google e-poçtu qəbul olunmur. */
-export async function upsertGoogleUser(profile: GoogleProfile): Promise<{ id: string; role: UserRole } | null> {
+export async function upsertGoogleUser(profile: GoogleProfile): Promise<{ id: string; role: UserRole; status: AccountStatus } | null> {
   const email = profile.email?.trim().toLowerCase();
   if (!email || profile.email_verified === false) return null;
 
   const linked = await db
-    .select({ id: users.id, role: users.role })
+    .select({ id: users.id, role: users.role, status: users.status })
     .from(oauthAccounts)
     .innerJoin(users, eq(users.id, oauthAccounts.userId))
     .where(and(eq(oauthAccounts.provider, "google"), eq(oauthAccounts.providerAccountId, profile.sub)));
@@ -74,5 +74,5 @@ export async function upsertGoogleUser(profile: GoogleProfile): Promise<{ id: st
     .insert(oauthAccounts)
     .values({ userId: user.id, provider: "google", providerAccountId: profile.sub })
     .onConflictDoNothing();
-  return { id: user.id, role: user.role };
+  return { id: user.id, role: user.role, status: user.status };
 }

@@ -1,12 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { MathText } from "@/components/ui/math-text";
 import { answerContestAction, logContestEventAction } from "@/lib/contest/actions";
 import { cn } from "@/lib/cn";
 
-type Q = { n: number; total: number; text: string; options: Record<string, string>; deadline: number; timeSec: number };
+type Q = { n: number; total: number; text: string; imageUrl?: string | null; imageAlt?: string | null; options: Record<string, string>; deadline: number; timeSec: number };
 
 /**
  * Onlayn tur: suallar bir-bir, hər sualın öz sayğacı (server vaxtı ilə, dayanmır). Vaxt bitəndə səhifə yenilənir —
@@ -117,6 +118,16 @@ export function TourRunner({ contestId, q, serverNow }: { contestId: string; q: 
         <p className="m-0 text-[18px] leading-[1.6] text-[#0f1b3d]">
           <MathText text={q.text} />
         </p>
+        {q.imageUrl && (
+          <Image
+            src={q.imageUrl}
+            alt={q.imageAlt ?? ""}
+            width={520}
+            height={360}
+            draggable={false}
+            className="mt-3 h-auto max-h-[300px] w-auto max-w-full rounded-md border border-[#e6e9f2] bg-white object-contain p-2"
+          />
+        )}
       </section>
 
       <fieldset className="m-0 grid min-w-0 gap-2.5 border-0 p-0 sm:grid-cols-2" disabled={pending || left <= 0}>

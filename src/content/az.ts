@@ -159,6 +159,7 @@ export const az = {
     wrongPassword: "Şifrə yanlışdır. Yenidən yoxla.",
     notFoundEmail: "Bu e-poçtla hesab tapılmadı.",
     notFoundUsername: "Bu istifadəçi adı ilə hesab tapılmadı.",
+    blocked: "Bu hesab admin tərəfindən deaktiv edilib. Ətraflı məlumat üçün bizimlə əlaqə saxla.",
     googleOnly: "Bu hesab Google ilə yaradılıb. “Google ilə davam et” düyməsini seç və ya şifrə bərpası ilə şifrə qoy.",
     unverified: "E-poçtun hələ təsdiqlənməyib. Poçtuna yeni link göndərdik.",
     unverifiedCta: "Təsdiq səhifəsinə keç",

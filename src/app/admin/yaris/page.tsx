@@ -72,9 +72,9 @@ export default async function AdminContests() {
         </div>
         <label className="flex items-center gap-2 text-[14px]">
           <input type="checkbox" name="templates" defaultChecked className="size-4" />
-          20 hazır sual şablonunu əlavə et (sonra redaktə etmək olar)
+          20 sual yeri əlavə et — sual bankından, IX–XI sinif mövzuları üzrə (sonra redaktə etmək olar)
         </label>
-        <p className="m-0 text-[13px] text-ink-muted">Yarış qaralama kimi yaranır; parametrləri yoxlayıb statusu “Qeydiyyat” et.</p>
+        <p className="m-0 text-[13px] text-ink-muted">Yarış passiv yaranır (saytda “tezliklə olacaq” görünür); parametrləri yoxlayıb statusu “Qeydiyyat” et. Suallar sual bankından — mövzular sonra dəyişdirilə bilər.</p>
         <button className={`${btn} justify-self-start`}>Yarışı yarat</button>
       </form>
     </>

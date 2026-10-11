@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { after } from "next/server";
 import { auth } from "@/auth";
+import { ensureActive } from "@/lib/auth/account";
 import { Logo } from "@/components/logo";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -47,7 +48,8 @@ export async function ContestLanding({ contestId }: { contestId: string }) {
   const c = (await contestById(contestId))!;
   const now = serverNow();
   const session = await auth();
-  const [prizes, regs, lb, reg, me] = await Promise.all([
+  if (session?.user?.id) await ensureActive(session.user.id);
+  const [prizes, regs, lb, myReg, me] = await Promise.all([
     prizesOf(c.id),
     registrationCount(c.id),
     c.resultsComputedAt ? leaderboard(c.id) : null,
@@ -56,6 +58,9 @@ export async function ContestLanding({ contestId }: { contestId: string }) {
       ? db.select({ name: users.name, surname: users.surname, email: users.email, grade: users.grade }).from(users).where(eq(users.id, session.user.id)).then((r) => r[0])
       : null,
   ]);
+  // Admin qeydiyyatı passiv edibsə — ayrıca mesajla göstərilir (tur və qeydiyyat yoxdur).
+  const reg = myReg?.status === "active" ? myReg : null;
+  const disabledReg = myReg?.status === "passive";
   const { prizes: shown, fund, boosted } = prizeView(c, prizes, regs);
   const times = { startAt: c.startAt.getTime(), entryWindowMin: c.entryWindowMin, durationMin: c.durationMin };
   const phase = tourPhase(times, now);
@@ -325,7 +330,12 @@ export async function ContestLanding({ contestId }: { contestId: string }) {
                 <li>Dostunu dəvət et, mükafat fondu böyüsün</li>
               </ul>
             </div>
-            {reg ? (
+            {disabledReg ? (
+              <div role="status" className="grid gap-2 rounded-[24px] border border-[#fecaca] bg-[#fef2f2] p-6 text-center text-[#991b1b]">
+                <h3 className="m-0 text-[20px] font-black">Qeydiyyatın deaktiv edilib</h3>
+                <p className="m-0">Admin bu yarışa qeydiyyatını dayandırıb. Ətraflı məlumat üçün bizimlə əlaqə saxla.</p>
+              </div>
+            ) : reg ? (
               <div role="status" className="grid gap-3 rounded-[24px] border border-[#e6e9f2] bg-white p-6 text-center">
                 <div className="text-[48px]" aria-hidden="true">✅</div>
                 <h3 className="m-0 text-[22px] font-black">Artıq qeydiyyatdasan</h3>

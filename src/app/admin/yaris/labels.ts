@@ -1,7 +1,7 @@
 import type { ContestStatus } from "@/db/schema";
 
 export const CONTEST_STATUS_LABEL: Record<ContestStatus, string> = {
-  draft: "Qaralama",
+  draft: "Passiv (saytda görünmür)",
   registration: "Qeydiyyat",
   running: "Davam edir",
   finished: "Bitib (onlayn tur)",

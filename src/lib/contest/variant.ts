@@ -70,6 +70,22 @@ export function makeVariant(t: TemplateInput, target: ContestLetter, rand: () =>
   return null;
 }
 
+export type BankTaskInput = { code: string; body: string; options: Record<ContestLetter, string>; correct: ContestLetter; solution: string };
+
+/**
+ * Sual bankından variant: variantların yeri dəyişdirilir — düzgün cavab hədəf hərfə düşür, qalanları qarışıq.
+ * Mətnlər eyni qalır (rəqəmlər dəyişmir — iştirakçılar fərqli suallar alır).
+ */
+export function makeBankVariant(t: BankTaskInput, target: ContestLetter, rand: () => number = Math.random): Variant {
+  const others = shuffle(
+    LETTERS.filter((l) => l !== t.correct).map((l) => t.options[l]),
+    rand,
+  );
+  const options = {} as Record<ContestLetter, string>;
+  for (const l of LETTERS) options[l] = l === target ? t.options[t.correct] : others.pop()!;
+  return { values: {}, text: t.body, options, correct: target, solution: t.solution };
+}
+
 export function shuffle<T>(xs: T[], rand: () => number = Math.random): T[] {
   const a = [...xs];
   for (let i = a.length - 1; i > 0; i--) {

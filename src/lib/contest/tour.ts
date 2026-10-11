@@ -4,7 +4,8 @@ import { db } from "@/db";
 import { contestAnswers, contestAttempts, contestTemplates, contestVariants } from "@/db/schema";
 import type { ContestRow, RegistrationRow } from "./data";
 import { advance, tourEnd, tourPhase, type TourPhase } from "./rules";
-import { LETTERS, makeVariant, spreadLetters, type ContestLetter } from "./variant";
+import { listBankTasks } from "@/lib/bank/tasks";
+import { LETTERS, makeBankVariant, makeVariant, spreadLetters, type ContestLetter } from "./variant";
 
 // Onlayn tur — server vaxtı ilə: variantların yaradılması, cari sual, vaxtı bitmiş sualların cavabsız yazılması.
 // Düzgün cavab brauzerə heç vaxt göndərilmir.
@@ -13,6 +14,8 @@ export type TourQuestion = {
   n: number;
   total: number;
   text: string;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   options: Record<ContestLetter, string>;
   /** Sualın bitmə anı (server vaxtı, ms). */
   deadline: number;
@@ -20,7 +23,7 @@ export type TourQuestion = {
 };
 
 export type TourState =
-  | { kind: "before" | "closed"; phase: TourPhase }
+  | { kind: "before" | "closed" | "disabled"; phase: TourPhase }
   | { kind: "question"; phase: TourPhase; q: TourQuestion }
   | { kind: "finished"; phase: TourPhase; finishedAt: number };
 
@@ -37,7 +40,33 @@ async function createVariants(c: ContestRow, reg: RegistrationRow) {
   );
   if (!templates.length) throw new Error("Yarışın sual şablonları yoxdur");
   const letters = spreadLetters(templates.length);
+  // Sual bankı: mövzunun qapalı (A–E) sualları; iştirakçıda eyni sual təkrarlanmır.
+  const bank = templates.some((t) => t.source === "bank")
+    ? (await listBankTasks()).filter((b) => b.format === "closed" && b.options && b.correct)
+    : [];
+  const used = new Set<string>();
   const rows = templates.map((t, i) => {
+    if (t.source === "bank") {
+      const pool = bank.filter((b) => b.topicId === t.topicId && !used.has(b.code));
+      const b = pool[Math.floor(Math.random() * pool.length)];
+      if (!b) throw new Error(`Sual ${t.n}: mövzuda sual bankında qapalı sual qalmayıb`);
+      used.add(b.code);
+      const v = makeBankVariant({ code: b.code, body: b.body, options: b.options!, correct: b.correct!, solution: b.solution }, letters[i]);
+      return {
+        registrationId: reg.id,
+        n: i + 1,
+        templateId: t.id,
+        values: "{}",
+        text: v.text,
+        options: JSON.stringify(v.options),
+        correct: v.correct,
+        timeSec: t.timeSec,
+        taskCode: b.code,
+        imageUrl: b.imageUrl,
+        imageAlt: b.imageAlt,
+        solution: b.solution,
+      };
+    }
     const v = makeVariant(
       { body: t.body, vars: JSON.parse(t.vars), condition: t.condition, answer: t.answer, distractors: JSON.parse(t.distractors), solution: t.solution },
       letters[i],
@@ -52,6 +81,7 @@ async function createVariants(c: ContestRow, reg: RegistrationRow) {
       options: JSON.stringify(v.options),
       correct: v.correct,
       timeSec: t.timeSec,
+      solution: v.solution || null,
     };
   });
   await db.insert(contestVariants).values(rows).onConflictDoNothing();
@@ -85,6 +115,8 @@ async function syncAttempt(variants: VariantRow[], registrationId: string, now: 
 export async function tourState(c: ContestRow, reg: RegistrationRow, opts: { enter?: boolean; now?: number } = {}): Promise<TourState> {
   const now = opts.now ?? Date.now();
   const phase = tourPhase({ startAt: c.startAt.getTime(), entryWindowMin: c.entryWindowMin, durationMin: c.durationMin }, now);
+  // Admin qeydiyyatı passiv edibsə — tur yoxdur (başlamış cəhd də davam etmir).
+  if (reg.status === "passive") return { kind: "disabled", phase };
   let variants = await variantsOf(reg.id);
   let state = variants.length ? await syncAttempt(variants, reg.id, now) : null;
 
@@ -112,6 +144,8 @@ export async function tourState(c: ContestRow, reg: RegistrationRow, opts: { ent
       n: v.n,
       total: variants.length,
       text: v.text,
+      imageUrl: v.imageUrl,
+      imageAlt: v.imageAlt,
       options: JSON.parse(v.options),
       deadline: state.currentStartedAt + v.timeSec * 1000,
       timeSec: v.timeSec,

@@ -1,11 +1,11 @@
 "use server";
 
-import { and, eq, max } from "drizzle-orm";
+import { and, count, eq, isNotNull, max } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
-import { CONTEST_STATUSES, contestPrizes, contestRegistrations, contestResults, contests, contestTemplates } from "@/db/schema";
+import { ACCOUNT_STATUSES, bankTasks, CONTEST_STATUSES, contestPrizes, contestRegistrations, contestResults, contests, contestTemplates, topics } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin/guard";
 import { contestById } from "./data";
 import { sendContestMail } from "./mail";
@@ -65,10 +65,14 @@ export async function createContestAction(formData: FormData) {
     status: "draft",
   });
   if (p.templates === "on") {
+    // 20 sual yeri — sual bankından (hər biri öz mövzusu ilə); düstur sahələri ehtiyat kimi saxlanılır.
+    const topicIds = new Map((await db.select({ id: topics.id, slug: topics.slug }).from(topics)).map((t) => [t.slug, t.id]));
     await db.insert(contestTemplates).values(
       OPENING_TEMPLATES.map((t, i) => ({
         contestId: id,
         n: i + 1,
+        source: topicIds.has(t.topic) ? ("bank" as const) : ("formula" as const),
+        topicId: topicIds.get(t.topic) ?? null,
         body: t.body,
         vars: JSON.stringify(t.vars),
         condition: t.condition ?? null,
@@ -120,19 +124,30 @@ export async function updateContestAction(formData: FormData) {
 /* ---------------- Sual şablonları ---------------- */
 
 const templateSchema = z.object({
+  source: z.enum(["bank", "formula"]).default("formula"),
   topicId: z.coerce.number().int().positive().optional(),
-  body: z.string().trim().min(5),
-  vars: z.string().trim().min(2),
+  body: z.string().trim().optional(),
+  vars: z.string().trim().optional(),
   condition: z.string().trim().optional(),
-  answer: z.string().trim().min(1),
-  distractors: z.string().trim().min(1),
+  answer: z.string().trim().optional(),
+  distractors: z.string().trim().optional(),
   solution: z.string().trim().optional(),
   timeSec: z.coerce.number().int().min(10).max(600),
 });
 
+/** Mövzuda sual bankının qapalı (A–E) suallarının sayı. */
+async function bankClosedCount(topicId: number) {
+  const [r] = await db
+    .select({ n: count() })
+    .from(bankTasks)
+    .where(and(eq(bankTasks.topicId, topicId), eq(bankTasks.format, "closed"), isNotNull(bankTasks.correctOption)));
+  return r?.n ?? 0;
+}
+
 /** Şablon yoxlanılır: hər hərf üçün variant yaranmalıdır (5 fərqli cavab). */
 function validTemplate(t: z.infer<typeof templateSchema>) {
   try {
+    if (!t.body || !t.vars || !t.answer || !t.distractors) return null;
     const input = { body: t.body, vars: JSON.parse(t.vars), condition: t.condition, answer: t.answer, distractors: t.distractors.split("\n").map((x) => x.trim()).filter(Boolean), solution: t.solution };
     return LETTERS.every((l) => makeVariant(input, l) !== null) ? input : null;
   } catch {
@@ -145,23 +160,32 @@ export async function saveTemplateAction(formData: FormData) {
   const contestId = String(formData.get("contestId"));
   const tid = Number(formData.get("templateId")) || null;
   const p = templateSchema.parse(Object.fromEntries([...formData].filter(([, v]) => v !== "")));
-  const input = validTemplate(p);
-  if (!input) redirect(back(contestId, "suallar", `xeta=sablon${tid ? `&t=${tid}` : ""}`));
-  const values = {
-    topicId: p.topicId ?? null,
-    body: p.body,
-    vars: JSON.stringify(input.vars),
-    condition: p.condition || null,
-    answer: p.answer,
-    distractors: JSON.stringify(input.distractors),
-    solution: p.solution ?? "",
-    timeSec: p.timeSec,
-  };
+  const fail = (code: string) => redirect(back(contestId, "suallar", `xeta=${code}${tid ? `&t=${tid}` : ""}`));
+  let values;
+  if (p.source === "bank") {
+    // Sual bankından: yalnız mövzu və vaxt; mövzuda qapalı sual olmalıdır.
+    if (!p.topicId || (await bankClosedCount(p.topicId)) === 0) fail("bank");
+    values = { source: "bank" as const, topicId: p.topicId!, timeSec: p.timeSec, ...(tid ? {} : { body: "", vars: "{}", answer: "0", distractors: "[]" }) };
+  } else {
+    const input = validTemplate(p);
+    if (!input) fail("sablon");
+    values = {
+      source: "formula" as const,
+      topicId: p.topicId ?? null,
+      body: p.body!,
+      vars: JSON.stringify(input!.vars),
+      condition: p.condition || null,
+      answer: p.answer!,
+      distractors: JSON.stringify(input!.distractors),
+      solution: p.solution ?? "",
+      timeSec: p.timeSec,
+    };
+  }
   if (tid) {
     await db.update(contestTemplates).set(values).where(and(eq(contestTemplates.id, tid), eq(contestTemplates.contestId, contestId)));
   } else {
     const [m] = await db.select({ n: max(contestTemplates.n) }).from(contestTemplates).where(eq(contestTemplates.contestId, contestId));
-    await db.insert(contestTemplates).values({ ...values, contestId, n: (m?.n ?? 0) + 1 });
+    await db.insert(contestTemplates).values({ body: "", vars: "{}", answer: "0", distractors: "[]", ...values, contestId, n: (m?.n ?? 0) + 1 });
   }
   redirect(back(contestId, "suallar", "saxlanildi=1"));
 }
@@ -171,6 +195,24 @@ export async function deleteTemplateAction(formData: FormData) {
   const contestId = String(formData.get("contestId"));
   await db.delete(contestTemplates).where(and(eq(contestTemplates.id, Number(formData.get("templateId"))), eq(contestTemplates.contestId, contestId)));
   redirect(back(contestId, "suallar", "silindi=1"));
+}
+
+/* ---------------- Qeydiyyatın statusu ---------------- */
+
+/** Qeydiyyatı aktiv / passiv etmək: passiv iştirakçı tura girə bilmir, sayda, reytinqdə və məktublarda yoxdur. */
+export async function setRegistrationStatusAction(formData: FormData) {
+  await requireAdmin();
+  const p = z.object({ contestId: z.string(), id: z.string(), status: z.enum(ACCOUNT_STATUSES), back: z.string().optional() }).parse(Object.fromEntries(formData));
+  await db
+    .update(contestRegistrations)
+    .set({ status: p.status })
+    .where(and(eq(contestRegistrations.id, p.id), eq(contestRegistrations.contestId, p.contestId)));
+  // Nəticələr artıq hesablanıbsa — yerlər yenidən hesablanır.
+  const c = await contestById(p.contestId);
+  if (c?.resultsComputedAt) await computeResults(p.contestId);
+  revalidatePath("/yaris");
+  const back = p.back?.startsWith(`/admin/yaris/${p.contestId}`) ? p.back : `/admin/yaris/${p.contestId}?tab=istirakcilar`;
+  redirect(`${back}${back.includes("?") ? "&" : "?"}saxlanildi=1`);
 }
 
 /* ---------------- Diskvalifikasiya, final, mükafatlar ---------------- */

@@ -5,12 +5,25 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
-import { bankTasks, EXAM_STATUSES, examItems, exams, subtopics, taskOptionErrors, topics, USER_ROLES, users } from "@/db/schema";
+import { ACCOUNT_STATUSES, bankTasks, EXAM_STATUSES, examItems, exams, subtopics, taskOptionErrors, topics, USER_ROLES, users } from "@/db/schema";
 import { LETTERS } from "@/lib/demo/content";
 import { createExam, sectionsOf } from "@/lib/exams/create";
 import { requireAdmin } from "./guard";
 
 /* ---------------- İstifadəçilər ---------------- */
+
+/** Hesabı aktiv / passiv etmək. Passiv hesab daxil ola bilmir, açıq sessiyası növbəti sorğuda bağlanır. */
+export async function setUserStatusAction(formData: FormData) {
+  const me = await requireAdmin();
+  const p = z.object({ id: z.string().min(1), status: z.enum(ACCOUNT_STATUSES), back: z.string().optional() }).parse(Object.fromEntries(formData));
+  const back = p.back?.startsWith("/admin/istifadeciler") ? p.back : "/admin/istifadeciler";
+  const sep = back.includes("?") ? "&" : "?";
+  // Özünü passiv etmək olmaz (panelə giriş itməsin).
+  if (p.id === me.id && p.status === "passive") redirect(`${back}${sep}xeta=ozun-status`);
+  await db.update(users).set({ status: p.status, updatedAt: new Date() }).where(eq(users.id, p.id));
+  revalidatePath("/admin/istifadeciler");
+  redirect(`${back}${sep}status=${p.status}`);
+}
 
 export async function setUserRoleAction(formData: FormData) {
   const me = await requireAdmin();

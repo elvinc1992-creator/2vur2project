@@ -82,6 +82,8 @@ async function loginErrorState(code: LoginErrorCode, identifier: string): Promis
       return { status: "error", fieldErrors: { password: e.wrongPassword } };
     case "google_only":
       return { status: "error", formError: e.googleOnly };
+    case "blocked":
+      return { status: "error", formError: e.blocked };
     case "unverified": {
       const user = await findUserByIdentifier(identifier);
       if (user?.email) {

@@ -119,10 +119,11 @@ export async function listPayments(limit = 100) {
 
 export const PAGE_SIZE = 50;
 
-export async function listUsers(q: string, page: number) {
-  const where = q
-    ? or(like(users.name, `%${q}%`), like(users.surname, `%${q}%`), like(users.email, `%${q}%`), like(users.username, `%${q}%`))
-    : undefined;
+export async function listUsers(q: string, page: number, status?: "active" | "passive") {
+  const where = and(
+    q ? or(like(users.name, `%${q}%`), like(users.surname, `%${q}%`), like(users.email, `%${q}%`), like(users.username, `%${q}%`)) : undefined,
+    status ? eq(users.status, status) : undefined,
+  );
   const [rows, [total]] = await Promise.all([
     db
       .select({

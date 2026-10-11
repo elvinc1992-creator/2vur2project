@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { ensureActive } from "@/lib/auth/account";
 import { ContestFrame } from "@/components/contest/contest-frame";
 import { Countdown } from "@/components/contest/countdown";
 import { TourRunner } from "@/components/contest/tour-runner";
@@ -22,6 +23,7 @@ export default async function TourPage(props: PageProps<"/yaris/[slug]/tur">) {
   if (!c || c.status === "draft") notFound();
   const session = await auth();
   if (!session?.user?.id) redirect(`/daxil-ol?next=${encodeURIComponent(`/yaris/${slug}/tur`)}`);
+  await ensureActive(session.user.id);
   const reg = await registrationOf(c.id, session.user.id);
   if (!reg) redirect(`/yaris/${slug}#register`);
 
@@ -44,6 +46,12 @@ export default async function TourPage(props: PageProps<"/yaris/[slug]/tur">) {
             <li>Vaxt sayğacı dayanmır — səhifəni yeniləsən və ya bağlantı kəsilsə də vaxt gedir.</li>
             <li>Tab dəyişmə və pəncərədən çıxma jurnala yazılır.</li>
           </ul>
+        </section>
+      )}
+      {st.kind === "disabled" && (
+        <section className="grid gap-3 rounded-[24px] border border-[#fecaca] bg-[#fef2f2] p-6 text-[#991b1b]">
+          <p className="m-0 text-[18px] font-bold">Qeydiyyatın admin tərəfindən deaktiv edilib.</p>
+          <p className="m-0">Ətraflı məlumat üçün bizimlə əlaqə saxla.</p>
         </section>
       )}
       {st.kind === "closed" && (

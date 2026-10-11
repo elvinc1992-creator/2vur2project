@@ -35,12 +35,13 @@ async function upsertContest(c: { id: string; slug: string; title: string; statu
       args: [c.id, from, to, amount, d],
     })),
     ...OPENING_TEMPLATES.map((t, i) => ({
-      sql: `insert into contest_templates (contest_id, n, topic_id, body, vars, condition, answer, distractors, solution, time_sec)
-            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            on conflict(contest_id, n) do update set topic_id = excluded.topic_id, body = excluded.body, vars = excluded.vars,
+      // Suallar sual bankından (mövzu üzrə); düstur sahələri ehtiyat kimi saxlanılır.
+      sql: `insert into contest_templates (contest_id, n, source, topic_id, body, vars, condition, answer, distractors, solution, time_sec)
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            on conflict(contest_id, n) do update set source = excluded.source, topic_id = excluded.topic_id, body = excluded.body, vars = excluded.vars,
               condition = excluded.condition, answer = excluded.answer, distractors = excluded.distractors,
               solution = excluded.solution, time_sec = excluded.time_sec`,
-      args: [c.id, i + 1, topicId.get(t.topic) ?? null, t.body, JSON.stringify(t.vars), t.condition ?? null, t.answer, JSON.stringify(t.distractors), t.solution ?? "", t.timeSec ?? 75],
+      args: [c.id, i + 1, topicId.has(t.topic) ? "bank" : "formula", topicId.get(t.topic) ?? null, t.body, JSON.stringify(t.vars), t.condition ?? null, t.answer, JSON.stringify(t.distractors), t.solution ?? "", t.timeSec ?? 75],
     })),
   ];
   await db.batch(prizes, "write");
