@@ -18,6 +18,7 @@ const LINKS = [
   { href: "#sinaqlar", label: t.exams },
   { href: "#imtahan-qarsiligi", label: t.match },
   { href: "#qiymetler", label: t.pricing },
+  { href: "/yaris", label: t.contest },
 ];
 
 const initial = (name: string) => (name.trim()[0] ?? "?").toLocaleUpperCase("az");

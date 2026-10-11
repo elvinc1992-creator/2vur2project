@@ -14,6 +14,7 @@ export const azLanding = {
     tutor: "Repetitor",
     match: "İmtahan qarşılığı",
     pricing: "Qiymətlər",
+    contest: "Yarış",
     login: "Daxil ol",
     toPanel: "Panelə keç",
     account: (name: string) => `Hesab: ${name}`,

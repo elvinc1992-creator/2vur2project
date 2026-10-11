@@ -20,7 +20,8 @@
     "bank:import": "node scripts/import-question-bank.mts",
     "db:seed-weak": "node scripts/seed-weak-demo.mts",
     "exams:generate": "node scripts/generate-exams.mts",
-    "db:dedupe-answers": "node scripts/dedupe-answers.mts"
+    "db:dedupe-answers": "node scripts/dedupe-answers.mts",
+    "db:seed-contest": "node scripts/seed-contest.mts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

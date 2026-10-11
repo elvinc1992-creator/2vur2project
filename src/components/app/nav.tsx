@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BagIcon, BookIcon, CalcIcon, CapIcon, CardIcon, ChartIcon, FlameIcon, HomeIcon, RetryIcon, TargetIcon, UserIcon } from "@/components/icons";
+import { BagIcon, BookIcon, CalcIcon, CapIcon, CardIcon, ChartIcon, FlameIcon, HomeIcon, RetryIcon, SparkleIcon, TargetIcon, UserIcon } from "@/components/icons";
 import { az } from "@/content/az";
 import { cn } from "@/lib/cn";
 
@@ -21,6 +21,8 @@ const SCORE = { href: "/bal-simulyatoru", match: ["/bal-simulyatoru"], label: t.
 const STATS = { href: "/statistika", match: ["/statistika"], label: t.stats, long: t.stats, Icon: ChartIcon };
 const EXAM_MATCH = { href: "/imtahan-qarsiligi", match: ["/imtahan-qarsiligi"], label: az.app.examMatch.nav, long: az.app.examMatch.nav, Icon: BookIcon };
 const PLANS = { href: "/abunelikler", match: ["/abunelikler", "/odenis"], label: t.plans, long: t.plans, Icon: CardIcon };
+/** Riyaziyyat yarışı — pulsuz, hamı üçün eyni. */
+const CONTEST = { href: "/yaris", match: ["/yaris"], label: "Yarış", long: "Riyaziyyat yarışı", Icon: SparkleIcon };
 
 function useActive() {
   const path = usePathname();
@@ -32,7 +34,7 @@ export function SideNav({ footer }: { footer?: React.ReactNode }) {
   const isActive = useActive();
   return (
     <nav aria-label={t.label} className="grid content-start gap-1">
-      {[...ITEMS, MISTAKES, WEAK, SCORE, STATS, EXAM_MATCH, PLANS].map(({ href, match, long, Icon }) => {
+      {[...ITEMS, MISTAKES, WEAK, SCORE, STATS, EXAM_MATCH, CONTEST, PLANS].map(({ href, match, long, Icon }) => {
         const active = isActive(match);
         return (
           <Link

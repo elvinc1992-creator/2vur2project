@@ -11,6 +11,7 @@ const ITEMS = [
   { href: "/admin/qazanc", label: "Qazanc" },
   { href: "/admin/suallar", label: "Suallar" },
   { href: "/admin/sinaqlar", label: "Sınaqlar" },
+  { href: "/admin/yaris", label: "Yarış" },
   { href: "/admin/zeif-movzular", label: "Mövzular və səhv tipləri" },
 ];
 

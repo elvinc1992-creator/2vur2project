@@ -44,7 +44,7 @@ test("desktop: rəqəmlər bazadan, bölmələr və linklər", async ({ page }) 
     await expect(page.locator(`#${id}`)).toHaveCount(1);
   }
   const nav = page.getByRole("banner").getByRole("navigation", { name: "Əsas" });
-  await expect(nav.getByRole("link")).toHaveCount(5);
+  await expect(nav.getByRole("link")).toHaveCount(6);
 
   // Qiymətlər: Abunəliklər səhifəsindəki kartlar — Free / Pro / Premium, Premium — "Ən çox seçilən"
   const pricing = page.locator("#qiymetler");
