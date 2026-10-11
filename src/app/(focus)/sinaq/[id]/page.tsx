@@ -7,9 +7,10 @@ import { Card, FormatBar, h3Class } from "@/components/ui/display";
 import { EmptyState } from "@/components/ui/empty-art";
 import { az } from "@/content/az";
 import { claimExamAction, startExamAction } from "@/lib/demo/actions";
-import { answeredCount, examStatus, formatDate, remainingMs, todayIso } from "@/lib/demo/logic";
+import { answeredCount, examStatus, formatDate, isExamVisible, remainingMs, todayIso } from "@/lib/demo/logic";
 import { findExam, getExamQuestions } from "@/lib/exams/source";
-import { EXAM_PRICE, examQuota } from "@/lib/demo/plans";
+import { examQuota } from "@/lib/demo/plans";
+import { priceText } from "@/lib/exams/types";
 import { requireDemo } from "@/lib/demo/session";
 import { ExamRunner } from "./exam-runner";
 import { ExpiredExam } from "./expired-exam";
@@ -21,6 +22,7 @@ export default async function ExamPage(props: PageProps<"/sinaq/[id]">) {
   const exam = await findExam(id);
   if (!exam) notFound();
   const { user, state } = await requireDemo(`/sinaq/${id}`);
+  if (!isExamVisible(state, exam)) notFound();
   const status = examStatus(state, exam);
   const quota = examQuota(state);
   const t = az.app;
@@ -46,7 +48,7 @@ export default async function ExamPage(props: PageProps<"/sinaq/[id]">) {
                 </form>
               ) : (
                 <ButtonLink href={`/odenis?exam=${id}`} variant="primary" block>
-                  {t.store.buy(EXAM_PRICE)}
+                  {t.store.buy(priceText(exam.price))}
                 </ButtonLink>
               )}
             </>

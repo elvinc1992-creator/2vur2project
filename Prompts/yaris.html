@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2vur2 Açılış Yarışı</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6fb;--card:#fff;--ink:#0f1b3d;--muted:#5b6785;--line:#e6e9f2;
+  --brand:linear-gradient(135deg,#6366f1,#8b5cf6 55%,#ec4899);
+  --indigo:#4f46e5;--violet:#8b5cf6;--pink:#ec4899;
+  --gold:#f59e0b;--silver:#94a3b8;--bronze:#c2763a;--green:#10b981;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+.wrap{max-width:1140px;margin:0 auto;padding:0 16px}
+section{padding:44px 0 0}
+h2{font-size:clamp(24px,3.2vw,32px);font-weight:900;letter-spacing:-.02em;margin:0 0 6px}
+.sub{color:var(--muted);margin:0 0 22px}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:14px 22px;border-radius:14px;font-weight:800;transition:transform .15s,box-shadow .15s}
+.btn:hover{transform:translateY(-2px)}
+.btn.white{background:#fff;color:var(--indigo);box-shadow:0 12px 26px -12px rgba(0,0,0,.4)}
+.btn.ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.35)}
+.btn.main{background:var(--brand);color:#fff;box-shadow:0 14px 28px -14px rgba(139,92,246,.8);width:100%;justify-content:center}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:20;background:rgba(244,246,251,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-weight:900;font-size:20px;display:flex;align-items:center;gap:8px}
+.logo b{background:var(--brand);color:#fff;border-radius:10px;padding:3px 8px;font-size:15px}
+.links{display:flex;gap:20px;font-weight:600;font-size:14px}
+.links a{color:var(--muted);text-decoration:none}.links a:hover{color:var(--ink)}
+
+/* HERO */
+.hero{margin-top:22px;position:relative;overflow:hidden;border-radius:30px;background:var(--brand);color:#fff;padding:48px 40px;
+  display:grid;grid-template-columns:1.3fr 1fr;gap:30px;align-items:center;box-shadow:0 30px 60px -30px rgba(99,102,241,.8)}
+.hero::before,.hero::after{content:"";position:absolute;border-radius:50%;background:rgba(255,255,255,.1)}
+.hero::before{width:340px;height:340px;right:-90px;top:-140px}
+.hero::after{width:200px;height:200px;left:38%;bottom:-120px}
+.badge{display:inline-flex;gap:8px;align-items:center;background:rgba(255,255,255,.2);padding:7px 14px;border-radius:999px;font-weight:700;font-size:13px}
+.badge i{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 4px rgba(74,222,128,.3);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 8px rgba(74,222,128,0)}}
+.hero h1{font-size:clamp(32px,5vw,54px);line-height:1.05;margin:16px 0 12px;font-weight:900;letter-spacing:-.03em}
+.hero p{font-size:17px;opacity:.95;margin:0 0 24px;max-width:540px}
+.cta{display:flex;gap:10px;flex-wrap:wrap}
+.hero-card{position:relative;z-index:1;background:rgba(255,255,255,.14);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.3);border-radius:22px;padding:22px}
+.hero-card small{opacity:.85;font-weight:600}
+.cd{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 16px}
+.cd div{background:rgba(255,255,255,.95);color:var(--ink);border-radius:14px;padding:10px 4px;text-align:center}
+.cd b{display:block;font-family:'JetBrains Mono',monospace;font-size:28px;line-height:1.1}
+.cd span{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase}
+.fund{display:flex;justify-content:space-between;align-items:end;border-top:1px solid rgba(255,255,255,.3);padding-top:14px}
+.fund b{font-size:34px;font-weight:900}
+.reg-count{font-size:13px;opacity:.9}
+
+/* STEPS */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.step{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;position:relative}
+.step .n{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-weight:900;color:#fff;background:var(--brand);margin-bottom:12px}
+.step b{display:block;font-size:16px;margin-bottom:4px}
+.step p{margin:0;color:var(--muted);font-size:14px}
+.step em{display:inline-block;margin-top:10px;font-style:normal;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:#eef0ff;color:var(--indigo)}
+
+/* PRIZES */
+.podium{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:16px;align-items:end}
+.prize{background:#fff;border-radius:24px;padding:26px 20px;text-align:center;border:2px solid var(--line);position:relative;transition:transform .2s}
+.prize:hover{transform:translateY(-6px)}
+.prize .medal{font-size:46px;line-height:1}
+.prize .place{font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-size:12px;margin-top:8px}
+.prize .amt{font-size:42px;font-weight:900;letter-spacing:-.02em;margin:4px 0}
+.prize .amt small{font-size:18px}
+.prize .extra{font-size:14px;color:var(--muted);font-weight:600}
+.prize.p1{border-color:var(--gold);padding:36px 20px;background:linear-gradient(180deg,#fffbeb,#fff);box-shadow:0 24px 44px -24px rgba(245,158,11,.7)}
+.prize.p1 .amt{color:#b45309}
+.prize.p2{border-color:#cbd5e1}.prize.p3{border-color:#e7c6a7}
+.prize.p1::before{content:"QALİB";position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--gold);color:#fff;font-weight:900;font-size:12px;letter-spacing:.12em;padding:5px 12px;border-radius:999px}
+.extras{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.ex{display:flex;gap:14px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px 18px}
+.ex span{font-size:28px}
+.ex b{display:block}.ex small{color:var(--muted)}
+.boost{margin-top:16px;border-radius:18px;padding:16px 20px;background:#0f1b3d;color:#fff;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.boost .meter{flex:1;min-width:220px}
+.boost .bar{height:10px;background:rgba(255,255,255,.15);border-radius:999px;overflow:hidden;margin-top:8px}
+.boost .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#f59e0b,#ec4899);border-radius:999px;transition:width 1.4s}
+
+/* CATS */
+.cats{display:flex;gap:10px;flex-wrap:wrap}
+.cat{flex:1;min-width:200px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px}
+.cat b{font-size:18px}.cat p{margin:4px 0 0;color:var(--muted);font-size:14px}
+
+/* RULES */
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.rule{display:flex;gap:12px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}
+.rule span{font-size:22px;flex:none}
+.rule b{display:block;font-size:15px}.rule p{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+.warn{margin-top:14px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:16px;padding:14px 18px;font-weight:600;font-size:14px}
+
+/* LEADERBOARD */
+.lb{background:#fff;border:1px solid var(--line);border-radius:22px;overflow:hidden}
+.lb-tabs{display:flex;gap:6px;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.lb-tabs button{all:unset;cursor:pointer;padding:8px 14px;border-radius:10px;font-weight:700;font-size:13.5px;color:var(--muted)}
+.lb-tabs button.on{background:var(--ink);color:#fff}
+.lb table{width:100%;border-collapse:collapse}
+.lb td,.lb th{padding:13px 16px;text-align:left;font-size:14.5px}
+.lb th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.lb tr+tr td{border-top:1px solid var(--line)}
+.lb td.r{font-weight:900;width:60px}
+.lb td.s{font-weight:800;text-align:right}
+.lb th:last-child{text-align:right}
+.lb .demo{padding:10px 16px;font-size:12.5px;color:var(--muted);background:#f8fafc;border-top:1px solid var(--line)}
+
+/* PLANS */
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.plan{background:#fff;border:2px solid var(--line);border-radius:22px;padding:24px}
+.plan.pro{border-color:var(--violet);background:linear-gradient(180deg,#f5f3ff,#fff)}
+.plan h3{margin:0 0 4px;font-size:20px}
+.plan ul{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:9px}
+.plan li{display:flex;gap:10px;font-size:14.5px}
+.plan li::before{content:"✓";font-weight:900;color:var(--green)}
+.plan li.no{color:#9aa3bd}.plan li.no::before{content:"–";color:#c0c6d6}
+
+/* FORM */
+.reg{display:grid;grid-template-columns:1fr 1.1fr;gap:20px;align-items:start}
+.reg-info{background:var(--brand);color:#fff;border-radius:24px;padding:28px}
+.reg-info h3{font-size:26px;margin:0 0 8px;font-weight:900}
+.reg-info li{margin:8px 0}
+form{background:#fff;border:1px solid var(--line);border-radius:24px;padding:24px;display:grid;gap:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{font-size:13px;font-weight:700;color:var(--muted);display:grid;gap:6px}
+input,select{font:inherit;font-size:15px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:#fbfcfe;color:var(--ink);outline:none;transition:border .15s}
+input:focus,select:focus{border-color:var(--violet);background:#fff}
+.check{display:flex;gap:10px;align-items:flex-start;font-weight:500;color:var(--ink);font-size:13.5px}
+.check input{width:18px;height:18px;margin-top:2px;accent-color:var(--violet)}
+.autofill{display:none;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;border-radius:12px;padding:10px 12px;font-size:13.5px;font-weight:600}
+.ok{display:none;text-align:center;padding:30px 10px}
+.ok .big{font-size:56px}
+.err{color:#dc2626;font-size:13px;font-weight:600;min-height:18px}
+
+/* FAQ */
+details{background:#fff;border:1px solid var(--line);border-radius:16px;padding:4px 18px;margin-bottom:10px}
+summary{cursor:pointer;font-weight:700;padding:14px 0;list-style:none;display:flex;justify-content:space-between}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:22px;color:var(--violet);line-height:1}
+details[open] summary::after{content:"–"}
+details p{margin:0 0 14px;color:var(--muted)}
+
+footer{margin:48px 0 0;padding:26px 0 36px;text-align:center;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
+
+@media(max-width:900px){
+  .hero{grid-template-columns:1fr;padding:34px 22px}
+  .steps{grid-template-columns:1fr 1fr}
+  .reg,.plans,.rules,.extras{grid-template-columns:1fr}
+  .links{display:none}
+}
+@media(max-width:600px){
+  .podium{grid-template-columns:1fr}
+  .prize.p1{order:-1}
+  .steps{grid-template-columns:1fr}
+  .row2{grid-template-columns:1fr}
+  .cd b{font-size:22px}
+  .lb td,.lb th{padding:11px 10px;font-size:13.5px}
+  .hide-m{display:none}
+}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <div class="logo"><b>2×2</b>2vur2.az</div>
+  <div class="links"><a href="#format">Format</a><a href="#prizes">Mükafatlar</a><a href="#rules">Qaydalar</a><a href="#leaderboard">Reytinq</a><a href="#faq">Suallar</a></div>
+  <a class="btn main" style="width:auto;padding:10px 16px" href="#register">Qeydiyyat</a>
+</div></nav>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <header class="hero">
+    <div style="position:relative;z-index:1">
+      <span class="badge"><i></i>Qeydiyyat açıqdır · iştirak pulsuzdur</span>
+      <h1>2vur2 Riyaziyyat<br>Açılış Yarışı</h1>
+      <p>DİM formatında 20 sual, 25 dəqiqə və real rəqiblər. Biliyini sına, reytinqdə yerini gör, <b>550 AZN</b> mükafat fondundan payını qazan.</p>
+      <div class="cta">
+        <a class="btn white" href="#register">İndi qeydiyyatdan keç →</a>
+        <a class="btn ghost" href="#format">Necə keçirilir?</a>
+      </div>
+    </div>
+    <div class="hero-card">
+      <small>Onlayn tura qalıb</small>
+      <div class="cd" id="cd">
+        <div><b id="d">00</b><span>gün</span></div>
+        <div><b id="h">00</b><span>saat</span></div>
+        <div><b id="m">00</b><span>dəq</span></div>
+        <div><b id="s">00</b><span>san</span></div>
+      </div>
+      <div class="fund">
+        <div><small>Mükafat fondu</small><br><b>550 ₼</b></div>
+        <div class="reg-count">👥 <b id="regs">312</b> qeydiyyat</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- FORMAT -->
+  <section id="format">
+    <h2>Yarış necə keçirilir?</h2>
+    <p class="sub">İki mərhələ. Onlayn turda hamı iştirak edə bilər, mükafatlar isə yalnız əyani finalda müəyyən olunur.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><b>Qeydiyyat</b><p>Hesabına daxil ol, sinfini seç və qeydiyyatı tamamla. Bir dəqiqə çəkir.</p><em>1–24 noyabr</em></div>
+      <div class="step"><div class="n">2</div><b>Onlayn tur</b><p>Hamı eyni anda başlayır: 20 sual, 25 dəqiqə. Suallar bir-bir göstərilir, geri qayıtmaq olmur.</p><em>25 noyabr · 20:00</em></div>
+      <div class="step"><div class="n">3</div><b>Final</b><p>Ən yüksək nəticə göstərən ilk 25 nəfər finala keçir. Final yalnız əyani keçirilir. Vaxt və məkan barədə finalçılara ayrıca məlumat veriləcək.</p><em>Tarix elan olunacaq</em></div>
+      <div class="step"><div class="n">4</div><b>Mükafatlandırma</b><p>Qaliblər elan olunur. Hər iştirakçı sertifikat və şəxsi təhlil alır.</p><em>10 dekabr</em></div>
+    </div>
+  </section>
+
+  <!-- PRIZES -->
+  <section id="prizes">
+    <h2>Mükafatlar</h2>
+    <p class="sub">Bütün iştirakçılar ümumi reytinqdə yarışır.</p>
+    <div class="podium">
+      <div class="prize p2"><div class="medal">🥈</div><div class="place">2-ci yer</div><div class="amt">150<small> ₼</small></div><div class="extra">+ 3 ay Premium</div></div>
+      <div class="prize p1"><div class="medal">🥇</div><div class="place">1-ci yer</div><div class="amt">300<small> ₼</small></div><div class="extra">+ 6 ay Premium</div></div>
+      <div class="prize p3"><div class="medal">🥉</div><div class="place">3-cü yer</div><div class="amt">100<small> ₼</small></div><div class="extra">+ 3 ay Premium</div></div>
+    </div>
+    <div class="extras">
+      <div class="ex"><span>🎁</span><div><b>4–10-cu yerlər</b><small>1 ay pulsuz Pro abunə</small></div></div>
+      <div class="ex"><span>📜</span><div><b>Bütün iştirakçılar</b><small>Elektron sertifikat və zəif mövzu təhlili</small></div></div>
+    </div>
+    <div class="boost">
+      <span style="font-size:28px">🚀</span>
+      <div class="meter">
+        <b>500 iştirakçı olarsa, 1-ci yerin mükafatı 500 ₼-ə qalxır!</b>
+        <div class="bar"><i id="boost"></i></div>
+        <small style="opacity:.8"><span id="regs2">312</span> / 500 · dostlarını dəvət et</small>
+      </div>
+    </div>
+  </section>
+
+  <!-- RULES -->
+  <section id="rules">
+    <h2>Qaydalar</h2>
+    <p class="sub">Yarış ədalətli olsun deyə bu qaydalar hamıya aiddir.</p>
+    <div class="rules">
+      <div class="rule"><span>⏱️</span><div><b>Hamı eyni anda başlayır</b><p>Tur 20:00-da başlayır. 20:10-dan sonra giriş bağlanır.</p></div></div>
+      <div class="rule"><span>➡️</span><div><b>Suallar bir-bir göstərilir</b><p>Hər suala vaxt limiti var. Növbəti suala keçəndən sonra geri qayıtmaq olmur.</p></div></div>
+      <div class="rule"><span>🔢</span><div><b>Hər iştirakçıya fərqli variant</b><p>Sualların rəqəmləri hər iştirakçı üçün fərqli olur.</p></div></div>
+      <div class="rule"><span>⚡</span><div><b>Bal: düzgünlük + sürət</b><p>Bərabər nəticədə daha tez bitirən irəlidə olur.</p></div></div>
+      <div class="rule"><span>🤖</span><div><b>AI və kənar kömək qadağandır</b><p>ChatGPT, kalkulyator, başqasının köməyi və həlləri paylaşmaq qadağandır.</p></div></div>
+      <div class="rule"><span>👤</span><div><b>Bir nəfər — bir hesab</b><p>Saxta və ya təkrar hesablar aşkarlansa, diskvalifikasiya olunur.</p></div></div>
+      <div class="rule"><span>🎥</span><div><b>Final yalnız əyani keçirilir</b><p>Finalın vaxtı və məkanı finalçılara ayrıca bildiriləcək. Finala gəlməyən iştirakçı mükafat almır.</p></div></div>
+      <div class="rule"><span>👨‍👩‍👧</span><div><b>Azyaşlı qaliblər</b><p>Pul mükafatı valideynin hesabına köçürülür və ya nağd şəkildə təqdim olunur.</p></div></div>
+    </div>
+    <div class="warn">⚠️ Onlayn tur ilə final nəticəsi arasında kəskin fərq olarsa, münsiflər nəticəni ləğv edə bilər. Mükafatlar yalnız final təsdiqindən sonra verilir.</div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section id="leaderboard">
+    <h2>Canlı reytinq</h2>
+    <p class="sub">Tur bitəndən sonra nəticələr burada yenilənəcək. Məktəbin də reytinqdə yarışır!</p>
+    <div class="lb">
+      <div class="lb-tabs" id="lbt">
+        <button class="on" data-k="p">Şagirdlər</button>
+        <button data-k="s">Məktəblər</button>
+        <button data-k="r">Rayonlar</button>
+      </div>
+      <table><thead><tr><th>#</th><th>Ad</th><th class="hide-m">Məktəb / Rayon</th><th>Bal</th></tr></thead><tbody id="lbb"></tbody></table>
+      <div class="demo">Nümunə görünüşdür. Real nəticələr 25 noyabrda tur bitdikdən sonra yayımlanacaq.</div>
+    </div>
+  </section>
+
+  <!-- REGISTER -->
+  <section id="register">
+    <div class="reg">
+      <div class="reg-info">
+        <h3>Yerini indi tut 🎯</h3>
+        <p style="margin:0;opacity:.95">Qeydiyyat 24 noyabr saat 23:59-da bağlanır.</p>
+        <ul style="padding-left:18px">
+          <li>İştirak tamamilə pulsuzdur</li>
+          <li>Tur 25 noyabr saat 20:00-da başlayır</li>
+          <li>Nəticələr e-poçtuna göndəriləcək</li>
+          <li>Dostunu dəvət et, mükafat fondu böyüsün</li>
+        </ul>
+      </div>
+      <form id="form" novalidate>
+        <div id="fields" style="display:grid;gap:14px">
+          <div class="autofill" id="autofill">👤 Məlumatlar hesabından götürüldü. Lazım olsa, dəyişə bilərsən.</div>
+          <div class="row2">
+            <label>Ad<input name="ad" id="fAd" required placeholder="Adın"></label>
+            <label>Soyad<input name="soyad" id="fSoyad" required placeholder="Soyadın"></label>
+          </div>
+          <div class="row2">
+            <label>Sinif<select name="sinif" required><option value="">Seç</option><option>IX sinif</option><option>X sinif</option><option>XI sinif</option></select></label>
+            <label>Rayon / şəhər<input name="rayon" required placeholder="Məs. Bakı, Nəsimi"></label>
+          </div>
+          <label>Məktəb<input name="mekteb" placeholder="Məs. 132 nömrəli məktəb"></label>
+          <label>E-poçt<input name="email" id="fEmail" type="email" required placeholder="ad@mail.com"></label>
+          <label>Dəvət kodu (könüllü)<input name="kod" placeholder="Dostunun kodu"></label>
+          <label class="check"><input type="checkbox" name="qayda" required>Yarışın qaydaları ilə tanış oldum və razıyam.</label>
+          <label class="check"><input type="checkbox" name="mail" checked>Nəticələrin e-poçtuma göndərilməsinə razıyam.</label>
+          <label class="check"><input type="checkbox" name="valideyn" required>18 yaşım tamam olmayıbsa, valideynim iştirakıma razıdır.</label>
+          <div class="err" id="err"></div>
+          <button class="btn main" type="submit">Qeydiyyatdan keç →</button>
+        </div>
+        <div class="ok" id="ok">
+          <div class="big">🎉</div>
+          <h3 style="margin:8px 0">Qeydiyyat tamamlandı!</h3>
+          <p class="sub" style="margin:0 0 12px">Nəticələr <b id="okmail"></b> ünvanına göndəriləcək. Sənin dəvət kodun:</p>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;background:#f5f3ff;border-radius:12px;padding:10px">2V2-<span id="mycode"></span></div>
+          <p class="sub" style="margin-top:12px">Kodu dostlarınla paylaş, mükafat fondunu birlikdə böyüdək.</p>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <h2>Tez-tez verilən suallar</h2>
+    <p class="sub"></p>
+    <details><summary>İştirak pulludur?</summary><p>Xeyr. Qeydiyyatdan keçən hər kəs pulsuz iştirak edir və mükafat qazana bilir.</p></details>
+    <details><summary>Telefondan iştirak etmək olar?</summary><p>Bəli, amma kompüter və ya planşet daha rahatdır. Sabit internet bağlantısı olsun.</p></details>
+    <details><summary>İnternet kəsilsə, nə olacaq?</summary><p>Verdiyin cavablar saxlanılır, amma <b>vaxt sayğacı dayanmır</b>. Bağlantı kəsildiyi müddətdə vaxt işləməyə davam edir və itən vaxt geri qaytarılmır. Bu, qəsdən çıxıb kənar kömək almağın qarşısını almaq üçündür. Yarışdan əvvəl internet bağlantını yoxla.</p></details>
+    <details><summary>Final necə keçirilir?</summary><p>Final yalnız əyani keçirilir, onlayn variantı yoxdur. Vaxt və məkan barədə məlumat finalçılara ayrıca bildiriləcək.</p></details>
+    <details><summary>Bərabər bal olarsa?</summary><p>Daha tez bitirən irəlidə olur. Vaxt da eynidirsə, mükafat bərabər bölünür.</p></details>
+    <details><summary>Mükafat necə verilir?</summary><p>Pul mükafatı 10 dekabrdan sonra 10 iş günü ərzində köçürülür. Mükafat valideynin hesabına köçürülür və ya nağd şəkildə təqdim olunur.</p></details>
+  </section>
+
+  <footer>© 2vur2.az · Bu material Cəfərli Elvin müəllimə məxsusdur</footer>
+</div>
+
+<script>
+// geri sayım
+const target=new Date('2026-11-25T20:00:00+04:00').getTime();
+const pad=n=>String(n).padStart(2,'0');
+function tick(){
+  let t=Math.max(0,target-Date.now())/1000;
+  d.textContent=pad(Math.floor(t/86400));h.textContent=pad(Math.floor(t%86400/3600));
+  m.textContent=pad(Math.floor(t%3600/60));s.textContent=pad(Math.floor(t%60));
+}
+tick();setInterval(tick,1000);
+
+// fond göstəricisi
+const regsN=+document.getElementById('regs').textContent;
+setTimeout(()=>document.getElementById('boost').style.width=Math.min(100,regsN/500*100)+'%',300);
+
+// reytinq (nümunə)
+const data={
+  p:[["🥇","Aysel M.","Bakı, 20 nömrəli",98],["🥈","Murad H.","Sumqayıt, 4 nömrəli",95],["🥉","Nigar Ə.","Gəncə, 1 nömrəli",93],["4","Elçin Q.","Bakı, 132 nömrəli",90],["5","Ləman R.","Şəki, 2 nömrəli",88]],
+  s:[["🥇","20 nömrəli məktəb","Bakı",86],["🥈","1 nömrəli lisey","Gəncə",82],["🥉","4 nömrəli məktəb","Sumqayıt",79],["4","132 nömrəli məktəb","Bakı",75],["5","2 nömrəli məktəb","Şəki",71]],
+  r:[["🥇","Bakı","—",81],["🥈","Gəncə","—",77],["🥉","Sumqayıt","—",74],["4","Şəki","—",70],["5","Lənkəran","—",68]]
+};
+function lb(k){lbb.innerHTML=data[k].map(r=>`<tr><td class="r">${r[0]}</td><td><b>${r[1]}</b></td><td class="hide-m" style="color:#5b6785">${r[2]}</td><td class="s">${r[3]}</td></tr>`).join('')}
+lb('p');
+document.querySelectorAll('#lbt button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#lbt button').forEach(x=>x.classList.remove('on'));b.classList.add('on');lb(b.dataset.k)});
+
+// daxil olmuş istifadəçi (serverdən gələcək; giriş yoxdursa null)
+const currentUser={ad:"Aysel",soyad:"Məmmədova",email:"aysel@mail.com"};
+if(currentUser){
+  fAd.value=currentUser.ad; fSoyad.value=currentUser.soyad; fEmail.value=currentUser.email||'';
+  autofill.style.display='block';
+}
+
+// forma
+form.onsubmit=e=>{
+  e.preventDefault();
+  const f=new FormData(form);
+  if(!f.get('ad')||!f.get('soyad')||!f.get('sinif')||!f.get('rayon')) return err.textContent='Zəhmət olmasa, bütün vacib xanaları doldur.';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.get('email')||'')) return err.textContent='E-poçt ünvanı düzgün deyil.';
+  okmail.textContent=f.get('email');
+  if(!f.get('qayda')||!f.get('valideyn')) return err.textContent='Qaydalarla razılığı təsdiqlə.';
+  err.textContent='';
+  fields.style.display='none';ok.style.display='block';
+  mycode.textContent=Math.random().toString(36).slice(2,7).toUpperCase();
+  // TODO: serverə göndər — fetch('/api/contest/register',{method:'POST',body:f})
+};
+</script>
+</body>
+</html>

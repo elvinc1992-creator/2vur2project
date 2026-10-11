@@ -6,8 +6,9 @@ import { MathText } from "@/components/ui/math-text";
 import { db } from "@/db";
 import { exams } from "@/db/schema";
 import { deleteExamAction, replaceExamItemAction, updateExamAction } from "@/lib/admin/actions";
-import { getExamKeys, getExamQuestions } from "@/lib/exams/source";
-import { Notice, PageHead, Table, btn, btnDanger, btnGhost, input, td, th } from "../../ui";
+import { findExam, getExamKeys, getExamQuestions } from "@/lib/exams/source";
+import { Notice, PageHead, Table, btn, btnDanger, btnGhost, fmtDate, input, td, th } from "../../ui";
+import { STATUS_LABEL } from "../data";
 
 export const metadata: Metadata = { title: "Sınaq" };
 
@@ -16,14 +17,22 @@ const FORMAT: Record<string, string> = { closed: "Qapalı", coded: "Açıq (kod)
 export default async function AdminExam(props: PageProps<"/admin/sinaqlar/[id]">) {
   const { id } = await props.params;
   const sp = await props.searchParams;
-  const [[exam], questions, keys] = await Promise.all([db.select().from(exams).where(eq(exams.id, id)), getExamQuestions(id), getExamKeys(id)]);
+  const [[exam], questions, keys, meta] = await Promise.all([
+    db.select().from(exams).where(eq(exams.id, id)),
+    getExamQuestions(id),
+    getExamKeys(id),
+    findExam(id),
+  ]);
   if (!exam) notFound();
   const byTopic = new Map<string, number>();
   for (const q of questions) byTopic.set(q.topicName, (byTopic.get(q.topicName) ?? 0) + 1);
 
   return (
     <>
-      <PageHead title={exam.title} lead={`${questions.length} sual · ${exam.durationMin} dəqiqə · ${exam.status === "published" ? "dərc olunub" : "qaralama"}`}>
+      <PageHead
+        title={exam.title}
+        lead={`${meta?.group ?? ""}${meta?.topicName ? `: ${meta.topicName}` : ""} · ${questions.length} sual · ${exam.durationMin} dəqiqə · yaradılıb ${fmtDate(exam.createdAt)} · ${STATUS_LABEL[exam.status]}`}
+      >
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/sinaqlar" className={btnGhost}>
             ← Sınaqlar
@@ -34,7 +43,7 @@ export default async function AdminExam(props: PageProps<"/admin/sinaqlar/[id]">
           </form>
         </div>
       </PageHead>
-      {sp.yaradildi && <Notice tone="ok">Sınaq yaradıldı.</Notice>}
+      {sp.yaradildi && <Notice tone="ok">Sınaq yaradıldı (passiv). Saytda görünməsi üçün statusu “Aktiv” et.</Notice>}
       {sp.saxlanildi && <Notice tone="ok">Yadda saxlanıldı.</Notice>}
       {sp.xeta === "kod" && <Notice tone="error">Bu kodla sual tapılmadı.</Notice>}
 
@@ -51,8 +60,11 @@ export default async function AdminExam(props: PageProps<"/admin/sinaqlar/[id]">
         <label className="grid gap-1 text-[13px] font-semibold">
           Status
           <select name="status" defaultValue={exam.status} className={input}>
-            <option value="published">Dərc olunub</option>
-            <option value="draft">Qaralama</option>
+            {(Object.keys(STATUS_LABEL) as Array<keyof typeof STATUS_LABEL>).map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABEL[s]}
+              </option>
+            ))}
           </select>
         </label>
         <button className={btn}>Saxla</button>

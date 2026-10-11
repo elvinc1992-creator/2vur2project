@@ -10,9 +10,9 @@ import { az } from "@/content/az";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/demo/logic";
 import { canUseRepetitor } from "@/lib/demo/plans";
-import { requireDemo } from "@/lib/demo/session";
+import { optionalDemo } from "@/lib/demo/session";
 import { DEFAULT_DAYS, type ExamView, type LessonView } from "@/lib/repetitor/plan";
-import { tutorContext } from "@/lib/repetitor/progress";
+import { freeLessonOf, tutorContext } from "@/lib/repetitor/progress";
 import { listAllRepetitorTopics, REPETITOR_HIT_RATE } from "@/lib/repetitor/source";
 import { PlanForm } from "./plan-form";
 
@@ -24,14 +24,23 @@ const wrapBtn = "max-w-full py-2 text-left whitespace-normal! leading-5!";
 
 /** Onlayn repetitor (Pro): həftəlik qrafik → mövzular sıra ilə açılır; hər 2 mövzudan sonra sınaq. */
 export default async function RepetitorPage(props: PageProps<"/onlayn-repetitor">) {
-  const { state } = await requireDemo("/onlayn-repetitor");
+  const { user, state } = await optionalDemo();
   const sp = await props.searchParams;
   const allTopics = await listAllRepetitorTopics();
   const soon = allTopics.filter((x) => !x.questions.length);
+  const { view, curr } = await tutorContext(state);
+  const free = freeLessonOf(curr);
 
-  if (!canUseRepetitor(state)) return <Locked topics={allTopics.map((x) => ({ slug: x.slug, name: x.name, n: x.questions.length }))} />;
+  if (!canUseRepetitor(state)) {
+    return (
+      <Locked
+        guest={!user}
+        free={free ? { slug: free.topic, name: free.topicName, n: free.questionIds.length } : null}
+        topics={allTopics.map((x) => ({ slug: x.slug, name: x.name, n: x.questions.length }))}
+      />
+    );
+  }
 
-  const { view } = await tutorContext(state);
   const plan = state.tutorPlan;
   const emptyError = sp.qrafik === "bos" ? t.planEmpty : undefined;
 
@@ -234,12 +243,43 @@ function ExamRow({ exam: e }: { exam: ExamView }) {
   );
 }
 
-/** Pulsuz plan: nə açılacağı + mövzuların adı (sual mətni göndərilmir). */
-function Locked({ topics }: { topics: Array<{ slug: string; name: string; n: number }> }) {
+/** Premium olmayan istifadəçi və qonaq: ilk dərs açıqdır; qalanı — nə açılacağı + mövzuların adı. */
+function Locked({
+  topics,
+  free,
+  guest,
+}: {
+  topics: Array<{ slug: string; name: string; n: number }>;
+  free: { slug: string; name: string; n: number } | null;
+  guest: boolean;
+}) {
   return (
     <>
-      <Topbar title={t.title} back="/panel" />
+      <Topbar title={t.title} back={guest ? "/" : "/panel"} />
       <Page narrow>
+        {free && (
+          <Card as="section" aria-labelledby="tutor-free" className="grid gap-3 border-2 border-success-700/40 bg-success-100/40">
+            <Tag tone="success" className="justify-self-start">
+              {t.freeTag}
+            </Tag>
+            <h2 id="tutor-free" className="font-display text-h3 font-extrabold text-navy-900">
+              {t.freeTitle}
+            </h2>
+            <p className="m-0 text-ink-muted">{t.freeText(free.name, free.n)}</p>
+            <ButtonLink href={`/onlayn-repetitor/${free.slug}`} className="justify-self-start">
+              {t.freeStart}
+              <ArrowIcon className="size-[22px]" />
+            </ButtonLink>
+            {guest && (
+              <p className="m-0 text-small text-ink-muted">
+                {t.freeGuestNote}{" "}
+                <Link href="/qeydiyyat" className="font-semibold text-navy-500 underline underline-offset-3">
+                  {t.register}
+                </Link>
+              </p>
+            )}
+          </Card>
+        )}
         <Card as="section" aria-labelledby="tutor-locked" className="grid gap-5">
           <div className="flex items-start gap-3">
             <span className="grid size-12 flex-none place-items-center rounded-[14px] bg-navy-900 text-white">
@@ -276,10 +316,17 @@ function Locked({ topics }: { topics: Array<{ slug: string; name: string; n: num
                   <TopicIcon name={x.name} className="size-5" />
                 </span>
                 <span className="min-w-0 flex-1 font-semibold text-navy-900">{x.name}</span>
-                <span className="flex items-center gap-1.5 text-small text-ink-muted">
-                  <LockIcon className="size-4" />
-                  {x.n ? t.topicCount(x.n) : t.soonTitle}
-                </span>
+                {free?.slug === x.slug ? (
+                  <Link href={`/onlayn-repetitor/${x.slug}`} className="text-small font-bold text-success-700 underline underline-offset-3">
+                    {t.freeTag}
+                    <span className="sr-only">: {x.name}</span>
+                  </Link>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-small text-ink-muted">
+                    <LockIcon className="size-4" />
+                    {x.n ? t.topicCount(x.n) : t.soonTitle}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

@@ -5,9 +5,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
-import { bankTasks, examItems, exams, subtopics, taskOptionErrors, topics, USER_ROLES, users } from "@/db/schema";
+import { bankTasks, EXAM_STATUSES, examItems, exams, subtopics, taskOptionErrors, topics, USER_ROLES, users } from "@/db/schema";
 import { LETTERS } from "@/lib/demo/content";
-import { createExam } from "@/lib/exams/create";
+import { createExam, sectionsOf } from "@/lib/exams/create";
 import { requireAdmin } from "./guard";
 
 /* ---------------- İstifadəçilər ---------------- */
@@ -140,18 +140,59 @@ export async function subtopicsOf(topicId: number) {
 
 /* ---------------- Sınaqlar ---------------- */
 
+/** "Sınağı yarat" (yaratma səhifəsinin içində): sınaq passiv statusda yaranır. */
 export async function createExamAction(formData: FormData) {
   await requireAdmin();
-  const key = z.enum(["buraxilis-9", "buraxilis-11", "qebul-11"]).parse(formData.get("blueprint"));
-  const { id } = await createExam(key, { status: formData.get("status") === "draft" ? "draft" : "published" });
+  const p = z
+    .object({
+      kind: z.enum(["buraxilis-9", "buraxilis-11", "qebul-11", "movzu"]),
+      title: z.string().trim().max(120).optional(),
+      durationMin: z.coerce.number().int().min(10).max(300),
+      topicId: z.coerce.number().int().positive().optional(),
+      closed: z.coerce.number().int().min(0).max(60).optional(),
+      coded: z.coerce.number().int().min(0).max(30).optional(),
+      written: z.coerce.number().int().min(0).max(20).optional(),
+    })
+    .parse(Object.fromEntries([...formData].filter(([k, v]) => !k.startsWith("pick-") && v !== "")));
+  const back = `/admin/sinaqlar/yeni?tip=${p.kind}${p.topicId ? `&movzu=${p.topicId}` : ""}`;
+  const counts = p.kind === "movzu" ? { closed: p.closed ?? 0, coded: p.coded ?? 0, written: p.written ?? 0 } : undefined;
+  if (counts && counts.closed + counts.coded + counts.written === 0) redirect(`${back}&xeta=say`);
+  if (p.kind === "movzu" && !p.topicId) redirect(`${back}&xeta=movzu`);
+
+  // Əl ilə seçilmiş suallar bölmənin sayından çox ola bilməz.
+  const preset = {
+    closed: formData.getAll("pick-closed").map(String),
+    coded: formData.getAll("pick-coded").map(String),
+    written: formData.getAll("pick-written").map(String),
+  };
+  for (const s of await sectionsOf(p.kind, counts)) {
+    if (preset[s.format].length > s.count) redirect(`${back}&xeta=cox-${s.format}`);
+  }
+
+  let id: string;
+  try {
+    ({ id } = await createExam({ kind: p.kind, title: p.title, durationMin: p.durationMin, topicId: p.topicId, counts, preset, status: "passive" }));
+  } catch {
+    redirect(`${back}&xeta=bos`);
+  }
   revalidatePath("/admin/sinaqlar");
   redirect(`/admin/sinaqlar/${id}?yaradildi=1`);
+}
+
+/** Statusu dəyişmək: aktiv — saytda görünür, passiv — görünmür, bitib — yeni iştirakçı qəbul olunmur. */
+export async function setExamStatusAction(formData: FormData) {
+  await requireAdmin();
+  const p = z.object({ id: z.string(), status: z.enum(EXAM_STATUSES) }).parse(Object.fromEntries(formData));
+  await db.update(exams).set({ status: p.status }).where(eq(exams.id, p.id));
+  revalidatePath("/admin/sinaqlar");
+  revalidatePath("/sinaqlar");
+  redirect("/admin/sinaqlar?status=1");
 }
 
 export async function updateExamAction(formData: FormData) {
   await requireAdmin();
   const p = z
-    .object({ id: z.string(), durationMin: z.coerce.number().int().min(10).max(300), status: z.enum(["published", "draft"]), title: z.string().trim().min(3).max(120) })
+    .object({ id: z.string(), durationMin: z.coerce.number().int().min(10).max(300), status: z.enum(EXAM_STATUSES), title: z.string().trim().min(3).max(120) })
     .parse(Object.fromEntries(formData));
   await db.update(exams).set({ durationMin: p.durationMin, status: p.status, title: p.title }).where(eq(exams.id, p.id));
   revalidatePath("/admin/sinaqlar");

@@ -65,4 +65,25 @@ describe("sınaq generasiyası", () => {
     const overlap = second.filter((i) => usage.has(i.code)).length;
     expect(overlap).toBe(0);
   });
+
+  it("mövzunun bütün sualları istifadə olunubsa — təkrar ola bilər (ən az istifadə olunanlardan)", () => {
+    const one = [{ id: 1, curriculumOrder: 1, dimFrequency: 1, examTypes: ["movzu"] }];
+    const usage = new Map(tasks.filter((t) => t.topicId === 1 && t.format === "closed").map((t, i) => [t.code, i % 3 === 0 ? 1 : 2]));
+    const items = generateExam({ sections: [{ format: "closed", count: 10, firstNo: 1 }], examType: "movzu", topics: one, tasks, usage, rand: seeded(6) });
+    expect(items).toHaveLength(10);
+    expect(items.every((i) => i.code.startsWith("T1-C"))).toBe(true);
+    // 20 qapalı sualdan 7-si bir dəfə istifadə olunub — hamısı seçilir, qalanı ikinci dəfə istifadə olunanlardan.
+    expect(items.filter((i) => usage.get(i.code) === 1)).toHaveLength(7);
+  });
+
+  it("əl ilə seçilmiş suallar sınağa düşür, qalan yerlər avtomatik doldurulur; yaramayan seçim nəzərə alınmır", () => {
+    // T2-O2 — ədədi cavabı olmayan açıq sual: heç bir bölməyə yaramır.
+    const preset = { closed: ["T2-C5", "T1-C7", "T2-O2"], written: ["T1-W3"] };
+    const items = generateExam({ sections: NINE, examType: "9", topics, tasks, preset, rand: seeded(7) });
+    expect(items).toHaveLength(25);
+    const codes = items.map((i) => i.code);
+    expect(codes).toEqual(expect.arrayContaining(["T2-C5", "T1-C7", "T1-W3"]));
+    expect(codes).not.toContain("T2-O2");
+    expect(new Set(codes).size).toBe(25);
+  });
 });

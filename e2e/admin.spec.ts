@@ -10,6 +10,23 @@ const stamp = Date.now();
 const admin = { id: crypto.randomUUID(), email: `e2e+adm${stamp}@example.test`, password: "Admin2026x" };
 const student = { id: crypto.randomUUID(), email: `e2e+std${stamp}@example.test`, password: "Sagird2026x" };
 let examId = "";
+let topicExamId = "";
+
+const countExams = async () => {
+  const db = connect();
+  const n = Number((await db.execute("select count(*) n from exams")).rows[0].n);
+  db.close();
+  return n;
+};
+
+/** Admin siyahısında sınağın statusunu dəyişir. */
+async function setStatus(page: Page, id: string, status: "active" | "passive" | "finished") {
+  await page.goto("/admin/sinaqlar");
+  const row = page.locator("tr", { has: page.getByText(id, { exact: true }) });
+  await row.getByRole("combobox").selectOption(status);
+  await row.getByRole("button", { name: "Saxla" }).click();
+  await expect(page.getByText("Status dəyişdirildi.")).toBeVisible();
+}
 
 test.beforeAll(async () => {
   const db = connect();
@@ -31,7 +48,9 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   // Testdə yaradılan sınaq və sual qalmasın
   const db = connect();
-  if (examId) await db.batch([{ sql: "delete from exam_items where exam_id = ?", args: [examId] }, { sql: "delete from exams where id = ?", args: [examId] }], "write");
+  for (const id of [examId, topicExamId].filter(Boolean)) {
+    await db.batch([{ sql: "delete from exam_items where exam_id = ?", args: [id] }, { sql: "delete from exams where id = ?", args: [id] }], "write");
+  }
   await db.execute("delete from bank_tasks where body like 'E2E sual%'");
   db.close();
 });
@@ -136,12 +155,19 @@ test("admin: sual əlavə et (LaTeX önizləmə) → redaktə → sil", async ({
 test("admin: 9-cu sinif sınağı yaradılır — quruluşa uyğun 25 sual", async ({ page }) => {
   await login(page, admin);
   await page.goto("/admin/sinaqlar");
-  await page.getByLabel("İmtahan növü").selectOption("buraxilis-9");
-  await page.getByLabel("Status").selectOption("draft");
-  await page.getByRole("button", { name: "+ Yeni sınaq yarat" }).click();
+  // "+ Yeni sınaq" sınaq yaratmır — yaratma səhifəsini açır.
+  const before = await countExams();
+  await page.getByRole("link", { name: "+ Yeni sınaq" }).click();
+  await expect(page).toHaveURL(/\/admin\/sinaqlar\/yeni$/);
+  expect(await countExams()).toBe(before);
+  await page.getByLabel("Sınağın tipi").selectOption("buraxilis-9");
+  await page.getByRole("button", { name: "Davam et" }).click();
+  await expect(page.getByText("Quruluş: Qapalı 15 (№61–75)")).toBeVisible();
+  expect(await countExams()).toBe(before);
+  await page.getByRole("button", { name: "Sınağı yarat" }).click();
   await expect(page).toHaveURL(/\/admin\/sinaqlar\/b9-\d+\?yaradildi=1$/);
   examId = page.url().match(/(b9-\d+)/)![1];
-  await expect(page.getByText("Sınaq yaradıldı.")).toBeVisible();
+  await expect(page.getByText(/Sınaq yaradıldı \(passiv\)/)).toBeVisible();
   const rows = page.getByRole("table", { name: "Sınağın sualları" }).locator("tbody tr");
   await expect(rows).toHaveCount(25);
   await expect(rows.first()).toContainText("61");
@@ -158,7 +184,53 @@ test("admin: 9-cu sinif sınağı yaradılır — quruluşa uyğun 25 sual", asy
   db.close();
   expect(Object.fromEntries(f.rows.map((r) => [String(r.format), Number(r.n)]))).toEqual({ closed: 15, coded: 6, written: 4 });
   expect(Number(bad.rows[0].n)).toBe(0);
-  // Qaralama — şagirdlər görmür
+  // Passiv — saytda görünmür
+  const title = examId.replace("b9-", "9-cu sinif buraxılış sınağı №");
+  const card = () => page.getByRole("article", { name: new RegExp(`^${title} —`) });
   await page.goto("/sinaqlar");
-  await expect(page.getByRole("article").filter({ hasText: examId.replace("b9-", "9-cu sinif buraxılış sınağı №") })).toHaveCount(0);
+  await expect(card()).toHaveCount(0);
+
+  // Aktiv → saytda görünür (ən yeni birinci, yaradılma tarixi ilə)
+  await setStatus(page, examId, "active");
+  await page.goto("/sinaqlar");
+  await expect(card()).toHaveCount(1);
+  await expect(page.getByRole("article").first()).toHaveAccessibleName(new RegExp(`^${title} —`));
+  await expect(card()).toContainText(/Yaradılıb: \d{2}\.\d{2}\.\d{4}/);
+  await expect(card()).toContainText("Hələ işlənməyib");
+
+  // Bitib → iştirak etməyənə görünmür
+  await setStatus(page, examId, "finished");
+  await page.goto("/sinaqlar");
+  await expect(card()).toHaveCount(0);
+});
+
+test("admin: mövzu sınağı — mövzu seçilir, suallar əl ilə seçilir, qiymət 2 AZN", async ({ page }) => {
+  await login(page, admin);
+  await page.goto("/admin/sinaqlar/yeni");
+  await page.getByLabel("Sınağın tipi").selectOption("movzu");
+  await page.getByLabel("Mövzu (yalnız mövzu sınağı üçün)").selectOption({ label: "Natural ədədlər" });
+  await page.getByRole("button", { name: "Davam et" }).click();
+  await page.getByLabel("Qapalı", { exact: true }).fill("6");
+  await page.getByLabel("Açıq (kodlaşdırılan)", { exact: true }).fill("2");
+  // İki qapalı sualı özümüz seçirik — qalan 4 avtomatik
+  const closed = page.getByRole("group", { name: /Qapalı suallar/ });
+  await closed.locator("summary").first().click();
+  const picks = closed.locator('input[name="pick-closed"]');
+  const chosen = [await picks.nth(0).getAttribute("value"), await picks.nth(1).getAttribute("value")];
+  await picks.nth(0).check();
+  await picks.nth(1).check();
+  await expect(page.getByText("Qapalı: 2 / 6 seçilib · 4 avtomatik")).toBeVisible();
+  await page.getByRole("button", { name: "Sınağı yarat" }).click();
+  await expect(page).toHaveURL(/\/admin\/sinaqlar\/m-\d+\?yaradildi=1$/);
+  topicExamId = page.url().match(/(m-\d+)/)![1];
+  const rows = page.getByRole("table", { name: "Sınağın sualları" }).locator("tbody tr");
+  await expect(rows).toHaveCount(8);
+  for (const c of chosen) await expect(page.getByRole("table", { name: "Sınağın sualları" })).toContainText(c!);
+
+  // Aktiv → saytda "Mövzu sınağı" tipi ilə, 2 AZN
+  await setStatus(page, topicExamId, "active");
+  await page.goto("/sinaqlar?tip=movzu");
+  const card = page.getByRole("article", { name: /^Mövzu sınağı: Natural ədədlər/ }).first();
+  await expect(card).toContainText("Mövzu: Natural ədədlər");
+  await expect(card).toContainText("2 AZN");
 });

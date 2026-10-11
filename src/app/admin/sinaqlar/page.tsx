@@ -1,51 +1,54 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createExamAction } from "@/lib/admin/actions";
-import { listExams } from "@/lib/exams/source";
-import { Notice, PageHead, Table, btn, btnGhost, input, td, th } from "../ui";
+import { setExamStatusAction } from "@/lib/admin/actions";
+import { listExamKinds, listExams } from "@/lib/exams/source";
+import { priceText } from "@/lib/exams/types";
+import { cn } from "@/lib/cn";
+import { Notice, PageHead, Table, btn, btnGhost, fmtDate, input, td, th } from "../ui";
+import { STATUS_LABEL, STATUS_TONE } from "./data";
 
 export const metadata: Metadata = { title: "Sınaqlar" };
 
-const BLUEPRINTS = [
-  ["buraxilis-9", "9-cu sinif buraxılış (25 sual: 15 qapalı, 6 açıq, 4 yazılı)"],
-  ["buraxilis-11", "11-ci sinif buraxılış (25 sual: 13 qapalı, 5 açıq, 7 yazılı)"],
-  ["qebul-11", "Blok / qəbul (22 qapalı, 4 açıq, 3 yazılı)"],
-] as const;
 
 export default async function AdminExams(props: PageProps<"/admin/sinaqlar">) {
   const sp = await props.searchParams;
-  const exams = await listExams({ all: true });
+  const [all, kinds] = await Promise.all([listExams({ all: true }), listExamKinds()]);
+  const kind = kinds.find((k) => k.key === sp.tip)?.key;
+  const exams = kind ? all.filter((e) => e.kind === kind) : all;
+  const tab = (key: string | undefined, label: string, n: number) => (
+    <Link
+      key={key ?? "all"}
+      href={key ? `/admin/sinaqlar?tip=${key}` : "/admin/sinaqlar"}
+      aria-current={kind === key ? "page" : undefined}
+      className={cn(
+        "rounded-pill border px-3 py-1.5 text-[13px] font-semibold no-underline",
+        kind === key ? "border-navy-900 bg-navy-900 text-white" : "border-line bg-white text-navy-900",
+      )}
+    >
+      {label} <span className="tabular opacity-75">{n}</span>
+    </Link>
+  );
+
   return (
     <>
       <PageHead
         title="Sınaqlar"
-        lead="Sınaqlar sual bankından imtahan quruluşuna görə yaradılır: bölmələrin sayı və nömrələri (sual_tipleri_cedveli.txt), mövzular — imtahan tipinə aid olanlar (dim-movzular.md), bölgü — DİM tezliyinə mütənasib."
-      />
+        lead="Sınaqlar sual bankından yaradılır: buraxılış və blok — imtahan quruluşuna görə, mövzu sınağı — seçilmiş mövzudan. Saytda yalnız aktiv sınaqlar görünür; bitmiş sınağı yalnız iştirak edənlər görür."
+      >
+        <Link href="/admin/sinaqlar/yeni" className={btn}>
+          + Yeni sınaq
+        </Link>
+      </PageHead>
       {sp.silindi && <Notice tone="ok">Sınaq silindi.</Notice>}
-      <form action={createExamAction} className="flex flex-wrap items-end gap-2 rounded-[16px] border border-line bg-white p-4">
-        <label className="grid flex-1 gap-1 text-[13px] font-semibold">
-          İmtahan növü
-          <select name="blueprint" className={input}>
-            {BLUEPRINTS.map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-[13px] font-semibold">
-          Status
-          <select name="status" className={input} defaultValue="published">
-            <option value="published">Dərhal dərc et</option>
-            <option value="draft">Qaralama (yoxlamaq üçün)</option>
-          </select>
-        </label>
-        <button className={btn}>+ Yeni sınaq yarat</button>
-      </form>
+      {sp.status && <Notice tone="ok">Status dəyişdirildi.</Notice>}
+      <nav aria-label="Sınağın tipi" className="flex flex-wrap gap-2">
+        {tab(undefined, "Hamısı", all.length)}
+        {kinds.map((k) => tab(k.key, `${k.name} · ${priceText(k.price)}`, all.filter((e) => e.kind === k.key).length))}
+      </nav>
       <Table caption="Sınaqlar">
         <thead className="bg-navy-050">
           <tr>
-            {["Sınaq", "Növ", "Sual", "Qapalı / açıq / yazılı", "Müddət", "Status", ""].map((h) => (
+            {["Sınaq", "Tip", "Sual", "Qapalı / açıq / yazılı", "Müddət", "Yaradılıb", "Status", ""].map((h) => (
               <th key={h} scope="col" className={th}>
                 {h}
               </th>
@@ -59,16 +62,29 @@ export default async function AdminExams(props: PageProps<"/admin/sinaqlar">) {
                 <b>{e.title}</b>
                 <span className="block font-mono text-[12px] text-ink-muted">{e.id}</span>
               </td>
-              <td className={td}>{e.group}</td>
+              <td className={td}>
+                {e.group}
+                {e.topicName && <span className="block text-[12px] text-ink-muted">{e.topicName}</span>}
+              </td>
               <td className={`${td} tabular`}>{e.total}</td>
               <td className={`${td} tabular`}>
                 {e.counts.closed} / {e.counts.coded} / {e.counts.written}
               </td>
               <td className={`${td} tabular`}>{e.durationMin} dəq</td>
+              <td className={`${td} tabular`}>{fmtDate(e.createdAt)}</td>
               <td className={td}>
-                <span className={e.status === "published" ? "font-semibold text-success-700" : "text-ink-muted"}>
-                  {e.status === "published" ? "Dərc olunub" : "Qaralama"}
-                </span>
+                <form action={setExamStatusAction} className="flex items-center gap-1.5">
+                  <input type="hidden" name="id" value={e.id} />
+                  <span className={cn("rounded-pill px-2 py-0.5 text-[12px] font-bold", STATUS_TONE[e.status])}>{STATUS_LABEL[e.status]}</span>
+                  <select name="status" defaultValue={e.status} aria-label={`${e.title}: status`} className={`${input} min-h-9 text-[13px]`}>
+                    {(Object.keys(STATUS_LABEL) as Array<keyof typeof STATUS_LABEL>).map((s) => (
+                      <option key={s} value={s}>
+                        {STATUS_LABEL[s]}
+                      </option>
+                    ))}
+                  </select>
+                  <button className={btnGhost}>Saxla</button>
+                </form>
               </td>
               <td className={td}>
                 <Link href={`/admin/sinaqlar/${e.id}`} className={btnGhost}>
@@ -82,4 +98,3 @@ export default async function AdminExams(props: PageProps<"/admin/sinaqlar">) {
     </>
   );
 }
-

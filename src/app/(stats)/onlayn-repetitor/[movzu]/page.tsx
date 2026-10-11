@@ -8,8 +8,8 @@ import { Card, Tag, h1Class, h3Class } from "@/components/ui/display";
 import { MathText } from "@/components/ui/math-text";
 import { az } from "@/content/az";
 import { formatDate } from "@/lib/demo/logic";
-import { canUseRepetitor } from "@/lib/demo/plans";
-import { requireDemo } from "@/lib/demo/session";
+import { optionalDemo } from "@/lib/demo/session";
+import type { LessonView } from "@/lib/repetitor/plan";
 import { repetitorHref, repetitorPager, tutorContext, tutorOf } from "@/lib/repetitor/progress";
 import { getRepetitorTopic, getTopicTheory } from "@/lib/repetitor/source";
 
@@ -20,18 +20,26 @@ export default async function RepetitorTopicPage(props: PageProps<"/onlayn-repet
   const { movzu } = await props.params;
   const topic = await getRepetitorTopic(movzu);
   if (!topic) notFound();
-  const { state } = await requireDemo(`/onlayn-repetitor/${movzu}`);
-  if (!canUseRepetitor(state)) redirect("/onlayn-repetitor");
-
+  // İlk dərs hamıya (qonaq da) açıqdır; qalan dərslər — Premium-da qrafikə görə.
+  const { user, state } = await optionalDemo();
   const t = az.app.tutor;
   const ctx = await tutorContext(state);
-  const lessons = ctx.view?.lessons.filter((l) => l.topic === movzu) ?? [];
+  const answered = tutorOf(state);
+  const lessons: LessonView[] = ctx.view
+    ? ctx.view.lessons.filter((l) => l.topic === movzu).map((l) => (l.status === "locked" && ctx.isFree(l.questionIds[0]) ? { ...l, status: "open" } : l))
+    : ctx.curr.lessons
+        .filter((l) => l.topic === movzu)
+        .map((l) => {
+          const done = l.questionIds.filter((id) => answered[id]?.a).length;
+          const status = !ctx.isFree(l.questionIds[0]) ? "locked" : done === l.questionIds.length ? "done" : "open";
+          return { ...l, date: null, done, status };
+        });
+  if (!ctx.paid && !lessons.some((l) => l.status !== "locked")) redirect("/onlayn-repetitor");
   const opened = lessons.filter((l) => l.status !== "locked");
   const firstLocked = lessons.find((l) => l.status === "locked");
   const done = ctx.view?.doneTopics.has(movzu) ?? false;
   const theory = opened.length || !topic.questions.length ? await getTopicTheory(movzu) : null;
   const pager = repetitorPager(state, topic, undefined, ctx.isOpen);
-  const answered = tutorOf(state);
 
   return (
     <>
@@ -53,7 +61,7 @@ export default async function RepetitorTopicPage(props: PageProps<"/onlayn-repet
               <p className="text-ink-muted">{t.soonText}</p>
             </Card>
           </>
-        ) : !ctx.view ? (
+        ) : !opened.length && ctx.paid && !ctx.view ? (
           <Locked text={t.noPlanLocked} />
         ) : !opened.length ? (
           <Locked text={t.topicLocked(firstLocked?.date ? formatDate(firstLocked.date) : null)} />
@@ -75,7 +83,9 @@ export default async function RepetitorTopicPage(props: PageProps<"/onlayn-repet
                       </span>
                       <span className="text-small text-ink-muted tabular">
                         {l.status === "locked"
-                          ? t.lessonLocked(l.date ? formatDate(l.date) : null)
+                          ? ctx.paid
+                            ? t.lessonLocked(l.date ? formatDate(l.date) : null)
+                            : t.freeRest
                           : t.lessonQuestions(l.done, l.questionIds.length)}
                       </span>
                     </div>
@@ -93,6 +103,7 @@ export default async function RepetitorTopicPage(props: PageProps<"/onlayn-repet
                   </Card>
                 );
               })}
+              {!user && <p className="m-0 text-small text-ink-muted">{t.freeGuestNote}</p>}
             </section>
           </>
         )}

@@ -9,6 +9,7 @@ import { brand } from "@/config/brand";
 import { az } from "@/content/az";
 import { PLANS, priceOf } from "@/lib/demo/plans";
 import { findExam } from "@/lib/exams/source";
+import { priceText } from "@/lib/exams/types";
 import { requireDemo } from "@/lib/demo/session";
 
 export const metadata: Metadata = { title: az.app.payment.failTitle };
@@ -36,7 +37,7 @@ export default async function PaymentFailPage(props: PageProps<"/odenis/ugursuz"
           <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{exam ? exam.title : t.planTitle(PLANS[tier].name, period === "year")}</b>
           <div className="flex items-center justify-between gap-3 text-small">
             <span className="text-ink-muted">{exam ? t.examNote : t.monthlyNote}</span>
-            <b className="whitespace-nowrap">{exam ? priceOf("exam") : period === "year" ? t.perYear(priceOf(tier, "year")) : t.perMonth(priceOf(tier))}</b>
+            <b className="whitespace-nowrap">{exam ? priceText(exam.price) : period === "year" ? t.perYear(priceOf(tier, "year")) : t.perMonth(priceOf(tier))}</b>
           </div>
         </Card>
         <ButtonLink href={retry} variant="primary" block>

@@ -80,6 +80,13 @@ export const ClockIcon = (p: IconProps) => (
   </Base>
 );
 
+export const CalendarIcon = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="4" y="5.5" width="16" height="14" rx="2.5" />
+    <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" />
+  </Base>
+);
+
 const icon = (paths: React.ReactNode) =>
   function Icon(p: IconProps) {
     return <Base {...p}>{paths}</Base>;

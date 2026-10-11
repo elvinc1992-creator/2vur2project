@@ -8,16 +8,21 @@ import { buttonClass } from "@/components/ui/button";
 import { brand, socialUrl } from "@/config/brand";
 import { az } from "@/content/az";
 import { cn } from "@/lib/cn";
-import { useSessionUser } from "./use-session-user";
+import { useSessionUser, type SessionUser } from "./use-session-user";
 
 const t = az.landing.nav;
 const telegram = socialUrl(brand.telegramUrl);
 const LINKS = [
   { href: "#movzular", label: t.topics },
-  { href: "#nece-isleyir", label: t.how },
+  { href: "#repetitor", label: t.tutor },
   { href: "#sinaqlar", label: t.exams },
+  { href: "#imtahan-qarsiligi", label: t.match },
   { href: "#qiymetler", label: t.pricing },
+  { href: "/yaris", label: t.contest },
 ];
+
+const initial = (name: string) => (name.trim()[0] ?? "?").toLocaleUpperCase("az");
+const displayName = (u: SessionUser) => u.name?.trim() || u.email || "";
 
 /** İctimai header: desktop-da 4 link + Daxil ol + Telegram; mobil-də açılan menyu. Daxil olmuş istifadəçiyə — \"Panelə keç\". */
 export function SiteHeader() {
@@ -45,9 +50,12 @@ export function SiteHeader() {
         </nav>
         <div className="flex items-center gap-2">
           {user ? (
-            <Link href="/panel" className={cn(buttonClass({ variant: "primary", size: "sm" }), "max-lg:hidden")}>
-              {t.toPanel}
-            </Link>
+            <>
+              <UserChip name={displayName(user)} />
+              <Link href="/panel" className={cn(buttonClass({ variant: "primary", size: "sm" }), "max-lg:hidden")}>
+                {t.toPanel}
+              </Link>
+            </>
           ) : (
             <>
               <Link href="/daxil-ol" className={cn(buttonClass({ variant: "ghost" }), "max-lg:hidden")}>
@@ -85,9 +93,12 @@ export function SiteHeader() {
           </ul>
           <div className="mt-3 grid gap-2">
             {user ? (
-              <Link href="/panel" className={buttonClass({ variant: "primary", block: true })}>
-                {t.toPanel}
-              </Link>
+              <>
+                <p className="m-0 px-3 py-1 text-small text-ink-muted">{t.account(displayName(user))}</p>
+                <Link href="/panel" className={buttonClass({ variant: "primary", block: true })}>
+                  {t.toPanel}
+                </Link>
+              </>
             ) : (
               <>
                 <Link href="/daxil-ol" className={buttonClass({ variant: "secondary", block: true })}>
@@ -100,6 +111,25 @@ export function SiteHeader() {
         </nav>
       )}
     </header>
+  );
+}
+
+/** Daxil olmuş istifadəçinin adı (ad və soyad) — hesaba daxil olduğunu görsün. */
+function UserChip({ name }: { name: string }) {
+  return (
+    <Link
+      href="/profil"
+      title={t.account(name)}
+      className="inline-flex min-h-11 max-w-[16rem] items-center gap-2 rounded-pill border border-line bg-white py-1 pr-3 pl-1 text-[14px] font-semibold text-navy-900 no-underline hover:bg-navy-050"
+    >
+      <span aria-hidden="true" className="grid size-8 flex-none place-items-center rounded-full bg-navy-900 text-[14px] font-bold text-white">
+        {initial(name)}
+      </span>
+      <span className="truncate max-sm:sr-only">
+        <span className="sr-only">{t.account("")}</span>
+        {name}
+      </span>
+    </Link>
   );
 }
 

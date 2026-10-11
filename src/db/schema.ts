@@ -511,19 +511,42 @@ export const weakPracticeSets = sqliteTable(
 
 export const EXAM_ITEM_FORMATS = ["closed", "coded", "written"] as const;
 
-/** Sınaq: imtahan quruluşuna (exam_blueprints) görə sual bankından yaradılır. */
+/**
+ * Sınaq tipləri: 9-cu sinif buraxılış, 11-ci sinif buraxılış, 11-ci sinif blok, Mövzu sınağı.
+ * Qiymət (AZN) — tək sınağın alınması üçün. blueprint_key — imtahan quruluşu (mövzu sınağında yoxdur).
+ */
+export const examKinds = sqliteTable("exam_kinds", {
+  /** "buraxilis-9", "buraxilis-11", "qebul-11", "movzu". */
+  key: text("key").primaryKey(),
+  name: text("name").notNull(),
+  price: real("price").notNull(),
+  blueprintKey: text("blueprint_key").references(() => examBlueprints.key),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const EXAM_STATUSES = ["active", "passive", "finished"] as const;
+export type ExamStatusDb = (typeof EXAM_STATUSES)[number];
+
+/**
+ * Sınaq: imtahan quruluşuna (exam_blueprints) görə sual bankından yaradılır.
+ * Status: active — saytda görünür; passive — görünmür (yeni yaradılan); finished — bitib (yalnız iştirak edənlər görür).
+ */
 export const exams = sqliteTable(
   "exams",
   {
     id: text("id").primaryKey(),
+    /** Mövzu sınağında "movzu" (bölmələri yoxdur — say adminin seçimidir). */
     blueprintKey: text("blueprint_key")
       .notNull()
       .references(() => examBlueprints.key),
+    kind: text("kind").references(() => examKinds.key),
+    /** Yalnız mövzu sınağında. */
+    topicId: integer("topic_id").references(() => topics.id),
     /** Eyni tip sınaqlar arasında sıra nömrəsi (№1, №2…). */
     number: integer("number").notNull(),
     title: text("title").notNull(),
     durationMin: integer("duration_min").notNull(),
-    status: text("status", { enum: ["published", "draft"] }).notNull().default("published"),
+    status: text("status", { enum: EXAM_STATUSES }).notNull().default("passive"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -565,4 +588,227 @@ export const payments = sqliteTable(
       .$defaultFn(() => new Date()),
   },
   (t) => [index("payments_created_idx").on(t.createdAt), index("payments_user_idx").on(t.userId)],
+);
+
+/* ---------------- Riyaziyyat yarışı ---------------- */
+
+export const CONTEST_STATUSES = ["draft", "registration", "running", "finished", "final", "results"] as const;
+export type ContestStatus = (typeof CONTEST_STATUSES)[number];
+
+/**
+ * Yarış: qeydiyyat → onlayn tur (hamı eyni anda) → əyani final → nəticələr.
+ * status: draft (qaralama), registration (qeydiyyat), running (davam edir), finished (onlayn tur bitib),
+ * final (final mərhələsi), results (nəticələr elan olunub).
+ */
+export const contests = sqliteTable(
+  "contests",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    regStartAt: integer("reg_start_at", { mode: "timestamp_ms" }).notNull(),
+    regEndAt: integer("reg_end_at", { mode: "timestamp_ms" }).notNull(),
+    startAt: integer("start_at", { mode: "timestamp_ms" }).notNull(),
+    /** Başlanğıcdan neçə dəqiqə sonra yeni giriş bağlanır. */
+    entryWindowMin: integer("entry_window_min").notNull().default(10),
+    durationMin: integer("duration_min").notNull().default(25),
+    questionCount: integer("question_count").notNull().default(20),
+    finalistCount: integer("finalist_count").notNull().default(25),
+    /** AZN */
+    prizeFund: real("prize_fund").notNull().default(0),
+    /** Bu qədər qeydiyyat olarsa, 1-ci yerin mükafatı boostFirstPrize-a qalxır. */
+    boostThreshold: integer("boost_threshold"),
+    boostFirstPrize: real("boost_first_prize"),
+    status: text("status", { enum: CONTEST_STATUSES }).notNull().default("draft"),
+    /** Final: tarix (boşdursa — "Tarix elan olunacaq") və məkan (admin daxil edir). */
+    finalAt: integer("final_at", { mode: "timestamp_ms" }),
+    finalPlace: text("final_place"),
+    awardsAt: integer("awards_at", { mode: "timestamp_ms" }),
+    resultsComputedAt: integer("results_computed_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("contests_slug_uq").on(t.slug)],
+);
+
+/** Mükafatlar: yer aralığı (1, 2, 3, 4–10) və təsviri. */
+export const contestPrizes = sqliteTable("contest_prizes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  contestId: text("contest_id")
+    .notNull()
+    .references(() => contests.id, { onDelete: "cascade" }),
+  placeFrom: integer("place_from").notNull(),
+  placeTo: integer("place_to").notNull(),
+  /** AZN (pul mükafatı yoxdursa — null). */
+  amount: real("amount"),
+  description: text("description").notNull(),
+});
+
+/** Qeydiyyat: bir istifadəçi bir yarışa bir dəfə. Dəvət kodu yalnız statistika və fond üçün. */
+export const contestRegistrations = sqliteTable(
+  "contest_registrations",
+  {
+    id: text("id").primaryKey(),
+    contestId: text("contest_id")
+      .notNull()
+      .references(() => contests.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    grade: integer("grade").notNull(),
+    region: text("region").notNull(),
+    school: text("school"),
+    email: text("email").notNull(),
+    inviteCode: text("invite_code").notNull(),
+    invitedByCode: text("invited_by_code"),
+    invitedById: text("invited_by_id"),
+    agreeRules: integer("agree_rules", { mode: "boolean" }).notNull(),
+    agreeParent: integer("agree_parent", { mode: "boolean" }).notNull(),
+    agreeEmail: integer("agree_email", { mode: "boolean" }).notNull(),
+    unsubscribedAt: integer("unsubscribed_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("contest_reg_user_uq").on(t.contestId, t.userId),
+    uniqueIndex("contest_reg_code_uq").on(t.inviteCode),
+    index("contest_reg_contest_idx").on(t.contestId, t.createdAt),
+  ],
+);
+
+/**
+ * Sual şablonu: mətndə [[a]], [[=a*b]] dəyişənləri; vars — {"a":[min,max,addım]}; şərt və cavab — ifadə
+ * (lib/contest/expr.ts); distractors — 4 yanlış variantın ifadəsi; solution — həll (dəyişənlərlə).
+ */
+export const contestTemplates = sqliteTable(
+  "contest_templates",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    contestId: text("contest_id")
+      .notNull()
+      .references(() => contests.id, { onDelete: "cascade" }),
+    n: integer("n").notNull(),
+    topicId: integer("topic_id").references(() => topics.id),
+    body: text("body").notNull(),
+    /** JSON: {"a":[1,9,1]} */
+    vars: text("vars").notNull(),
+    condition: text("condition"),
+    answer: text("answer").notNull(),
+    /** JSON: ["a+b", …] */
+    distractors: text("distractors").notNull(),
+    solution: text("solution").notNull().default(""),
+    timeSec: integer("time_sec").notNull().default(75),
+  },
+  (t) => [uniqueIndex("contest_templates_n_uq").on(t.contestId, t.n)],
+);
+
+/** İştirakçının variantı: konkret rəqəmlər, variantlar və düzgün cavab (yalnız serverdə). */
+export const contestVariants = sqliteTable(
+  "contest_variants",
+  {
+    registrationId: text("registration_id")
+      .notNull()
+      .references(() => contestRegistrations.id, { onDelete: "cascade" }),
+    n: integer("n").notNull(),
+    templateId: integer("template_id").notNull(),
+    /** JSON: {"a":12} */
+    values: text("values").notNull(),
+    text: text("text").notNull(),
+    /** JSON: {"A":"12",…} */
+    options: text("options").notNull(),
+    correct: text("correct").notNull(),
+    timeSec: integer("time_sec").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.registrationId, t.n] })],
+);
+
+/** Onlayn turun gedişi — server vaxtı ilə; sayğac dayanmır. */
+export const contestAttempts = sqliteTable("contest_attempts", {
+  registrationId: text("registration_id")
+    .primaryKey()
+    .references(() => contestRegistrations.id, { onDelete: "cascade" }),
+  startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+  /** Cari sual (1-dən); finishedAt varsa — bitib. */
+  currentN: integer("current_n").notNull().default(1),
+  currentStartedAt: integer("current_started_at", { mode: "timestamp_ms" }).notNull(),
+  finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
+});
+
+export const contestAnswers = sqliteTable(
+  "contest_answers",
+  {
+    registrationId: text("registration_id")
+      .notNull()
+      .references(() => contestRegistrations.id, { onDelete: "cascade" }),
+    n: integer("n").notNull(),
+    /** Seçilmiş hərf; vaxtı bitib — null. */
+    given: text("given"),
+    correct: integer("correct", { mode: "boolean" }).notNull(),
+    answeredAt: integer("answered_at", { mode: "timestamp_ms" }).notNull(),
+    timeMs: integer("time_ms").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.registrationId, t.n] })],
+);
+
+export const CONTEST_EVENT_KINDS = ["tab_hidden", "window_blur", "offline", "online", "copy", "context_menu"] as const;
+export type ContestEventKind = (typeof CONTEST_EVENT_KINDS)[number];
+
+/** Hadisə jurnalı: tab dəyişmə, pəncərədən çıxma, bağlantı — admin yoxlaması üçün siqnal. */
+export const contestEvents = sqliteTable(
+  "contest_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    registrationId: text("registration_id")
+      .notNull()
+      .references(() => contestRegistrations.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: CONTEST_EVENT_KINDS }).notNull(),
+    n: integer("n"),
+    at: integer("at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("contest_events_reg_idx").on(t.registrationId, t.at)],
+);
+
+/** Nəticə: onlayn tur (bal, vaxt, yer, finalçı), final (iştirak, bal, yer), diskvalifikasiya, mükafatın ödənişi. */
+export const contestResults = sqliteTable(
+  "contest_results",
+  {
+    registrationId: text("registration_id")
+      .primaryKey()
+      .references(() => contestRegistrations.id, { onDelete: "cascade" }),
+    contestId: text("contest_id")
+      .notNull()
+      .references(() => contests.id, { onDelete: "cascade" }),
+    score: integer("score").notNull(),
+    totalMs: integer("total_ms").notNull(),
+    place: integer("place"),
+    finalist: integer("finalist", { mode: "boolean" }).notNull().default(false),
+    finalAttended: integer("final_attended", { mode: "boolean" }),
+    finalScore: real("final_score"),
+    finalPlace: integer("final_place"),
+    disqualified: integer("disqualified", { mode: "boolean" }).notNull().default(false),
+    dqReason: text("dq_reason"),
+    /** parent_account (valideynin hesabı) | cash (nağd) */
+    prizeMethod: text("prize_method"),
+    /** pending | paid */
+    prizeStatus: text("prize_status"),
+  },
+  (t) => [index("contest_results_contest_idx").on(t.contestId, t.place)],
+);
+
+export const CONTEST_EMAIL_KINDS = ["confirm", "reminder", "result", "finalist", "final"] as const;
+export type ContestEmailKind = (typeof CONTEST_EMAIL_KINDS)[number];
+
+/** Göndərilmiş e-poçtlar (təkrar göndərilməsin; admin əl ilə yenidən göndərə bilər). */
+export const contestEmails = sqliteTable(
+  "contest_emails",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    registrationId: text("registration_id")
+      .notNull()
+      .references(() => contestRegistrations.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: CONTEST_EMAIL_KINDS }).notNull(),
+    sentAt: integer("sent_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("contest_emails_reg_idx").on(t.registrationId, t.kind)],
 );

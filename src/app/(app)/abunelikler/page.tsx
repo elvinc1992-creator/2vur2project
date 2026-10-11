@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { Page, Topbar } from "@/components/app/topbar";
 import { az } from "@/content/az";
 import { addDays, formatDate } from "@/lib/demo/logic";
-import { discountPct, EXAM_PRICE, PLANS, tierOf, yearlyPerMonth, yearlySavingPct, type Tier } from "@/lib/demo/plans";
+import { examPricesText, planInfos } from "@/components/plans-data";
+import { tierOf } from "@/lib/demo/plans";
 import { initials, requireDemo } from "@/lib/demo/session";
-import { PlansView, type PlanInfo } from "./plans-view";
+import { PlansView } from "@/components/plans-view";
 
 export const metadata: Metadata = { title: az.app.plans.title };
 
-const TIERS: Tier[] = ["free", "pro", "premium"];
 
 /**
  * Abunəliklər: Free / Pro / Premium, Aylıq ↔ İllik keçidi, müqayisə cədvəli.
@@ -20,16 +20,7 @@ export default async function PlansPage() {
   const current = tierOf(state);
   const currentPeriod = state.sub.period === "year" ? "year" : "month";
 
-  const plans: PlanInfo[] = TIERS.map((tier) => ({
-    tier,
-    name: PLANS[tier].name,
-    monthly: PLANS[tier].price,
-    oldMonthly: PLANS[tier].oldPrice ?? null,
-    discount: discountPct(tier),
-    yearly: PLANS[tier].yearlyPrice ?? null,
-    yearlyPerMonth: tier === "free" ? null : yearlyPerMonth(tier),
-    yearlySave: tier === "free" ? null : yearlySavingPct(tier),
-  }));
+  const plans = planInfos();
 
   const currentNote =
     current === "free"
@@ -40,7 +31,7 @@ export default async function PlansPage() {
     <>
       <Topbar title={t.title} avatar={initials(user.name)} />
       <Page>
-        <PlansView plans={plans} current={current} currentPeriod={currentPeriod} currentNote={currentNote} examPrice={EXAM_PRICE} />
+        <PlansView plans={plans} current={current} currentPeriod={currentPeriod} currentNote={currentNote} examPrice={await examPricesText()} />
       </Page>
     </>
   );

@@ -9,9 +9,12 @@ import { ensureDaily } from "./daily";
 import { db } from "@/db";
 import { payments } from "@/db/schema";
 import { findExam } from "@/lib/exams/source";
+import { priceText } from "@/lib/exams/types";
 import {
   daysLeft,
   examStatus,
+  isExamOpenForSale,
+  isExamVisible,
   isDailyOpen,
   nextDailyHref,
   todayIso,
@@ -19,7 +22,7 @@ import {
 } from "./logic";
 import { afterExamFinished } from "@/lib/weak/hooks";
 import { finalizeAttempt, loadExamCtx } from "./exam-session";
-import { EXAM_PRICE, examQuota, periodEndFrom, PLANS, priceOf, type BillingPeriod } from "./plans";
+import { examQuota, periodEndFrom, PLANS, priceOf, type BillingPeriod } from "./plans";
 import { cleanMeta, rememberMeta, resetDemoState, updateDemoState, type AnswerMeta, type PaidTier } from "./state";
 
 async function userId(): Promise<string> {
@@ -64,7 +67,7 @@ export async function answerDailyAction(id: string, choice: string, meta?: Answe
 /** Plan üzrə sınaq seçimi: Free — ayda 1, Pro — həftədə 1 (Premium — hamısı açıqdır). */
 export async function claimExamAction(id: string) {
   const exam = await findExam(id);
-  if (!exam) redirect("/sinaqlar");
+  if (!exam || !isExamOpenForSale(exam)) redirect("/sinaqlar");
   const ok = await updateDemoState(await userId(), (state) => {
     if (examStatus(state, exam) !== "locked") return true;
     const q = examQuota(state);
@@ -83,6 +86,8 @@ export async function startExamAction(id: string) {
   const exam = await findExam(id);
   if (!exam) redirect("/sinaqlar");
   const target = await updateDemoState(await userId(), (state) => {
+    // Passiv sınaq və ya iştirak etmədiyin bitmiş sınaq başlamır.
+    if (!isExamVisible(state, exam)) return "/sinaqlar";
     const status = examStatus(state, exam);
     if (status === "locked") return `/odenis?exam=${id}`;
     if (status === "done") return `/sinaq/${id}/netice`;
@@ -120,16 +125,16 @@ export async function mockPayAction(formData: FormData) {
 
   const uid = await userId();
   const exam = kind === "exam" ? await findExam(examId) : undefined;
-  if (kind === "exam" && !exam) redirect("/sinaqlar");
+  if (kind === "exam" && (!exam || !isExamOpenForSale(exam))) redirect("/sinaqlar");
   const today = todayIso();
   const receiptId = `${Date.now().toString().slice(-8, -4)}-${Date.now().toString().slice(-4)}`;
   const payment = exam
-    ? { kind: "exam" as const, title: exam.title, amount: EXAM_PRICE, examId, tier: null, period: null }
+    ? { kind: "exam" as const, title: exam.title, amount: priceText(exam.price), examId, tier: null, period: null }
     : { kind: "subscription" as const, title: `${PLANS[tier].name} · ${period === "year" ? "illik" : "aylıq"} abunə`, amount: priceOf(tier, period), examId: null, tier, period };
   await updateDemoState(uid, (state) => {
     if (exam) {
       if (!state.purchased.includes(examId)) state.purchased.push(examId);
-      state.payments.unshift({ id: receiptId, title: exam.title, date: today, method: CARD_LABEL, examId, amount: EXAM_PRICE });
+      state.payments.unshift({ id: receiptId, title: exam.title, date: today, method: CARD_LABEL, examId, amount: priceText(exam.price) });
     } else {
       // Eyni plan uzadılır; plan dəyişəndə yeni dövr bu gündən başlayır. İllik — 12 ay, aylıq — 30 gün.
       const sameTier = state.sub.status !== "none" && (state.sub.tier ?? "premium") === tier;

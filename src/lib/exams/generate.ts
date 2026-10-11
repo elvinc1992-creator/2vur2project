@@ -2,17 +2,20 @@
 //
 // Qaydalar (topic_questions/sual_tipleri_cedveli.txt və dim-movzular.md):
 // - Hər bölmənin (qapalı / açıq kodlaşdırılan / izahlı yazılı) sual sayı və nömrə aralığı imtahan quruluşundan gəlir.
-// - Yalnız həmin imtahana aid mövzular (exam_types: 9 / 11 / blok) iştirak edir.
+// - Yalnız həmin imtahana aid mövzular (exam_types: 9 / 11 / blok) iştirak edir; mövzu sınağında — seçilmiş mövzu.
 // - Sualların mövzular üzrə bölgüsü DİM tezliyinə mütənasibdir: tam hissə sabit, qalığı çəkili təsadüfi seçilir —
 //   eyni tip sınaqlar bir-birindən fərqlənir. Bir mövzudan bölmədə ən çox ceil(say/3) sual.
-// - Mövzu daxilində əvvəl digər sınaqlarda az istifadə olunmuş suallar seçilir.
+// - Təkrar olmasın deyə: mövzu daxilində əvvəl digər (aktiv/passiv) sınaqlarda istifadə olunmamış suallar seçilir;
+//   mövzunun bütün sualları artıq istifadə olunubsa — ən az istifadə olunanlardan təsadüfi.
+// - Admin sualları əl ilə seçə bilər (preset) — qalan yerlər avtomatik doldurulur.
 // - Bölmə daxilində suallar tədris sırası ilə düzülür (Natural ədədlər → … → Stereometriya).
 
-export type ExamType = "9" | "11" | "blok";
+/** "9" | "11" | "blok" | "movzu". */
+export type ExamType = string;
 export type ItemFormat = "closed" | "coded" | "written";
 
 export type GenSection = { format: ItemFormat; count: number; firstNo: number };
-export type GenTopic = { id: number; curriculumOrder: number; dimFrequency: number; examTypes: ExamType[] };
+export type GenTopic = { id: number; curriculumOrder: number; dimFrequency: number; examTypes: string[] };
 export type GenTask = { code: string; topicId: number; format: string; answerValue: string | null; hasOptions: boolean };
 export type GenItem = { n: number; code: string; format: ItemFormat };
 
@@ -33,16 +36,27 @@ export function generateExam(input: {
   examType: ExamType;
   topics: GenTopic[];
   tasks: GenTask[];
-  /** Kod → neçə sınaqda istifadə olunub (eyni tip). */
+  /** Kod → neçə sınaqda istifadə olunub. */
   usage?: Map<string, number>;
+  /** Adminin əl ilə seçdiyi suallar (bölmə üzrə); qalan yerlər avtomatik doldurulur. */
+  preset?: Partial<Record<ItemFormat, string[]>>;
   rand?: () => number;
 }): GenItem[] {
-  const { sections, examType, topics, tasks, usage = new Map(), rand = Math.random } = input;
+  const { sections, examType, topics, tasks, usage = new Map(), preset = {}, rand = Math.random } = input;
   const topicById = new Map(topics.filter((t) => t.examTypes.includes(examType)).map((t) => [t.id, t]));
+  const taskByCode = new Map(tasks.map((t) => [t.code, t]));
   const used = new Set<string>();
   const items: GenItem[] = [];
 
   for (const section of sections) {
+    // Əl ilə seçilmiş suallar (bölməyə yarayan, təkrarsız) — əvvəl yerləşdirilir.
+    const fixed = [...new Set(preset[section.format] ?? [])]
+      .map((c) => taskByCode.get(c))
+      .filter((t): t is GenTask => Boolean(t && !used.has(t.code) && fitsFormat(t, section.format)))
+      .slice(0, section.count);
+    for (const t of fixed) used.add(t.code);
+    const need = section.count - fixed.length;
+
     // Mövzu → bu bölməyə yarayan suallar (az istifadə olunanlar öndə, bərabərlər təsadüfi).
     const pool = new Map<number, GenTask[]>();
     for (const t of tasks) {
@@ -56,17 +70,16 @@ export function generateExam(input: {
         keyed.sort((a, b) => a.k - b.k).map((x) => x.t),
       );
     }
-    const ids = [...pool.keys()];
-    if (!ids.length) continue;
+    const ids = need > 0 ? [...pool.keys()] : [];
     const cap = Math.max(1, Math.ceil(section.count / 3));
     const weight = (id: number) => Math.max(MIN_WEIGHT, topicById.get(id)!.dimFrequency);
     const total = ids.reduce((s, id) => s + weight(id), 0);
-    const quota = new Map(ids.map((id) => [id, Math.min(cap, pool.get(id)!.length, Math.floor((section.count * weight(id)) / total))]));
+    const quota = new Map(ids.map((id) => [id, Math.min(cap, pool.get(id)!.length, Math.floor((need * weight(id)) / total))]));
 
     // Qalan yerlər — çəkili təsadüfi (artıq çox sualı olan mövzunun şansı azalır).
-    let left = section.count - [...quota.values()].reduce((s, v) => s + v, 0);
+    let left = need - [...quota.values()].reduce((s, v) => s + v, 0);
     let limit = cap;
-    while (left > 0) {
+    while (left > 0 && ids.length) {
       let open = ids.filter((id) => quota.get(id)! < Math.min(limit, pool.get(id)!.length));
       if (!open.length && limit !== Infinity) {
         // Mövzu az olanda 1/3 limiti sayı doldurmağa imkan vermir — limit götürülür.
@@ -88,8 +101,9 @@ export function generateExam(input: {
       left--;
     }
 
-    const chosen = ids
-      .flatMap((id) => pool.get(id)!.slice(0, quota.get(id)!).map((t) => ({ t, order: topicById.get(id)!.curriculumOrder, tie: rand() })))
+    const order = (t: GenTask) => topicById.get(t.topicId)?.curriculumOrder ?? 999;
+    const chosen = [...fixed, ...ids.flatMap((id) => pool.get(id)!.slice(0, quota.get(id)!))]
+      .map((t) => ({ t, order: order(t), tie: rand() }))
       .sort((a, b) => a.order - b.order || a.tie - b.tie);
     chosen.forEach(({ t }, i) => {
       used.add(t.code);

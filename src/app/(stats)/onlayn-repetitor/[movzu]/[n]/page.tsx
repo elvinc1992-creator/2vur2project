@@ -7,8 +7,7 @@ import { Freq, Tag } from "@/components/ui/display";
 import { QuestionCard } from "@/components/ui/question";
 import { az } from "@/content/az";
 import { feedbackOf } from "@/lib/bank/check";
-import { canUseRepetitor } from "@/lib/demo/plans";
-import { requireDemo } from "@/lib/demo/session";
+import { optionalDemo } from "@/lib/demo/session";
 import { nextRepetitorHref, repetitorPager, tutorContext, tutorOf } from "@/lib/repetitor/progress";
 import { getRepetitorKey, getRepetitorTopic } from "@/lib/repetitor/source";
 import { TutorAnswer } from "./tutor-answer";
@@ -21,10 +20,8 @@ export default async function RepetitorQuestionPage(props: PageProps<"/onlayn-re
   const q = topic?.questions[Number(n) - 1];
   if (!topic || !q) notFound();
 
-  const { state } = await requireDemo(`/onlayn-repetitor/${movzu}/${n}`);
-  // Giriş serverdə: abunə yoxdursa, sualın mətni səhifəyə düşmür.
-  if (!canUseRepetitor(state)) redirect("/onlayn-repetitor");
-  // Qrafikə görə hələ açılmamış dərsin sualı göstərilmir.
+  // İlk dərs hamıya (qonaq da) açıqdır. Qalan dərslərin sualı abunəsiz və ya qrafikə görə açılmamışsa səhifəyə düşmür.
+  const { state } = await optionalDemo();
   const ctx = await tutorContext(state);
   if (!ctx.isOpen(q.id)) redirect(`/onlayn-repetitor/${movzu}`);
 

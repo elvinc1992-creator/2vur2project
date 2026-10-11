@@ -48,8 +48,10 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   const { identifier, password } = parsed.data;
 
   const ip = await clientIp();
+  // Lokal inkişaf/test (e2e-də onlarla giriş eyni IP-dən) — IP limiti yalnız production-da və ya kənar IP üçün.
+  const localDev = process.env.NODE_ENV !== "production" && ["::1", "127.0.0.1", "::ffff:127.0.0.1", "unknown"].includes(ip);
   const rl = await rateLimitAll([
-    [`login:ip:${ip}`, 30, 15 * MINUTE],
+    ...(localDev ? [] : [[`login:ip:${ip}`, 30, 15 * MINUTE] as [string, number, number]]),
     [`login:id:${identifier}`, 10, 15 * MINUTE],
   ]);
   if (!rl.ok) return limited(rl.retryAfterMs);

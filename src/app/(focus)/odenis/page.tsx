@@ -9,6 +9,7 @@ import { Card, KeyValues, Placeholder, Tag } from "@/components/ui/display";
 import { az } from "@/content/az";
 import { mockPayAction } from "@/lib/demo/actions";
 import { findExam } from "@/lib/exams/source";
+import { priceText } from "@/lib/exams/types";
 import { BILLING_PERIODS, PLANS, priceOf, tierOf, yearlySavingPct, type BillingPeriod } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import type { PaidTier } from "@/lib/demo/state";
@@ -22,7 +23,7 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
   const sp = await props.searchParams;
   const examId = typeof sp.exam === "string" ? sp.exam : null;
   const exam = examId ? await findExam(examId) : undefined;
-  if (examId && !exam) notFound();
+  if (examId && (!exam || exam.status !== "active")) notFound();
   const tier: PaidTier = sp.plan === "premium" ? "premium" : "pro";
   const period: BillingPeriod = sp.period === "year" ? "year" : "month";
   const { state } = await requireDemo(`/odenis${examId ? `?exam=${examId}` : `?plan=${tier}&period=${period}`}`);
@@ -30,7 +31,7 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
   const t = az.app.payment;
   const kind = exam ? "exam" : "monthly";
   const title = exam ? exam.title : t.planTitle(PLANS[tier].name, period === "year");
-  const price = priceOf(exam ? "exam" : tier, period);
+  const price = exam ? priceText(exam.price) : priceOf(tier, period);
   const perPeriod = (p: string) => (period === "year" ? t.perYear(p) : t.perMonth(p));
 
   return (
