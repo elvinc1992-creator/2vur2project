@@ -5,7 +5,7 @@ import { createTestAction } from "@/lib/teacher/actions";
 import { cn } from "@/lib/cn";
 import { card, field, label } from "./ui";
 
-type Kind = { key: string; name: string; total: number; durationMin: number; price: number; sections: Array<{ format: string; count: number }>; topics: number };
+type Kind = { key: string; name: string; total: number; durationMin: number; price: number; paperPrice: number; sections: Array<{ format: string; count: number }>; topics: number };
 type Group = { id: string; name: string; members: string[] };
 type Topic = { id: number; name: string; used: boolean };
 
@@ -50,8 +50,8 @@ export function CreateTestForm({
   const isTopic = kind === "movzu";
   const [duration, setDuration] = useState(k?.durationMin ?? 90);
   const students = new Set(groups.filter((g) => selected.includes(g.id)).flatMap((g) => g.members)).size;
-  const cost = mode === "online" ? (k?.price ?? 0) : 0;
-  const short = mode === "online" && cost > balance;
+  const cost = (mode === "online" ? k?.price : k?.paperPrice) ?? 0;
+  const short = cost > balance;
   const total = isTopic ? count : (k?.total ?? 0);
   const topic = topics.find((t) => t.id === topicId);
   const blocked = !selected.length || students === 0 || short || (isTopic && (!topic || topic.used));
@@ -153,7 +153,9 @@ export function CreateTestForm({
             <input type="radio" name="mode" value="paper" checked={mode === "paper"} onChange={() => setMode("paper")} className="sr-only" />
             <b className="text-[15.5px]">🖨️ Kağız (əyani dərs)</b>
             <small className="text-[#5b6785]">Sual kitabçası və cavab kartı çap olunur. Kitabçada hər şagirdin adı yazılır.</small>
-            <span className="mt-2 text-[18px] font-black text-[#047857]">Pulsuz</span>
+            <span className="mt-2 text-[18px] font-black">
+              {azn(k?.paperPrice ?? 0)} <small className="text-[13px] font-semibold">/ sınaq (şagird sayından asılı deyil)</small>
+            </span>
           </label>
           <label className={opt(mode === "online")}>
             <input type="radio" name="mode" value="online" checked={mode === "online"} onChange={() => setMode("online")} className="sr-only" />
@@ -221,7 +223,7 @@ export function CreateTestForm({
           <small className="text-white/80">Yekun</small>
           <br />
           <b className="text-[18px] sm:text-[20px]">
-            {isTopic ? `Mövzu sınağı${topic ? `: ${topic.name}` : ""}` : k?.name} · {total} sual · {students} şagird · {mode === "online" ? azn(cost) : "Pulsuz"}
+            {isTopic ? `Mövzu sınağı${topic ? `: ${topic.name}` : ""}` : k?.name} · {total} sual · {students} şagird · {azn(cost)}
           </b>
           {short && <p className="m-0 mt-1 text-[13px] font-semibold text-[#fca5a5]">Balans kifayət etmir ({balance.toFixed(2)} ₼). Əvvəlcə balansı artır.</p>}
         </div>

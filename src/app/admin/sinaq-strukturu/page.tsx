@@ -57,14 +57,21 @@ export default async function ExamStructure(props: PageProps<"/admin/sinaq-struk
       </div>
 
       <form action={saveTeacherPricesAction} className="grid gap-3 rounded-[16px] border border-line bg-white p-4">
-        <h2 className="m-0 text-[16px] font-extrabold text-navy-900">Müəllimin onlayn sınaq qiyməti</h2>
-        <p className="m-0 text-[13px] text-ink-muted">Sınaq başına, müəllimin balansından tutulur (şagird sayından asılı deyil). Kağız sınaq pulsuzdur.</p>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <h2 className="m-0 text-[16px] font-extrabold text-navy-900">Müəllim sınağının qiyməti</h2>
+        <p className="m-0 text-[13px] text-ink-muted">Sınaq başına, müəllimin balansından tutulur (şagird sayından asılı deyil).</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {allKinds.map((k) => (
-            <label key={k.key} className={lbl}>
-              {k.name} (₼)
-              <input name={`price-${k.key}`} inputMode="decimal" defaultValue={k.teacherPrice} className={input} />
-            </label>
+            <fieldset key={k.key} className="m-0 grid gap-2 rounded-[12px] border border-line p-3">
+              <legend className="px-1 text-[13px] font-bold">{k.name}</legend>
+              <label className={lbl}>
+                Onlayn (₼)
+                <input name={`price-${k.key}`} inputMode="decimal" defaultValue={k.teacherPrice} className={input} />
+              </label>
+              <label className={lbl}>
+                Kağız (₼)
+                <input name={`paper-${k.key}`} inputMode="decimal" defaultValue={k.teacherPaperPrice} className={input} />
+              </label>
+            </fieldset>
           ))}
         </div>
         <button className={`${btn} justify-self-start`}>Qiymətləri saxla</button>

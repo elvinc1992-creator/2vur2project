@@ -77,15 +77,24 @@ export async function saveStructureAction(formData: FormData) {
   redirect("/admin/sinaq-strukturu?saxlanildi=1");
 }
 
-/** Müəllimin onlayn sınaq qiymətləri (sınaq başına, AZN): sahələr `price-<key>`. */
+/** Müəllim sınağının qiymətləri (sınaq başına, AZN): onlayn — `price-<key>`, kağız — `paper-<key>`. */
 export async function saveTeacherPricesAction(formData: FormData) {
   await requireAdmin();
+  const num = (name: string) => {
+    const raw = formData.get(name);
+    if (raw === null) return undefined;
+    const v = Number(String(raw).replace(",", "."));
+    return Number.isFinite(v) && v >= 0 && v <= 100 ? v : undefined;
+  };
   const rows = await db.select({ key: examKinds.key }).from(examKinds);
   for (const k of rows) {
-    const raw = formData.get(`price-${k.key}`);
-    if (raw === null) continue;
-    const v = Number(String(raw).replace(",", "."));
-    if (Number.isFinite(v) && v >= 0 && v <= 100) await db.update(examKinds).set({ teacherPrice: v }).where(eq(examKinds.key, k.key));
+    const online = num(`price-${k.key}`);
+    const paper = num(`paper-${k.key}`);
+    if (online === undefined && paper === undefined) continue;
+    await db
+      .update(examKinds)
+      .set({ ...(online !== undefined ? { teacherPrice: online } : {}), ...(paper !== undefined ? { teacherPaperPrice: paper } : {}) })
+      .where(eq(examKinds.key, k.key));
   }
   revalidatePath("/admin/sinaq-strukturu");
   redirect("/admin/sinaq-strukturu?saxlanildi=1");

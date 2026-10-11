@@ -105,12 +105,12 @@
 
 ## 11. Riyazi analizin elementləri
 1. Funksiyanın limiti — [B]
-2. Törəmə, törəmənin hesablanması qaydaları — [11][B]
-3. Törəmənin həndəsi və fiziki mənası, toxunan — [11][B]
-4. Monotonluq intervalları, ekstremumlar — [11][B]
-5. Parçada ən böyük və ən kiçik qiymət — [11][B]
-6. İbtidai funksiya, qeyri-müəyyən inteqral — [11][B]
-7. Müəyyən inteqral, əyrixətli trapesiyanın sahəsi — [11][B]
+2. Törəmə, törəmənin hesablanması qaydaları — [B]
+3. Törəmənin həndəsi və fiziki mənası, toxunan — [B]
+4. Monotonluq intervalları, ekstremumlar — [B]
+5. Parçada ən böyük və ən kiçik qiymət — [B]
+6. İbtidai funksiya, qeyri-müəyyən inteqral — [B]
+7. Müəyyən inteqral, əyrixətli trapesiyanın sahəsi — [B]
 
 ## 12. Kombinatorika, ehtimal, statistika
 1. Hasil qaydası, sayma məsələləri — [9][11][B]
