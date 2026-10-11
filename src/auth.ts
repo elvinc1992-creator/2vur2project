@@ -17,7 +17,8 @@ export type LoginErrorCode =
   | "not_found_username"
   | "google_only"
   | "wrong_password"
-  | "unverified";
+  | "unverified"
+  | "blocked";
 
 export class LoginError extends CredentialsSignin {
   constructor(code: LoginErrorCode) {
@@ -51,6 +52,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!(await verifyPassword(user.passwordHash, password))) {
           throw new LoginError("wrong_password");
         }
+        // Admin hesabı passiv edibsə — giriş yoxdur (şifrə yoxlanandan sonra: hesabın varlığı başqasına açılmır).
+        if (user.status === "passive") throw new LoginError("blocked");
         // E-poçt təsdiqi tələb olunmur — köhnə təsdiqlənməmiş hesablar da daxil ola bilir.
 
         return { id: user.id, name: user.name, email: user.email, role: user.role };
@@ -81,6 +84,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider !== "google") return true;
       const found = profile ? await upsertGoogleUser(profile as GoogleProfile) : null;
       if (!found) return false;
+      if (found.status === "passive") return "/daxil-ol?deaktiv=1";
       user.id = found.id;
       user.role = found.role;
       return true;

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { evaluate, formatNum, renderTemplate } from "./expr";
 import { advance, groupRanking, rank, shortName, tourPhase } from "./rules";
 import { OPENING_TEMPLATES } from "./templates";
-import { LETTERS, makeVariant, spreadLetters } from "./variant";
+import { LETTERS, makeBankVariant, makeVariant, spreadLetters } from "./variant";
 
 const seeded = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31);
 
@@ -38,6 +38,17 @@ describe("yarış: variantlar", () => {
     const t = OPENING_TEMPLATES[2];
     const texts = new Set(Array.from({ length: 30 }, (_, i) => makeVariant(t, "A", seeded(i + 7))!.text));
     expect(texts.size).toBeGreaterThan(10);
+  });
+
+  it("sual bankından: düzgün cavab hədəf hərfə köçür, variantlar itmir", () => {
+    const t = { code: "NAT-0007", body: "2 + 2 = ?", options: { A: "3", B: "4", C: "5", D: "6", E: "7" }, correct: "B" as const, solution: "4" };
+    for (const target of LETTERS) {
+      const v = makeBankVariant(t, target, seeded(9));
+      expect(v.options[target]).toBe("4");
+      expect(v.correct).toBe(target);
+      expect(Object.values(v.options).sort()).toEqual(["3", "4", "5", "6", "7"]);
+      expect(v.text).toBe("2 + 2 = ?");
+    }
   });
 
   it("düzgün cavablar A–E arasında bərabər paylanır", () => {

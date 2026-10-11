@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Yarış" };
 
 const TABS = [
   ["", "Parametrlər və mükafatlar"],
-  ["suallar", "Sual şablonları"],
+  ["suallar", "Suallar"],
   ["istirakcilar", "Qeydiyyatçılar"],
   ["canli", "Canlı izləmə və şübhəlilər"],
   ["final", "Final və mükafatlar"],
@@ -34,6 +34,7 @@ const ERRORS: Record<string, string> = {
   mukafat: "Mükafat sətirlərini yoxla: “1 | 300 | + 6 ay Premium”.",
   sablon: "Şablon yoxlanışdan keçmədi: dəyişənlər JSON olmalı, cavab və 4 yanlış variant hesablanmalı, 5 cavab bir-birindən fərqli olmalıdır.",
   sebeb: "Diskvalifikasiyanın səbəbini yaz.",
+  bank: "Sual bankı mənbəyi üçün mövzu seç — mövzuda ən azı bir qapalı (A–E) sual olmalıdır.",
 };
 
 export default async function AdminContest(props: PageProps<"/admin/yaris/[id]">) {
@@ -56,7 +57,7 @@ export default async function AdminContest(props: PageProps<"/admin/yaris/[id]">
           </Link>
         </div>
       </PageHead>
-      {sp.yaradildi && <Notice tone="ok">Yarış yaradıldı (qaralama).</Notice>}
+      {sp.yaradildi && <Notice tone="ok">Yarış yaradıldı (passiv — saytda görünmür).</Notice>}
       {sp.saxlanildi && <Notice tone="ok">Yadda saxlanıldı.</Notice>}
       {sp.silindi && <Notice tone="ok">Silindi.</Notice>}
       {str("ok") && OPS[str("ok")!] && <Notice tone="ok">{`${OPS[str("ok")!]} (${str("n") ?? 0}).`}</Notice>}
@@ -78,7 +79,15 @@ export default async function AdminContest(props: PageProps<"/admin/yaris/[id]">
       </nav>
       {tab === "" && <SettingsTab c={c} />}
       {tab === "suallar" && <TemplatesTab c={c} editId={Number(str("t")) || null} />}
-      {tab === "istirakcilar" && <RegistrantsTab c={c} q={str("q")} grade={Number(str("sinif")) || undefined} region={str("rayon")} />}
+      {tab === "istirakcilar" && (
+        <RegistrantsTab
+          c={c}
+          q={str("q")}
+          grade={Number(str("sinif")) || undefined}
+          region={str("rayon")}
+          status={str("st") === "active" || str("st") === "passive" ? (str("st") as "active" | "passive") : undefined}
+        />
+      )}
       {tab === "canli" && <LiveTab c={c} />}
       {tab === "final" && <FinalTab c={c} />}
     </>

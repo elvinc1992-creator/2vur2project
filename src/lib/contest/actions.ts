@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
+import { isPassive } from "@/lib/auth/account";
 import { db } from "@/db";
 import { CONTEST_EVENT_KINDS, contestAttempts, contestEvents, contestRegistrations } from "@/db/schema";
 import { contestById, registrationOf } from "./data";
@@ -38,6 +39,7 @@ const newCode = () => `2V2-${Array.from(crypto.getRandomValues(new Uint8Array(5)
 export async function registerContestAction(contestId: string, _prev: RegisterState, formData: FormData): Promise<RegisterState> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Qeydiyyat üçün hesabına daxil ol." };
+  if (await isPassive(session.user.id)) return { ok: false, error: "Hesabın deaktiv edilib." };
   const c = await contestById(contestId);
   if (!c) return { ok: false, error: "Yarış tapılmadı." };
 
@@ -95,20 +97,21 @@ export async function registerContestAction(contestId: string, _prev: RegisterSt
       if (attempt === 4) throw e;
       continue;
     }
-    await sendContestMail("confirm", c, { ...reg, unsubscribedAt: null });
+    await sendContestMail("confirm", c, { ...reg, unsubscribedAt: null, status: "active" });
     // Səhifə yenidən render olunmur — iştirakçı "Qeydiyyat tamamlandı" və kodunu görsün (sayğac növbəti açılışda yenilənir).
     return { ok: true, code: reg.inviteCode, email: reg.email };
   }
   return { ok: false, error: "Yenidən cəhd et." };
 }
 
+/** Aktiv istifadəçinin aktiv qeydiyyatı (passiv hesab və ya passiv qeydiyyat — heç bir əməliyyat yoxdur). */
 async function myRegistration(contestId: string) {
   const session = await auth();
-  if (!session?.user?.id) return null;
+  if (!session?.user?.id || (await isPassive(session.user.id))) return null;
   const c = await contestById(contestId);
   if (!c) return null;
   const reg = await registrationOf(c.id, session.user.id);
-  return reg ? { c, reg } : null;
+  return reg && reg.status === "active" ? { c, reg } : null;
 }
 
 /** Cari suala cavab (geri qayıtmaq yoxdur). */

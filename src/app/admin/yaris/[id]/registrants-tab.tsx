@@ -1,11 +1,14 @@
 import { listRegistrants, regionsOf, topInviters } from "@/lib/contest/admin";
+import { setRegistrationStatusAction } from "@/lib/contest/admin-actions";
+import { cn } from "@/lib/cn";
 import type { ContestRow } from "@/lib/contest/data";
 import { Table, btnGhost, fmtDate, input, td, th } from "../../ui";
 
 /** Qeydiyyatçılar: axtarış (ad, e-poçt, məktəb, kod), sinif və rayon filtri, CSV ixracı, dəvət statistikası. */
-export async function RegistrantsTab({ c, q, grade, region }: { c: ContestRow; q?: string; grade?: number; region?: string }) {
-  const [{ rows, total }, regions, inviters] = await Promise.all([listRegistrants(c.id, { q, grade, region }), regionsOf(c.id), topInviters(c.id)]);
-  const qs = new URLSearchParams({ ...(q ? { q } : {}), ...(grade ? { sinif: String(grade) } : {}), ...(region ? { rayon: region } : {}) }).toString();
+export async function RegistrantsTab({ c, q, grade, region, status }: { c: ContestRow; q?: string; grade?: number; region?: string; status?: "active" | "passive" }) {
+  const [{ rows, total }, regions, inviters] = await Promise.all([listRegistrants(c.id, { q, grade, region, status }), regionsOf(c.id), topInviters(c.id)]);
+  const qs = new URLSearchParams({ ...(q ? { q } : {}), ...(grade ? { sinif: String(grade) } : {}), ...(region ? { rayon: region } : {}), ...(status ? { st: status } : {}) }).toString();
+  const here = `/admin/yaris/${c.id}?tab=istirakcilar${qs ? `&${qs}` : ""}`;
   return (
     <>
       <form className="flex flex-wrap items-end gap-2 rounded-[16px] border border-line bg-white p-4">
@@ -36,6 +39,14 @@ export async function RegistrantsTab({ c, q, grade, region }: { c: ContestRow; q
             ))}
           </select>
         </label>
+        <label className="grid gap-1 text-[13px] font-semibold">
+          Status
+          <select name="st" defaultValue={status ?? ""} className={input}>
+            <option value="">Hamısı</option>
+            <option value="active">Aktiv</option>
+            <option value="passive">Passiv</option>
+          </select>
+        </label>
         <button className={btnGhost}>Süz</button>
         <a href={`/admin/yaris/${c.id}/csv${qs ? `?${qs}` : ""}`} className={btnGhost}>
           CSV ixracı (Excel)
@@ -47,7 +58,7 @@ export async function RegistrantsTab({ c, q, grade, region }: { c: ContestRow; q
       <Table caption="Qeydiyyatçılar">
         <thead className="bg-navy-050">
           <tr>
-            {["Ad, soyad", "Sinif", "Rayon / məktəb", "E-poçt", "Kod / dəvət", "Razılıq", "Bal / yer", "Tarix"].map((h) => (
+            {["Ad, soyad", "Sinif", "Rayon / məktəb", "E-poçt", "Kod / dəvət", "Razılıq", "Bal / yer", "Tarix", "Status"].map((h) => (
               <th key={h} scope="col" className={th}>
                 {h}
               </th>
@@ -75,6 +86,20 @@ export async function RegistrantsTab({ c, q, grade, region }: { c: ContestRow; q
               <td className={`${td} text-[12px]`}>{reg.unsubscribedAt ? "imtina" : reg.agreeEmail ? "e-poçt ✓" : "e-poçt ✗"}</td>
               <td className={`${td} tabular`}>{res ? (res.disqualified ? "DQ" : `${res.score} / ${res.place ?? "—"}`) : "—"}</td>
               <td className={`${td} tabular`}>{fmtDate(reg.createdAt)}</td>
+              <td className={td}>
+                <form action={setRegistrationStatusAction} className="flex flex-wrap items-center gap-1.5">
+                  <input type="hidden" name="contestId" value={c.id} />
+                  <input type="hidden" name="id" value={reg.id} />
+                  <input type="hidden" name="back" value={here} />
+                  <input type="hidden" name="status" value={reg.status === "active" ? "passive" : "active"} />
+                  <span className={cn("rounded-pill px-2 py-0.5 text-[12px] font-bold", reg.status === "active" ? "bg-success-100 text-success-700" : "bg-danger-100 text-danger-700")}>
+                    {reg.status === "active" ? "Aktiv" : "Passiv"}
+                  </span>
+                  <button className={btnGhost} aria-label={`${reg.firstName} ${reg.lastName}: ${reg.status === "active" ? "passiv et" : "aktiv et"}`}>
+                    {reg.status === "active" ? "Passiv et" : "Aktiv et"}
+                  </button>
+                </form>
+              </td>
             </tr>
           ))}
         </tbody>

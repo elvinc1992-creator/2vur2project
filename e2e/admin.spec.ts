@@ -115,6 +115,56 @@ test("admin: ümumi baxış, istifadəçilər, abunəçilər, qazanc", async ({ 
   expect(await axe(page)).toEqual([]);
 });
 
+test("admin: hesabı passiv / aktiv etmək — passiv daxil ola bilmir, açıq sessiyası bağlanır; özünü passiv etmək olmaz", async ({ browser }) => {
+  // Şagirdin açıq sessiyası
+  const sCtx = await browser.newContext();
+  const sPage = await sCtx.newPage();
+  await login(sPage, student);
+
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await login(page, admin);
+  const row = (email: string) => page.locator("tr", { has: page.getByRole("cell", { name: email }) });
+  const find = async (email: string) => {
+    await page.goto(`/admin/istifadeciler?q=${encodeURIComponent(email)}`);
+    await expect(row(email)).toBeVisible();
+  };
+
+  // Özünü passiv etmək olmaz
+  await find(admin.email);
+  await row(admin.email).getByRole("button", { name: "Passiv et" }).click();
+  await expect(page.getByText("Öz hesabınızı passiv edə bilməzsiniz.")).toBeVisible();
+
+  await find(student.email);
+  await expect(row(student.email)).toContainText("Aktiv");
+  await row(student.email).getByRole("button", { name: "Passiv et" }).click();
+  await expect(page.getByText("Hesab passiv edildi — istifadəçi daxil ola bilməyəcək.")).toBeVisible();
+  await expect(row(student.email)).toContainText("Passiv");
+  // Statusa görə süzgəc
+  await page.goto("/admin/istifadeciler?st=passive");
+  await expect(row(student.email)).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+
+  // Açıq sessiya: növbəti səhifədə çıxış və səbəb
+  await sPage.goto("/panel");
+  await expect(sPage).toHaveURL(/\/daxil-ol\?deaktiv=1$/);
+  await expect(sPage.getByText("Bu hesab admin tərəfindən deaktiv edilib.")).toBeVisible();
+  // Yenidən giriş — bağlıdır
+  await sPage.getByLabel("E-poçt və ya istifadəçi adı").fill(student.email);
+  await sPage.getByLabel("Şifrə", { exact: true }).fill(student.password);
+  await sPage.getByRole("button", { name: "Daxil ol" }).click();
+  await expect(sPage.getByText(/Bu hesab admin tərəfindən deaktiv edilib/).first()).toBeVisible();
+  await expect(sPage).toHaveURL(/\/daxil-ol/);
+
+  // Aktiv et → giriş işləyir
+  await find(student.email);
+  await row(student.email).getByRole("button", { name: "Aktiv et" }).click();
+  await expect(page.getByText("Hesab aktiv edildi.")).toBeVisible();
+  await login(sPage, student);
+  await sCtx.close();
+  await ctx.close();
+});
+
 test("admin: sual əlavə et (LaTeX önizləmə) → redaktə → sil", async ({ page }) => {
   await login(page, admin);
   await page.goto("/admin/suallar?movzu=natural-ededler&format=closed");

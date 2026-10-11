@@ -10,13 +10,17 @@ import { users } from "@/db/schema";
 export const requireAdmin = cache(async (next = "/admin") => {
   const session = await auth();
   if (!session?.user?.id) redirect(`/daxil-ol?next=${encodeURIComponent(next)}`);
-  const [u] = await db.select({ id: users.id, name: users.name, role: users.role }).from(users).where(eq(users.id, session.user.id));
+  const [u] = await db
+    .select({ id: users.id, name: users.name, role: users.role, status: users.status })
+    .from(users)
+    .where(eq(users.id, session.user.id));
+  if (u?.status === "passive") redirect("/hesab-deaktiv");
   if (u?.role !== "admin") redirect("/panel");
   return u;
 });
 
 export async function isAdmin(userId: string | undefined) {
   if (!userId) return false;
-  const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, userId));
-  return u?.role === "admin";
+  const [u] = await db.select({ role: users.role, status: users.status }).from(users).where(eq(users.id, userId));
+  return u?.role === "admin" && u.status === "active";
 }

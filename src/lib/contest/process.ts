@@ -56,7 +56,19 @@ export async function computeResults(contestId: string, now = Date.now()) {
     .select({ reg: contestRegistrations })
     .from(contestRegistrations)
     .innerJoin(contestAttempts, eq(contestAttempts.registrationId, contestRegistrations.id))
-    .where(eq(contestRegistrations.contestId, c.id));
+    .where(and(eq(contestRegistrations.contestId, c.id), eq(contestRegistrations.status, "active")));
+  // Passiv qeydiyyatların (admin deaktiv edib) nəticəsi silinir — sıralamaya düşmür.
+  await db
+    .delete(contestResults)
+    .where(
+      and(
+        eq(contestResults.contestId, c.id),
+        inArray(
+          contestResults.registrationId,
+          db.select({ id: contestRegistrations.id }).from(contestRegistrations).where(and(eq(contestRegistrations.contestId, c.id), eq(contestRegistrations.status, "passive"))),
+        ),
+      ),
+    );
   // Vaxtı bitmiş sualları cavabsız yaz (cəhd tam bağlansın)
   for (const { reg } of regs) await tourState(c, reg, { now: at });
 

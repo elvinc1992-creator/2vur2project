@@ -9,6 +9,9 @@ const createdAt = () =>
 
 export const USER_ROLES = ["student", "teacher", "editor", "admin"] as const;
 export const TARGET_EXAMS = ["buraxilis", "qebul", "both"] as const;
+/** İstifadəçi hesabı və yarış qeydiyyatı: aktiv / passiv (admin dəyişir). */
+export const ACCOUNT_STATUSES = ["active", "passive"] as const;
+export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
 
 export const users = sqliteTable(
   "users",
@@ -28,6 +31,8 @@ export const users = sqliteTable(
     // Yalnız Google ilə yaradılmış hesabda boş olur.
     passwordHash: text("password_hash"),
     role: text("role", { enum: USER_ROLES }).notNull().default("student"),
+    /** active — normal; passive — admin tərəfindən deaktiv edilib (daxil ola bilmir). */
+    status: text("status", { enum: ACCOUNT_STATUSES }).notNull().default("active"),
     grade: integer("grade"),
     targetExam: text("target_exam", { enum: TARGET_EXAMS }),
     emailVerifiedAt: integer("email_verified_at", { mode: "timestamp_ms" }),
@@ -668,6 +673,8 @@ export const contestRegistrations = sqliteTable(
     agreeParent: integer("agree_parent", { mode: "boolean" }).notNull(),
     agreeEmail: integer("agree_email", { mode: "boolean" }).notNull(),
     unsubscribedAt: integer("unsubscribed_at", { mode: "timestamp_ms" }),
+    /** passive — admin deaktiv edib: tura girə bilmir, sayda, reytinqdə və məktublarda yoxdur. */
+    status: text("status", { enum: ACCOUNT_STATUSES }).notNull().default("active"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -689,6 +696,8 @@ export const contestTemplates = sqliteTable(
       .notNull()
       .references(() => contests.id, { onDelete: "cascade" }),
     n: integer("n").notNull(),
+    /** bank — sual bankından (mövzunun qapalı sualları, iştirakçıya təsadüfi biri); formula — şablon və düstur. */
+    source: text("source", { enum: ["bank", "formula"] }).notNull().default("formula"),
     topicId: integer("topic_id").references(() => topics.id),
     body: text("body").notNull(),
     /** JSON: {"a":[1,9,1]} */
@@ -719,6 +728,11 @@ export const contestVariants = sqliteTable(
     options: text("options").notNull(),
     correct: text("correct").notNull(),
     timeSec: integer("time_sec").notNull(),
+    /** Bankdan götürülən sualın kodu, şəkli və həlli (tur bitəndən sonra göstərilir). */
+    taskCode: text("task_code"),
+    imageUrl: text("image_url"),
+    imageAlt: text("image_alt"),
+    solution: text("solution"),
   },
   (t) => [primaryKey({ columns: [t.registrationId, t.n] })],
 );

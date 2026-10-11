@@ -18,6 +18,7 @@ export default async function LoginPage(props: PageProps<"/daxil-ol">) {
       <AuthHeading title={t.title} subtitle={t.subtitle} />
       {sp.reset === "1" && <Alert tone="success">{t.resetDone}</Alert>}
       {sp.verified === "1" && <Alert tone="success">{t.verifiedDone}</Alert>}
+      {sp.deaktiv === "1" && <Alert tone="danger">{az.errors.blocked}</Alert>}
       {typeof sp.error === "string" && <Alert tone="danger">{az.errors.generic}</Alert>}
       <GoogleSignIn label={t.google} next={next} />
       <LoginForm next={next} />

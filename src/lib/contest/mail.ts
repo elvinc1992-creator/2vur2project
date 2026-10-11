@@ -20,7 +20,7 @@ const RESULT_KINDS: ContestEmailKind[] = ["result", "finalist", "final"];
 
 /** Bu məktub bu iştirakçıya göndərilə bilərmi (razılıq və imtina). */
 export const canMail = (reg: RegistrationRow, kind: ContestEmailKind) =>
-  !reg.unsubscribedAt && (!RESULT_KINDS.includes(kind) || reg.agreeEmail);
+  reg.status === "active" && !reg.unsubscribedAt && (!RESULT_KINDS.includes(kind) || reg.agreeEmail);
 
 export type MailExtra = {
   score?: number;

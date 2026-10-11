@@ -31,8 +31,12 @@ export const prizesOf = cache(async (contestId: string) =>
   db.select().from(contestPrizes).where(eq(contestPrizes.contestId, contestId)).orderBy(asc(contestPrizes.placeFrom)),
 );
 
+/** Aktiv qeydiyyatların sayı (passivlər — admin deaktiv edib — sayılmır). */
 export const registrationCount = cache(async (contestId: string) => {
-  const [r] = await db.select({ n: count() }).from(contestRegistrations).where(eq(contestRegistrations.contestId, contestId));
+  const [r] = await db
+    .select({ n: count() })
+    .from(contestRegistrations)
+    .where(and(eq(contestRegistrations.contestId, contestId), eq(contestRegistrations.status, "active")));
   return r?.n ?? 0;
 });
 
@@ -66,7 +70,7 @@ export const leaderboard = cache(async (contestId: string, top = 50): Promise<Le
     .select({ r: contestResults, first: contestRegistrations.firstName, last: contestRegistrations.lastName, school: contestRegistrations.school, region: contestRegistrations.region })
     .from(contestResults)
     .innerJoin(contestRegistrations, eq(contestRegistrations.id, contestResults.registrationId))
-    .where(and(eq(contestResults.contestId, contestId), eq(contestResults.disqualified, false)))
+    .where(and(eq(contestResults.contestId, contestId), eq(contestResults.disqualified, false), eq(contestRegistrations.status, "active")))
     .orderBy(asc(contestResults.place), asc(contestResults.totalMs));
   const regionOfSchool = new Map(rows.map((x) => [x.school ?? "", x.region]));
   return {
@@ -85,7 +89,8 @@ export async function participantCount(contestId: string) {
   const [r] = await db
     .select({ n: count() })
     .from(contestResults)
-    .where(and(eq(contestResults.contestId, contestId), eq(contestResults.disqualified, false)));
+    .innerJoin(contestRegistrations, eq(contestRegistrations.id, contestResults.registrationId))
+    .where(and(eq(contestResults.contestId, contestId), eq(contestResults.disqualified, false), eq(contestRegistrations.status, "active")));
   return r?.n ?? 0;
 }
 

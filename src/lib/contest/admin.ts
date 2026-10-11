@@ -5,7 +5,7 @@ import { contestAnswers, contestAttempts, contestEvents, contestRegistrations, c
 
 // Admin sorğuları: qeydiyyatçılar (axtarış, filtr, CSV), canlı izləmə, şübhəli nəticələr, finalçılar.
 
-export type RegFilter = { q?: string; grade?: number; region?: string };
+export type RegFilter = { q?: string; grade?: number; region?: string; status?: "active" | "passive" };
 
 export async function listRegistrants(contestId: string, f: RegFilter = {}, limit = 500) {
   const q = f.q?.trim().toLowerCase();
@@ -13,6 +13,7 @@ export async function listRegistrants(contestId: string, f: RegFilter = {}, limi
     eq(contestRegistrations.contestId, contestId),
     f.grade ? eq(contestRegistrations.grade, f.grade) : undefined,
     f.region ? eq(contestRegistrations.region, f.region) : undefined,
+    f.status ? eq(contestRegistrations.status, f.status) : undefined,
     q
       ? or(
           like(sql`lower(${contestRegistrations.firstName} || ' ' || ${contestRegistrations.lastName})`, `%${q}%`),
