@@ -8,6 +8,7 @@ import {
   teacherTestAnswers,
   teacherTestAttempts,
   teacherTestEvents,
+  teacherTestGroups,
   teacherTestItems,
   teacherTests,
   teacherTestVariants,
@@ -55,13 +56,49 @@ export async function membersOf(groupId: string) {
     .orderBy(asc(users.name), asc(users.surname));
 }
 
+/** Müəllimin sınaqları (yeni əvvəl); group — bağlı qrupların adları; groupId verilibsə, yalnız o qrupun sınaqları. */
 export async function testsOf(teacherId: string, groupId?: string) {
-  return db
-    .select({ t: teacherTests, group: teacherGroups.name })
-    .from(teacherTests)
-    .innerJoin(teacherGroups, eq(teacherGroups.id, teacherTests.groupId))
-    .where(and(eq(teacherTests.teacherId, teacherId), groupId ? eq(teacherTests.groupId, groupId) : undefined))
-    .orderBy(desc(teacherTests.createdAt));
+  const tests = await db.select().from(teacherTests).where(eq(teacherTests.teacherId, teacherId)).orderBy(desc(teacherTests.createdAt));
+  const links = tests.length
+    ? await db
+        .select({ testId: teacherTestGroups.testId, groupId: teacherGroups.id, name: teacherGroups.name })
+        .from(teacherTestGroups)
+        .innerJoin(teacherGroups, eq(teacherGroups.id, teacherTestGroups.groupId))
+        .where(inArray(teacherTestGroups.testId, tests.map((t) => t.id)))
+    : [];
+  return tests
+    .map((t) => {
+      const gs = links.filter((l) => l.testId === t.id);
+      return { t, groupIds: gs.map((g) => g.groupId), group: gs.map((g) => g.name).join(", ") };
+    })
+    .filter((x) => !groupId || x.groupIds.includes(groupId));
+}
+
+/** Sınağın qrupları və hər şagirdin qrupu (kitabça, cavab kartı, nəticə cədvəli üçün). */
+export async function testGroupsOf(testId: string) {
+  const groups = await db
+    .select({ id: teacherGroups.id, name: teacherGroups.name })
+    .from(teacherTestGroups)
+    .innerJoin(teacherGroups, eq(teacherGroups.id, teacherTestGroups.groupId))
+    .where(eq(teacherTestGroups.testId, testId))
+    .orderBy(asc(teacherGroups.name));
+  const members = groups.length
+    ? await db
+        .select({ groupId: teacherGroupMembers.groupId, userId: teacherGroupMembers.userId })
+        .from(teacherGroupMembers)
+        .where(inArray(teacherGroupMembers.groupId, groups.map((g) => g.id)))
+    : [];
+  const groupOf = new Map<string, string>();
+  for (const m of members) if (!groupOf.has(m.userId)) groupOf.set(m.userId, groups.find((g) => g.id === m.groupId)?.name ?? "");
+  return { groups, names: groups.map((g) => g.name).join(", "), groupOf };
+}
+
+/** Sınağın adı: imtahan növü və ya "Mövzu sınağı: <mövzu>". */
+export async function testKindLabel(t: { examKind: string; topicId: number | null }) {
+  const name = await kindName(t.examKind);
+  if (!t.topicId) return name;
+  const [tp] = await db.select({ name: topics.name }).from(topics).where(eq(topics.id, t.topicId));
+  return tp ? `${name}: ${tp.name}` : name;
 }
 
 export async function ownTest(teacherId: string, testId: string) {
@@ -171,12 +208,18 @@ export function studentPercents(answers: Array<{ userId: string; score: number |
   return new Map([...by].map(([u, s]) => [u, percentOf(s.map((score) => ({ score })), total)]));
 }
 
-/** Qrupun sınaqları üzrə nəticələr: test → (şagird → faiz). */
+/** Qrupun sınaqları üzrə nəticələr: test → (şagird → faiz). Bir neçə qrupa bağlı sınaqda — yalnız bu qrupun üzvləri. */
 export async function groupResults(teacherId: string, groupId: string) {
   const tests = (await testsOf(teacherId, groupId)).map((x) => x.t).reverse();
   const ids = tests.map((t) => t.id);
+  const memberIds = (await db.select({ userId: teacherGroupMembers.userId }).from(teacherGroupMembers).where(eq(teacherGroupMembers.groupId, groupId))).map((m) => m.userId);
   const [answers, items] = await Promise.all([
-    ids.length ? db.select().from(teacherTestAnswers).where(inArray(teacherTestAnswers.testId, ids)) : [],
+    ids.length && memberIds.length
+      ? db
+          .select()
+          .from(teacherTestAnswers)
+          .where(and(inArray(teacherTestAnswers.testId, ids), inArray(teacherTestAnswers.userId, memberIds)))
+      : [],
     ids.length ? db.select({ testId: teacherTestItems.testId, n: teacherTestItems.n }).from(teacherTestItems).where(inArray(teacherTestItems.testId, ids)) : [],
   ]);
   return tests.map((t) => {
@@ -236,13 +279,21 @@ export async function groupsOfStudent(userId: string) {
     .where(and(eq(teacherGroupMembers.userId, userId), isNull(teacherGroupMembers.leftAt)));
 }
 
-/** Şagirdin onlayn sınaqları (variantı olan). */
+/** Şagirdin onlayn sınaqları (variantı olan); group — şagirdin bu sınağa bağlı qrupu. */
 export async function onlineTestsOfStudent(userId: string) {
-  return db
-    .select({ t: teacherTests, group: teacherGroups.name })
+  const tests = await db
+    .select({ t: teacherTests })
     .from(teacherTestVariants)
     .innerJoin(teacherTests, eq(teacherTests.id, teacherTestVariants.testId))
-    .innerJoin(teacherGroups, eq(teacherGroups.id, teacherTests.groupId))
     .where(and(eq(teacherTestVariants.userId, userId), eq(teacherTests.mode, "online")))
     .orderBy(desc(teacherTests.opensAt));
+  const links = tests.length
+    ? await db
+        .select({ testId: teacherTestGroups.testId, name: teacherGroups.name })
+        .from(teacherTestGroups)
+        .innerJoin(teacherGroups, eq(teacherGroups.id, teacherTestGroups.groupId))
+        .innerJoin(teacherGroupMembers, and(eq(teacherGroupMembers.groupId, teacherGroups.id), eq(teacherGroupMembers.userId, userId)))
+        .where(inArray(teacherTestGroups.testId, tests.map((x) => x.t.id)))
+    : [];
+  return tests.map(({ t }) => ({ t, group: links.find((l) => l.testId === t.id)?.name ?? "" }));
 }

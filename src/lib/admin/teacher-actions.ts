@@ -77,6 +77,20 @@ export async function saveStructureAction(formData: FormData) {
   redirect("/admin/sinaq-strukturu?saxlanildi=1");
 }
 
+/** Müəllimin onlayn sınaq qiymətləri (sınaq başına, AZN): sahələr `price-<key>`. */
+export async function saveTeacherPricesAction(formData: FormData) {
+  await requireAdmin();
+  const rows = await db.select({ key: examKinds.key }).from(examKinds);
+  for (const k of rows) {
+    const raw = formData.get(`price-${k.key}`);
+    if (raw === null) continue;
+    const v = Number(String(raw).replace(",", "."));
+    if (Number.isFinite(v) && v >= 0 && v <= 100) await db.update(examKinds).set({ teacherPrice: v }).where(eq(examKinds.key, k.key));
+  }
+  revalidatePath("/admin/sinaq-strukturu");
+  redirect("/admin/sinaq-strukturu?saxlanildi=1");
+}
+
 /** Mövzu bölgüsü: mövzunun hansı imtahan növlərinə aid olduğu və DİM tezliyi (sualların paylanma çəkisi). */
 export async function saveTopicDistributionAction(formData: FormData) {
   await requireAdmin();

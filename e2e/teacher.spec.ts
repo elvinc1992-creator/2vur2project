@@ -22,9 +22,10 @@ const T1 = mk("t1", "Səbinə", "Kərimova", "teacher");
 const T2 = mk("t2", "Rauf", "Əliyev", "teacher");
 const APPLICANT = mk("ap", "Lalə", "Həsənova");
 const ADMIN = mk("adm", "Admin", "Test", "admin");
-const STUDENTS = Array.from({ length: 4 }, (_, i) => mk(`s${i}`, ["Aysel", "Murad", "Nigar", "Elçin"][i], ["Məmmədova", "Hüseynov", "Əliyeva", "Quliyev"][i]));
+const STUDENTS = Array.from({ length: 5 }, (_, i) => mk(`s${i}`, ["Aysel", "Murad", "Nigar", "Elçin", "Ləman"][i], ["Məmmədova", "Hüseynov", "Əliyeva", "Quliyev", "Rzayeva"][i]));
 const G1 = { id: crypto.randomUUID(), code: `E${String(stamp).slice(-2)}-${String(stamp).slice(-5, -2)}A` };
 const G2 = { id: crypto.randomUUID(), code: `E${String(stamp).slice(-2)}-${String(stamp).slice(-5, -2)}B` };
+const G3 = { id: crypto.randomUUID(), code: `E${String(stamp).slice(-2)}-${String(stamp).slice(-5, -2)}C` };
 
 async function sql(q: string, args: unknown[] = []) {
   const db = connect();
@@ -45,10 +46,12 @@ test.beforeAll(async () => {
     );
   }
   for (const t of [T1, T2]) await sql("insert into teacher_accounts (user_id, balance, daily_limit, created_at) values (?, 0, 20, ?)", [t.id, now]);
-  // T1: 9-cu sinif qrupu (4 şagird); T2: öz qrupu (izolyasiya üçün)
-  await sql("insert into teacher_groups (id, teacher_id, name, exam_kind, code, created_at) values (?, ?, 'E2E 9-A', 'buraxilis-9', ?, ?)", [G1.id, T1.id, G1.code, now]);
-  await sql("insert into teacher_groups (id, teacher_id, name, exam_kind, code, created_at) values (?, ?, 'E2E başqa qrup', 'buraxilis-11', ?, ?)", [G2.id, T2.id, G2.code, now]);
-  for (const s of STUDENTS.slice(1)) await sql("insert into teacher_group_members (group_id, user_id, joined_at) values (?, ?, ?)", [G1.id, s.id, now]);
+  // T1: iki qrup (G1 — 4 şagird, G3 — G1-dəki bir şagird + ayrıca bir şagird); T2: öz qrupu (izolyasiya üçün)
+  await sql("insert into teacher_groups (id, teacher_id, name, code, created_at) values (?, ?, 'E2E 9-A', ?, ?)", [G1.id, T1.id, G1.code, now]);
+  await sql("insert into teacher_groups (id, teacher_id, name, code, created_at) values (?, ?, 'E2E 9-B', ?, ?)", [G3.id, T1.id, G3.code, now]);
+  await sql("insert into teacher_groups (id, teacher_id, name, code, created_at) values (?, ?, 'E2E başqa qrup', ?, ?)", [G2.id, T2.id, G2.code, now]);
+  for (const s of STUDENTS.slice(1, 4)) await sql("insert into teacher_group_members (group_id, user_id, joined_at) values (?, ?, ?)", [G1.id, s.id, now]);
+  for (const s of [STUDENTS[3], STUDENTS[4]]) await sql("insert into teacher_group_members (group_id, user_id, joined_at) values (?, ?, ?)", [G3.id, s.id, now]);
 });
 
 test.afterAll(async () => {
@@ -64,13 +67,22 @@ async function login(page: Page, u: { email: string; password: string }) {
   await expect(page).toHaveURL(/\/(panel|onboarding|muellim)/);
 }
 
-/** Sınaq yarat formu: imtahan növü G1-in növüdür (9-cu sinif); tarix bu gün. */
-async function createTest(page: Page, mode: "paper" | "online", opts: { time?: string } = {}) {
+/** Sınaq yarat formu: növ (standart 9-cu sinif buraxılış), qruplar (standart G1); tarix bu gün. */
+async function fillCreate(page: Page, mode: "paper" | "online", opts: { time?: string; kind?: string; groups?: string[] } = {}) {
   await page.goto("/muellim/sinaq-yarat");
-  await page.getByText("9-cu sinif buraxılış", { exact: true }).first().click();
+  await page.getByText(opts.kind ?? "9-cu sinif buraxılış", { exact: true }).first().click();
   if (mode === "online") await page.locator("label").filter({ hasText: "Onlayn" }).click();
-  await page.locator("select[name=groupId]").selectOption(G1.id);
+  const groups = opts.groups ?? [G1.id];
+  for (const g of [G1.id, G3.id]) {
+    const box = page.locator(`input[name=groupId][value="${g}"]`);
+    if (groups.includes(g)) await box.check();
+    else await box.uncheck();
+  }
   if (opts.time) await page.getByLabel(mode === "online" ? "Açılma saatı" : "Saat").fill(opts.time);
+}
+
+async function createTest(page: Page, mode: "paper" | "online", opts: { time?: string; groups?: string[] } = {}) {
+  await fillCreate(page, mode, opts);
   await page.getByRole("button", { name: "Sınağı yarat →" }).click();
   await expect(page).toHaveURL(/\/muellim\/sinaqlar\/[a-z0-9]+\?yaradildi=1/);
   return new URL(page.url()).pathname.split("/").pop()!;
@@ -147,6 +159,56 @@ test("kağız sınağı: struktur imtahan növünə uyğundur, variantlar fərql
   await expect(page.getByText(/cavab açarı/i).first()).toBeVisible();
 });
 
+test("qrupda imtahan növü yoxdur; bir sınaq bir neçə qrupa verilir (ortaq şagird bir variant alır)", async ({ page }) => {
+  await login(page, T1);
+  await page.goto("/muellim/qruplar");
+  await expect(page.getByLabel("İmtahan növü")).toHaveCount(0);
+
+  const id = await createTest(page, "paper", { groups: [G1.id, G3.id] });
+  const groups = (await sql("select group_id from teacher_test_groups where test_id = ?", [id])).rows.map((r) => r.group_id);
+  expect(groups.sort()).toEqual([G1.id, G3.id].sort());
+  // G1: 4 şagird, G3: 2 şagird (biri G1-də də var) → 5 variant
+  expect(Number((await one("select count(*) n from teacher_test_variants where test_id = ?", [id])).n)).toBe(5);
+  await expect(page.getByText(/E2E 9-A, E2E 9-B/)).toBeVisible();
+  // Hər iki qrupun səhifəsində sınaq sayılır
+  for (const g of [G1.id, G3.id]) {
+    await page.goto(`/muellim/qruplar/${g}`);
+    await expect(page.getByText(/\d+ sınaq/).first()).toBeVisible();
+  }
+  // Kitabçada G3-ün öz şagirdinin qrupu
+  await page.goto(`/muellim/cap/${id}/kitabca`);
+  await expect(page.locator(".sheet").filter({ hasText: `${STUDENTS[4].name} ${STUDENTS[4].surname}` }).getByText("E2E 9-B")).toBeVisible();
+  await sql("delete from teacher_tests where id = ?", [id]);
+});
+
+test("mövzu sınağı: mövzu və 15 / 20 / 25 sual; hər mövzu tədris ilində bir dəfə", async ({ page }) => {
+  await login(page, T1);
+  await fillCreate(page, "paper", { kind: "Mövzu sınağı" });
+  const topic = await one("select id, name from topics where slug = 'natural-ededler'");
+  await page.locator("select[name=topicId]").selectOption(String(topic.id));
+  await page.locator("label").filter({ hasText: /^15$/ }).click();
+  await page.getByRole("button", { name: "Sınağı yarat →" }).click();
+  await expect(page).toHaveURL(/\/muellim\/sinaqlar\/[a-z0-9]+\?yaradildi=1/);
+  const id = new URL(page.url()).pathname.split("/").pop()!;
+  const t = await one("select exam_kind, topic_id from teacher_tests where id = ?", [id]);
+  expect(t.exam_kind).toBe("movzu");
+  expect(Number(t.topic_id)).toBe(Number(topic.id));
+  expect(Number((await one("select count(*) n from teacher_test_items where test_id = ?", [id])).n)).toBe(15);
+  // Bütün suallar bu mövzudandır
+  const other = await one(
+    "select count(*) n from teacher_test_items i join bank_tasks b on b.code = i.task_code where i.test_id = ? and b.topic_id <> ?",
+    [id, topic.id],
+  );
+  expect(Number(other.n)).toBe(0);
+  await expect(page.getByText(new RegExp(`Mövzu sınağı: ${topic.name}`)).first()).toBeVisible();
+
+  // Eyni mövzu bu tədris ilində ikinci dəfə seçilə bilmir
+  await fillCreate(page, "paper", { kind: "Mövzu sınağı" });
+  const opt = page.locator("select[name=topicId]").locator(`option[value="${topic.id}"]`);
+  await expect(opt).toHaveAttribute("disabled", "");
+  await expect(opt).toContainText("bu tədris ilində yaradılıb");
+});
+
 test("kağız nəticəsi şagirdin öz variantının açarı ilə yoxlanılır", async ({ page }) => {
   await login(page, T1);
   // Açardakı birinci şagirdin sütununu oxu və onun sətrinə yaz
@@ -178,10 +240,11 @@ test("sual bazası bitəndə təkrar suallar götürülür və müəllimə xəb�
   // Bu qrupa bütün 9-cu sinif suallarının artıq verildiyini təqlid edirik (köhnə sınaq)
   const fake = `e2e-fake-${stamp}`;
   await sql(
-    `insert into teacher_tests (id, teacher_id, group_id, number, exam_kind, mode, opens_at, duration_min, created_at)
-     values (?, ?, ?, 99, 'buraxilis-9', 'paper', ?, 90, ?)`,
-    [fake, T1.id, G1.id, Date.now() - 30 * DAY, Date.now() - 30 * DAY],
+    `insert into teacher_tests (id, teacher_id, number, exam_kind, mode, opens_at, duration_min, created_at)
+     values (?, ?, 99, 'buraxilis-9', 'paper', ?, 90, ?)`,
+    [fake, T1.id, Date.now() - 30 * DAY, Date.now() - 30 * DAY],
   );
+  await sql("insert into teacher_test_groups (test_id, group_id) values (?, ?)", [fake, G1.id]);
   await sql(
     `insert into teacher_test_items (test_id, n, task_code, format)
      select ?, row_number() over (), code, case when format = 'closed' then 'closed' when format = 'open' then 'coded' else 'written' end from bank_tasks`,
@@ -196,19 +259,19 @@ test("sual bazası bitəndə təkrar suallar götürülür və müəllimə xəb�
 
 let online = "";
 
-test("onlayn sınaq: balans yoxdursa yaradılmır; balansdan tutulur, şagird keçir, başlamayanlara geri qaytarılır", async ({ page }) => {
+test("onlayn sınaq: qiymət sınaq başına (şagird sayından asılı deyil), balans yoxdursa yaradılmır; şagird keçir; heç kim başlamasa qaytarılır", async ({ page }) => {
   await login(page, T1);
-  await page.goto("/muellim/sinaq-yarat");
-  await page.getByText("9-cu sinif buraxılış", { exact: true }).first().click();
-  await page.locator("label").filter({ hasText: "Onlayn" }).click();
-  await page.locator("select[name=groupId]").selectOption(G1.id);
+  await fillCreate(page, "online");
   await expect(page.getByText(/Balans kifayət etmir/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Sınağı yarat →" })).toBeDisabled();
 
   await sql("update teacher_accounts set balance = 10 where user_id = ?", [T1.id]);
   online = await createTest(page, "online", { time: "00:00" });
-  expect(Number((await one("select balance from teacher_accounts where user_id = ?", [T1.id])).balance)).toBe(6);
-  expect(Number((await one("select charged from teacher_tests where id = ?", [online])).charged)).toBe(4);
+  // 9-cu sinif buraxılış — 2 AZN (4 şagird olsa da)
+  const price = Number((await one("select teacher_price p from exam_kinds where key = 'buraxilis-9'")).p);
+  expect(price).toBe(2);
+  expect(Number((await one("select balance from teacher_accounts where user_id = ?", [T1.id])).balance)).toBe(8);
+  expect(Number((await one("select charged from teacher_tests where id = ?", [online])).charged)).toBe(2);
   // Sınaq indi açıqdır (bu gün 00:00-dan)
   await sql("update teacher_tests set opens_at = ? where id = ?", [Date.now() - 60_000, online]);
 
@@ -232,14 +295,23 @@ test("onlayn sınaq: balans yoxdursa yaradılmır; balansdan tutulur, şagird ke
   const ans = await one("select given from teacher_test_answers where test_id = ? and user_id = ? and n = ?", [online, s.id, firstN]);
   expect(ans.given).toBe(JSON.parse(String(v.maps))[firstN].A);
 
-  // 24 saat keçib: başlamayan 3 şagirdin məbləği bir dəfə qaytarılır
+  // 24 saat keçib: bir şagird başlayıb — geri qaytarma yoxdur
   await sql("update teacher_tests set opens_at = ? where id = ?", [Date.now() - DAY - 60_000, online]);
   await login(page, T1);
   await page.goto(`/muellim/sinaqlar/${online}`);
-  await expect(page.getByText("başlamayanların məbləği balansa qaytarılıb")).toBeVisible();
+  await expect(page.getByText(/Bağlanıb/).first()).toBeVisible();
+  expect(Number((await one("select count(*) n from teacher_balance_tx where test_id = ? and kind = 'refund'", [online])).n)).toBe(0);
+  expect(Number((await one("select balance from teacher_accounts where user_id = ?", [T1.id])).balance)).toBe(8);
+
+  // Heç kim başlamayan onlayn sınaq: bağlananda məbləğ bir dəfə qaytarılır
+  const empty = await createTest(page, "online");
+  expect(Number((await one("select balance from teacher_accounts where user_id = ?", [T1.id])).balance)).toBe(6);
+  await sql("update teacher_tests set opens_at = ? where id = ?", [Date.now() - DAY - 60_000, empty]);
+  await page.goto(`/muellim/sinaqlar/${empty}`);
+  await expect(page.getByText("heç kim başlamadığı üçün məbləğ balansa qaytarılıb")).toBeVisible();
   await page.reload();
-  expect(Number((await one("select balance from teacher_accounts where user_id = ?", [T1.id])).balance)).toBe(9);
-  expect(Number((await one("select count(*) n from teacher_balance_tx where test_id = ? and kind = 'refund'", [online])).n)).toBe(1);
+  expect(Number((await one("select balance from teacher_accounts where user_id = ?", [T1.id])).balance)).toBe(8);
+  expect(Number((await one("select count(*) n from teacher_balance_tx where test_id = ? and kind = 'refund'", [empty])).n)).toBe(1);
 });
 
 test("izolyasiya: müəllim başqa müəllimin qrupunu, sınağını və çap fayllarını görmür; şagird paneli açmır", async ({ page }) => {

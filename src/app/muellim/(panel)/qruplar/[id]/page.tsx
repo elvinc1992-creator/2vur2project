@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { topics, userTopicStats } from "@/db/schema";
 import { env } from "@/lib/env";
 import { regenerateCodeAction, removeMemberAction } from "@/lib/teacher/actions";
-import { fullName, groupResults, kindName, membersOf, ownGroup } from "@/lib/teacher/data";
+import { fullName, groupResults, membersOf, ownGroup } from "@/lib/teacher/data";
 import { requireTeacher } from "@/lib/teacher/guard";
 
 export const metadata: Metadata = { title: "Qrup" };
@@ -17,7 +17,7 @@ export default async function TeacherGroup(props: PageProps<"/muellim/qruplar/[i
   const sp = await props.searchParams;
   const g = await ownGroup(me.id, id);
   if (!g) notFound();
-  const [members, results, kind] = await Promise.all([membersOf(g.id), groupResults(me.id, g.id), kindName(g.examKind)]);
+  const [members, results] = await Promise.all([membersOf(g.id), groupResults(me.id, g.id)]);
   const ids = members.map((m) => m.id);
   const weakRows = ids.length
     ? await db
@@ -31,7 +31,7 @@ export default async function TeacherGroup(props: PageProps<"/muellim/qruplar/[i
 
   return (
     <>
-      <Top title={g.name} lead={`${kind} · ${members.length} şagird`}>
+      <Top title={g.name} lead={`${members.length} şagird · ${results.length} sınaq`}>
         <TLink href="/muellim/qruplar">← Qruplarım</TLink>
       </Top>
       {sp.yaradildi && <Notice tone="ok">Qrup yaradıldı. Kodu və ya linki şagirdlərə göndər.</Notice>}

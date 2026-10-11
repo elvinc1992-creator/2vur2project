@@ -52,7 +52,7 @@ export function AppFrame({ state, admin = false, teacher = false, children }: { 
       </aside>
       <div className="grid min-h-dvh min-w-0 grid-rows-[auto_1fr_auto]">
         {children}
-        <TabBar />
+        <TabBar teacher={teacher} admin={admin} />
       </div>
     </div>
   );

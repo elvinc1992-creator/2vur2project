@@ -1,0 +1,1 @@
+ALTER TABLE `teacher_tests` ADD `topic_id` integer REFERENCES topics(id);

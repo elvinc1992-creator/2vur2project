@@ -69,6 +69,14 @@ test("Free: səhv → Səhvlərim → təkrar → düzəldildi", async ({ page }
   await expect(card.locator("dd").last()).toContainText("C · 18");
   await expect(page.getByText(/Free planda təkrar yalnız öz səhvlərindən ibarətdir/)).toBeVisible();
   expect(await axe(page)).toEqual([]);
+  // "Həllinə bax" — başqa səhifəyə keçmir, kartın içində yalnız həll açılır
+  await expect(card.getByText("Qısa həll", { exact: true })).toBeHidden();
+  await card.getByText("Həllinə bax").click();
+  await expect(page).toHaveURL(/\/sehvlerim$/);
+  await expect(card.getByText("Qısa həll", { exact: true })).toBeVisible();
+  await expect(card.locator("ol li").first()).toBeVisible();
+  await card.getByText("Həlli gizlət").click();
+  await expect(card.locator("ol li").first()).toBeHidden();
 
   // Paneldə kart
   await page.goto("/panel");

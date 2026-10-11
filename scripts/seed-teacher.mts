@@ -47,7 +47,7 @@ let k = 0;
 for (const g of GROUPS) {
   const gid = crypto.randomUUID();
   groupIds.push(gid);
-  await raw.execute({ sql: "insert into teacher_groups (id, teacher_id, name, exam_kind, code, created_at) values (?, ?, ?, ?, ?, ?)", args: [gid, teacherId, g.name, g.kind, g.code, now - 50 * DAY] });
+  await raw.execute({ sql: "insert into teacher_groups (id, teacher_id, name, code, created_at) values (?, ?, ?, ?, ?)", args: [gid, teacherId, g.name, g.code, now - 50 * DAY] });
   for (let i = 0; i < 20; i++, k++) {
     const id = crypto.randomUUID();
     const first = FIRST[k % FIRST.length];
@@ -86,25 +86,37 @@ async function fillResults(testId: string, opts: { onlyPart?: number; online?: {
   await raw.execute({ sql: "update teacher_tests set results_at = ? where id = ?", args: [now, testId] });
 }
 
-async function make(groupIdx: number, mode: "paper" | "online", daysAgo: number) {
-  const r = await createTeacherTest({ teacherId, groupId: groupIds[groupIdx], mode, opensAt: new Date(now - daysAgo * DAY), durationMin: 90, shuffle: true, noRepeat: true });
+async function make(groupIdx: number[], mode: "paper" | "online", daysAgo: number, kind: "buraxilis-9" | "buraxilis-11" | "qebul-11" | "movzu", topic?: string) {
+  const topicId = topic ? Number((await raw.execute({ sql: "select id from topics where slug = ?", args: [topic] })).rows[0]?.id) : undefined;
+  const r = await createTeacherTest({
+    teacherId,
+    groupIds: groupIdx.map((i) => groupIds[i]),
+    kind,
+    topicId,
+    questionCount: topic ? 20 : undefined,
+    mode,
+    opensAt: new Date(now - daysAgo * DAY),
+    durationMin: topic ? 40 : 90,
+    shuffle: true,
+    noRepeat: true,
+  });
   if (!r.ok) throw new Error(`Sınaq yaradılmadı: ${r.error}`);
   await raw.execute({ sql: "update teacher_tests set created_at = ? where id = ?", args: [now - daysAgo * DAY - 3 * DAY, r.id] });
   await raw.execute({ sql: "update teacher_balance_tx set created_at = ? where test_id = ?", args: [now - daysAgo * DAY - 3 * DAY, r.id] });
   return r.id;
 }
 
-// 1) 9-A: iki kağız sınağı (nəticələr daxil edilib); 2) 11-B: kağız + bitmiş onlayn (bir neçəsi başlamayıb);
-// 3) Blok: gələcək tarixli onlayn sınaq (nəticə gözlənilir).
-const t1 = await make(0, "paper", 28);
+// 1) 9-A: iki kağız sınağı (biri mövzu sınağı); 2) 11-B + Blok: bir kağız sınağı iki qrupa;
+// 3) 11-B: bitmiş onlayn (bir neçəsi başlamayıb); 4) Blok: gələcək tarixli onlayn sınaq.
+const t1 = await make([0], "paper", 28, "buraxilis-9");
 await fillResults(t1);
-const t2 = await make(0, "paper", 7);
+const t2 = await make([0], "paper", 7, "movzu", "natural-ededler");
 await fillResults(t2);
-const t3 = await make(1, "paper", 14);
+const t3 = await make([1, 2], "paper", 14, "buraxilis-11");
 await fillResults(t3);
-const t4 = await make(1, "online", 3);
+const t4 = await make([1], "online", 3, "buraxilis-11");
 await fillResults(t4, { onlyPart: 5, online: { startedAt: now - 3 * DAY + 2 * 3600_000 } });
-await make(2, "online", -2);
+await make([2], "online", -2, "qebul-11");
 
 console.log(`Hazırdır. Müəllim: ${EMAIL} / ${PASSWORD} — /muellim`);
 process.exit(0);

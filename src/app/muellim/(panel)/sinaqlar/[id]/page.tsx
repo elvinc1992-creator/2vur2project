@@ -4,8 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { btnDark, btnGhost, Card, fmtDayLong, Notice, Pill, td, th, tone, toneSoft, Top, TLink } from "@/components/teacher/ui";
 import { db } from "@/db";
-import { teacherGroups, teacherTests } from "@/db/schema";
-import { answersOf, attemptsOf, eventsOf, itemsOf, kindName, ownTest, questionStats, studentPercents, variantsOf } from "@/lib/teacher/data";
+import { teacherTests } from "@/db/schema";
+import { answersOf, attemptsOf, eventsOf, itemsOf, ownTest, questionStats, studentPercents, testGroupsOf, testKindLabel, variantsOf } from "@/lib/teacher/data";
 import { requireTeacher } from "@/lib/teacher/guard";
 import { closesAt, settleTest } from "@/lib/teacher/online";
 
@@ -24,14 +24,14 @@ export default async function TeacherTest(props: PageProps<"/muellim/sinaqlar/[i
     await settleTest(t);
     [t] = await db.select().from(teacherTests).where(eq(teacherTests.id, id));
   }
-  const [[group], items, variants, answers, attempts, events, kind] = await Promise.all([
-    db.select().from(teacherGroups).where(eq(teacherGroups.id, t.groupId)),
+  const [tg, items, variants, answers, attempts, events, kind] = await Promise.all([
+    testGroupsOf(t.id),
     itemsOf(t.id),
     variantsOf(t.id),
     answersOf(t.id),
     attemptsOf(t.id),
     eventsOf(t.id),
-    kindName(t.examKind),
+    testKindLabel(t),
   ]);
   const per = studentPercents(answers, items.length);
   const stats = questionStats(items, answers);
@@ -41,7 +41,7 @@ export default async function TeacherTest(props: PageProps<"/muellim/sinaqlar/[i
 
   return (
     <>
-      <Top title={`Sınaq №${t.number}`} lead={`${group.name} · ${kind} · ${items.length} sual · ${t.durationMin} dəq · ${fmtDayLong(t.opensAt)}`}>
+      <Top title={`Sınaq №${t.number}`} lead={`${tg.names} · ${kind} · ${items.length} sual · ${t.durationMin} dəq · ${fmtDayLong(t.opensAt)}`}>
         <TLink href="/muellim/sinaqlar">← Sınaqlar</TLink>
       </Top>
       {sp.yaradildi && <Notice tone="ok">Sınaq yaradıldı.{t.mode === "online" ? " Şagirdlərə bildiriş göndərildi." : " Çap fayllarını yüklə."}</Notice>}
@@ -51,7 +51,7 @@ export default async function TeacherTest(props: PageProps<"/muellim/sinaqlar/[i
         </Notice>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
         <Card title={t.mode === "paper" ? "Çap (pulsuz)" : "Onlayn sınaq"} sub={t.mode === "paper" ? "Hər şagird üçün ayrıca kitabça və kart — adları avtomatik yazılır. Brauzerdə “Çap → PDF kimi saxla”." : `Açılır: ${fmtDayLong(t.opensAt)} · 24 saat açıq qalır · ${t.charged} ₼ tutulub`}>
           <div className="flex flex-wrap gap-2">
             <Link href={`/muellim/cap/${t.id}/kitabca`} target="_blank" className={btnGhost}>
@@ -75,7 +75,7 @@ export default async function TeacherTest(props: PageProps<"/muellim/sinaqlar/[i
             <p className="m-0 mt-3 text-[14px]">
               {open ? <Pill kind="green">Açıqdır</Pill> : now < t.opensAt.getTime() ? <Pill kind="indigo">Açılmayıb</Pill> : <Pill kind="amber">Bağlanıb</Pill>} Başlayıb:{" "}
               <b>{attempts.length}</b> / {variants.length} · bitirib: <b>{attempts.filter((a) => a.finishedAt).length}</b>
-              {t.refundedAt && ` · başlamayanların məbləği balansa qaytarılıb`}
+              {t.refundedAt && attempts.length === 0 && t.charged > 0 && ` · heç kim başlamadığı üçün məbləğ balansa qaytarılıb`}
             </p>
           )}
         </Card>

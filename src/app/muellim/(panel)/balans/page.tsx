@@ -1,9 +1,10 @@
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import type { Metadata } from "next";
 import { azn, brand, btnMain, Card, fmtDayLong, Notice, Pill, td, th, Top } from "@/components/teacher/ui";
 import { db } from "@/db";
-import { teacherBalanceTx } from "@/db/schema";
+import { examKinds, teacherBalanceTx } from "@/db/schema";
 import { topupAction } from "@/lib/teacher/actions";
+import { TEACHER_KINDS } from "@/lib/teacher/create";
 import { requireTeacher } from "@/lib/teacher/guard";
 
 export const metadata: Metadata = { title: "Balans" };
@@ -16,17 +17,24 @@ const KIND: Record<string, { label: string; kind: "green" | "amber" | "red" | "i
   adjust: { label: "Düzəliş (admin)", kind: "red" },
 };
 
-/** Balans: onlayn sınaq üçün (1 AZN / şagird). Ödəniş saytın mövcud (test rejimində) ödəniş sistemi ilə. */
+/** Balans: onlayn sınaq üçün (sınaq başına, şagird sayından asılı deyil). Ödəniş saytın mövcud (test rejimində) ödəniş sistemi ilə. */
 export default async function Balance(props: PageProps<"/muellim/balans">) {
   const me = await requireTeacher("/muellim/balans");
   const sp = await props.searchParams;
-  const tx = await db.select().from(teacherBalanceTx).where(eq(teacherBalanceTx.teacherId, me.id)).orderBy(desc(teacherBalanceTx.createdAt)).limit(100);
+  const [tx, kinds] = await Promise.all([
+    db.select().from(teacherBalanceTx).where(eq(teacherBalanceTx.teacherId, me.id)).orderBy(desc(teacherBalanceTx.createdAt)).limit(100),
+    db.select().from(examKinds).where(inArray(examKinds.key, [...TEACHER_KINDS])).orderBy(asc(examKinds.sortOrder)),
+  ]);
+  const prices = TEACHER_KINDS.map((k) => kinds.find((x) => x.key === k))
+    .filter((k) => k !== undefined)
+    .map((k) => `${k.name} — ${azn(k.teacherPrice)}`)
+    .join(" · ");
   return (
     <>
-      <Top title="Balans" lead="Onlayn sınaq: 1 ₼ / şagird. Kağız sınaq pulsuzdur." />
+      <Top title="Balans" lead={`Onlayn sınaq (sınaq başına, şagird sayından asılı deyil): ${prices}. Kağız sınaq pulsuzdur.`} />
       {sp.ok && <Notice tone="ok">Balans artırıldı.</Notice>}
       {sp.xeta && <Notice tone="error">Məbləği seç və şərtlərlə razılığı təsdiqlə.</Notice>}
-      <div className="grid gap-4 xl:grid-cols-[1fr_1.4fr]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.4fr]">
         <div className={`${brand} rounded-[20px] p-5 text-white`}>
           <small className="text-white/85">Cari balans</small>
           <b className="block text-[40px] font-black">{azn(me.balance)}</b>

@@ -21,13 +21,13 @@ export default async function TeacherHome() {
           + Yeni sınaq
         </Link>
       </Top>
-      <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi icon="👥" value={groups.length} label="qrup" bg="#eef0ff" />
         <Kpi icon="🎓" value={students.size} label="şagird" bg="#ecfdf5" />
         <Kpi icon="📝" value={tests.length} label="sınaq keçirilib" bg="#fffbeb" />
         <Kpi icon="⚠️" value={weak[0]?.topic ?? "—"} label="ən zəif mövzu" bg="#fef2f2" />
       </div>
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card title="Son sınaqlar" sub="Nəticələri yazılmayan kağız sınaqlarını unutma">
           {recent.length === 0 ? (
             <p className="m-0 text-[14px] text-[#5b6785]">

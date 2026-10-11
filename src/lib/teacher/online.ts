@@ -13,11 +13,10 @@ import { LETTERS, type Letter } from "@/lib/demo/content";
 import { normalizeCoded } from "@/lib/exams/grade";
 import type { ExamQuestion } from "@/lib/exams/types";
 import { itemsOf, saveResults, type FullItem } from "./data";
-import { ONLINE_PRICE } from "./create";
 import type { Graded, Variant } from "./variants";
 
 // Onlayn müəllim sınağı: açılandan 24 saat əlçatandır; şagirdin vaxtı başladığı andan serverdə gedir və dayanmır
-// (səhifəni bağlasa da). Cavablar dərhal saxlanılır. Sınaq bağlananda başlamayanların məbləği balansa qaytarılır.
+// (səhifəni bağlasa da). Cavablar dərhal saxlanılır. Sınaq bağlananda heç kim başlamayıbsa, məbləğ balansa qaytarılır.
 
 const DAY = 86_400_000;
 export type TestRow = typeof teacherTests.$inferSelect;
@@ -115,25 +114,22 @@ export async function finishAttempt(t: TestRow, userId: string, at: number) {
 }
 
 /**
- * Sınaq bağlanandan sonra (idempotent): vaxtı bitmiş cəhdlər bağlanır, başlamayan şagirdlərin məbləği
- * balansa qaytarılır (bir dəfə). Müəllimin sınaq səhifəsi və şagird sorğuları çağırır.
+ * Sınaq bağlanandan sonra (idempotent): vaxtı bitmiş cəhdlər bağlanır; qiymət sınaq başına olduğu üçün heç bir şagird
+ * başlamayıbsa, məbləğ balansa qaytarılır (bir dəfə). Müəllimin sınaq səhifəsi və şagird sorğuları çağırır.
  */
 export async function settleTest(t: TestRow, now = Date.now()) {
   if (t.mode !== "online") return;
   const attempts = await db.select().from(teacherTestAttempts).where(eq(teacherTestAttempts.testId, t.id));
   for (const a of attempts) if (!a.finishedAt && now >= deadlineOf(t, a.startedAt)) await finishAttempt(t, a.userId, deadlineOf(t, a.startedAt));
   if (now < closesAt(t) || t.refundedAt) return;
-  const variants = await db.select({ userId: teacherTestVariants.userId }).from(teacherTestVariants).where(eq(teacherTestVariants.testId, t.id));
-  const notStarted = variants.filter((v) => !attempts.some((a) => a.userId === v.userId)).length;
   // Eyni anda iki sorğu — geri qaytarma bir dəfə (refundedAt şərti ilə)
   const done = await db
     .update(teacherTests)
     .set({ refundedAt: new Date(now) })
     .where(and(eq(teacherTests.id, t.id), isNull(teacherTests.refundedAt)))
     .returning({ id: teacherTests.id });
-  if (!done.length || notStarted === 0) return;
-  const amount = notStarted * ONLINE_PRICE;
+  if (!done.length || attempts.length > 0 || t.charged <= 0) return;
   const [acc] = await db.select().from(teacherAccounts).where(eq(teacherAccounts.userId, t.teacherId));
-  await db.update(teacherAccounts).set({ balance: (acc?.balance ?? 0) + amount }).where(eq(teacherAccounts.userId, t.teacherId));
-  await db.insert(teacherBalanceTx).values({ teacherId: t.teacherId, amount, kind: "refund", testId: t.id, note: `Sınağa başlamayan ${notStarted} şagird` });
+  await db.update(teacherAccounts).set({ balance: (acc?.balance ?? 0) + t.charged }).where(eq(teacherAccounts.userId, t.teacherId));
+  await db.insert(teacherBalanceTx).values({ teacherId: t.teacherId, amount: t.charged, kind: "refund", testId: t.id, note: `Sınaq №${t.number}: heç bir şagird başlamayıb` });
 }
