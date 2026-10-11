@@ -3,6 +3,24 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const { answerKey, gradeEntries, makeVariants, percentOf, shownOf } = await import("./variants");
+const { academicYear, topicCounts } = await import("./year");
+
+describe("mövzu sınağı: tədris ili və bölmələr", () => {
+  const baku = (iso: string) => new Date(`${iso}+04:00`).getTime();
+  it("tədris ili 1 sentyabr – 1 iyul; iyul–avqust gələn ilə aiddir", () => {
+    expect(academicYear(baku("2026-10-11T12:00:00")).label).toBe("2026–2027");
+    expect(academicYear(baku("2027-06-30T23:59:00")).label).toBe("2026–2027");
+    expect(academicYear(baku("2027-07-01T00:00:00")).label).toBe("2027–2028");
+    expect(academicYear(baku("2027-01-15T10:00:00")).from).toBe(baku("2026-07-01T00:00:00"));
+  });
+  it("15 / 20 / 25 sual: ¾ qapalı, ¼ kodlaşdırılan", () => {
+    for (const n of [15, 20, 25]) {
+      const c = topicCounts(n);
+      expect(c.closed + c.coded).toBe(n);
+    }
+    expect(topicCounts(20)).toEqual({ closed: 15, coded: 5, written: 0 });
+  });
+});
 
 const seeded = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31);
 

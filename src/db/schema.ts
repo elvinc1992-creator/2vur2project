@@ -529,6 +529,8 @@ export const examKinds = sqliteTable("exam_kinds", {
   sortOrder: integer("sort_order").notNull().default(0),
   /** Standart müddət (dəq) — müəllim sınağında və yeni sınaqda (admin dəyişir). */
   durationMin: integer("duration_min").notNull().default(90),
+  /** Müəllimin onlayn sınağının qiyməti (AZN, sınaq başına — şagird sayından asılı deyil; admin dəyişir). */
+  teacherPrice: real("teacher_price").notNull().default(0),
 });
 
 export const EXAM_STATUSES = ["active", "passive", "finished"] as const;
@@ -861,7 +863,7 @@ export const teacherBalanceTx = sqliteTable(
   (t) => [index("teacher_balance_tx_idx").on(t.teacherId, t.createdAt)],
 );
 
-/** Qrup: imtahan növü və unikal qoşulma kodu (şagird özü qoşulur). */
+/** Qrup: ad və unikal qoşulma kodu (şagird özü qoşulur). İmtahan növü sınaqda seçilir. */
 export const teacherGroups = sqliteTable(
   "teacher_groups",
   {
@@ -870,7 +872,6 @@ export const teacherGroups = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    examKind: text("exam_kind").notNull(),
     code: text("code").notNull(),
     createdAt: createdAt(),
   },
@@ -894,7 +895,8 @@ export const teacherGroupMembers = sqliteTable(
 );
 
 /**
- * Müəllim sınağı: kağız (pulsuz) və ya onlayn (1 AZN / şagird). Suallar bazadan, imtahan növünün strukturu ilə.
+ * Müəllim sınağı: kağız (pulsuz) və ya onlayn (sınaq başına qiymət — exam_kinds.teacher_price). Suallar bazadan,
+ * imtahan növünün strukturu ilə; mövzu sınağı — seçilmiş mövzudan 15 / 20 / 25 sual. Bir və ya bir neçə qrupa bağlanır.
  * opensAt — onlayn sınağın açılma anı (24 saat açıq qalır); kağızda — sınağın tarixi.
  */
 export const teacherTests = sqliteTable(
@@ -904,11 +906,10 @@ export const teacherTests = sqliteTable(
     teacherId: text("teacher_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    groupId: text("group_id")
-      .notNull()
-      .references(() => teacherGroups.id, { onDelete: "cascade" }),
     number: integer("number").notNull(),
     examKind: text("exam_kind").notNull(),
+    /** Mövzu sınağı: mövzu. */
+    topicId: integer("topic_id").references(() => topics.id),
     mode: text("mode", { enum: ["paper", "online"] }).notNull(),
     opensAt: integer("opens_at", { mode: "timestamp_ms" }).notNull(),
     durationMin: integer("duration_min").notNull(),
@@ -923,7 +924,21 @@ export const teacherTests = sqliteTable(
     resultsAt: integer("results_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
   },
-  (t) => [index("teacher_tests_teacher_idx").on(t.teacherId, t.createdAt), index("teacher_tests_group_idx").on(t.groupId)],
+  (t) => [index("teacher_tests_teacher_idx").on(t.teacherId, t.createdAt)],
+);
+
+/** Sınağın qrupları (bir sınaq bir neçə qrupa bağlana bilər). */
+export const teacherTestGroups = sqliteTable(
+  "teacher_test_groups",
+  {
+    testId: text("test_id")
+      .notNull()
+      .references(() => teacherTests.id, { onDelete: "cascade" }),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => teacherGroups.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.testId, t.groupId] }), index("teacher_test_groups_group_idx").on(t.groupId)],
 );
 
 /** Sınağın sualları (əsas sıra) — nəticələr və analitika bura bağlanır. */

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { btnMain, Card, field, label, Top } from "@/components/teacher/ui";
 import { createGroupAction } from "@/lib/teacher/actions";
-import { groupResults, groupsOf, kindName } from "@/lib/teacher/data";
+import { groupResults, groupsOf } from "@/lib/teacher/data";
 import { requireTeacher } from "@/lib/teacher/guard";
 
 export const metadata: Metadata = { title: "Qruplarım" };
@@ -14,7 +14,7 @@ export default async function TeacherGroups() {
     groups.map(async (g) => {
       const res = await groupResults(me.id, g.id);
       const avgs = res.map((r) => r.avg).filter((x): x is number => x !== null);
-      return { kind: await kindName(g.examKind), avg: avgs.length ? Math.round(avgs.reduce((s, x) => s + x, 0) / avgs.length) : null };
+      return { tests: res.length, avg: avgs.length ? Math.round(avgs.reduce((s, x) => s + x, 0) / avgs.length) : null };
     }),
   );
 
@@ -33,7 +33,7 @@ export default async function TeacherGroups() {
                   <b className="text-[16px]">{g.name}</b>
                   <span className="rounded-[8px] bg-[#f4f6fb] px-2 py-1 font-mono text-[13px]">{g.code}</span>
                 </div>
-                <small className="text-[#5b6785]">{extra[i].kind}</small>
+                <small className="text-[#5b6785]">{extra[i].tests} sınaq</small>
                 <div className="mt-2.5 flex gap-3.5 text-[13px] text-[#5b6785]">
                   <span>👥 {g.members.length} şagird</span>
                   <span>📈 orta {extra[i].avg !== null ? `${extra[i].avg}%` : "—"}</span>
@@ -43,19 +43,11 @@ export default async function TeacherGroups() {
           ))}
         </ul>
       )}
-      <Card title="+ Yeni qrup" sub="Qrupun imtahan növü sınaqların strukturunu müəyyən edir." className="mt-4">
-        <form action={createGroupAction} className="grid gap-3 md:grid-cols-[1.4fr_1fr_auto] md:items-end">
+      <Card title="+ Yeni qrup" sub="İmtahan növü sınaq yaradılanda seçilir — bir sınağı bir neçə qrupa vermək olar." className="mt-4">
+        <form action={createGroupAction} className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
           <label className={label}>
             Qrupun adı
             <input name="name" required minLength={2} maxLength={60} placeholder="Məs. XI sinif – səhər" className={field} />
-          </label>
-          <label className={label}>
-            İmtahan növü
-            <select name="examKind" className={field} defaultValue="buraxilis-11">
-              <option value="buraxilis-9">9-cu sinif buraxılış</option>
-              <option value="buraxilis-11">11-ci sinif buraxılış</option>
-              <option value="qebul-11">11-ci sinif blok</option>
-            </select>
           </label>
           <button className={btnMain}>Qrup yarat</button>
         </form>

@@ -32,7 +32,7 @@ export function Top({ title, lead, children }: { title: string; lead?: ReactNode
 
 export function Kpi({ icon, value, label, bg }: { icon: string; value: ReactNode; label: string; bg: string }) {
   return (
-    <div className="flex items-center gap-3.5 rounded-[18px] border border-[#e6e9f2] bg-white p-4">
+    <div className="flex min-w-0 items-center gap-3.5 rounded-[18px] border border-[#e6e9f2] bg-white p-4">
       <div className="grid size-[46px] flex-none place-items-center rounded-[14px] text-[22px]" style={{ background: bg }} aria-hidden="true">
         {icon}
       </div>

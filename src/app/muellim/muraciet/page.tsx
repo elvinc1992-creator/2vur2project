@@ -36,7 +36,7 @@ export default async function Apply(props: PageProps<"/muellim/muraciet">) {
         <section className={card}>
           <h1 className="m-0 mb-1 text-[24px] font-black">Müəllim paneli</h1>
           <p className="m-0 mb-4 text-[#5b6785]">
-            Qruplar yarat, DİM formatında sınaqlar keçir (kağız — pulsuz, onlayn — 1 ₼ / şagird), nəticələri və zəif mövzuları izlə, valideynlərə aylıq hesabat göndər. Panel
+            Qruplar yarat, DİM formatında sınaqlar keçir (kağız — pulsuz, onlayn — sınaq başına 2–3 ₼), nəticələri və zəif mövzuları izlə, valideynlərə aylıq hesabat göndər. Panel
             admin təsdiqindən sonra açılır.
           </p>
           {sp.gonderildi && <Notice tone="ok">Müraciətin göndərildi. Admin təsdiqləyəndən sonra panel açılacaq.</Notice>}

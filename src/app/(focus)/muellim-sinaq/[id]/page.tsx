@@ -6,10 +6,10 @@ import { OnlineTestRunner } from "@/components/teacher/online-runner";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, h1Class } from "@/components/ui/display";
 import { db } from "@/db";
-import { teacherGroups, teacherTests } from "@/db/schema";
+import { teacherTests } from "@/db/schema";
 import { todayIso } from "@/lib/demo/logic";
 import { requireDemo } from "@/lib/demo/session";
-import { answersOf, itemsOf, kindName, studentPercents } from "@/lib/teacher/data";
+import { answersOf, itemsOf, studentPercents, testGroupsOf, testKindLabel } from "@/lib/teacher/data";
 import { attemptOf, deadlineOf, finishAttempt, questionsFor, shownAnswers, variantOf } from "@/lib/teacher/online";
 
 export const metadata: Metadata = { title: "Müəllimin sınağı" };
@@ -51,7 +51,8 @@ export default async function OnlineTest(props: PageProps<"/muellim-sinaq/[id]">
     );
   }
 
-  const [[group], kname, initial] = await Promise.all([db.select().from(teacherGroups).where(eq(teacherGroups.id, t.groupId)), kindName(t.examKind), shownAnswers(t.id, user.id!, v)]);
+  const [tg, kname, initial] = await Promise.all([testGroupsOf(t.id), testKindLabel(t), shownAnswers(t.id, user.id!, v)]);
+  const group = { name: tg.groupOf.get(user.id!) ?? tg.names };
   const questions = questionsFor(items, v);
   const counts = { closed: 0, coded: 0, written: 0 };
   for (const q of questions) counts[q.format]++;
@@ -64,7 +65,7 @@ export default async function OnlineTest(props: PageProps<"/muellim-sinaq/[id]">
         kind: t.examKind,
         durationMin: t.durationMin,
         blueprintKey: t.examKind,
-        examType: "11",
+        examType: t.examKind === "movzu" ? "movzu" : "11",
         number: t.number,
         total: questions.length,
         counts,

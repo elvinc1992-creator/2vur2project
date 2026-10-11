@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -6,10 +5,8 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { PrintButton } from "@/components/teacher/print-button";
 import { MathText } from "@/components/ui/math-text";
-import { db } from "@/db";
-import { teacherGroups } from "@/db/schema";
 import { LETTERS } from "@/lib/demo/content";
-import { itemsOf, kindName, ownTest, variantsOf, type FullItem, type StudentVariant } from "@/lib/teacher/data";
+import { itemsOf, ownTest, testGroupsOf, testKindLabel, variantsOf, type FullItem, type StudentVariant } from "@/lib/teacher/data";
 import { requireTeacher } from "@/lib/teacher/guard";
 import { answerKey } from "@/lib/teacher/variants";
 
@@ -36,14 +33,14 @@ export default async function PrintPage(props: PageProps<"/muellim/cap/[id]/[kin
   if (!(kind in KINDS)) notFound();
   const t = await ownTest(me.id, id);
   if (!t) notFound();
-  const [[group], items, variants, kname] = await Promise.all([
-    db.select().from(teacherGroups).where(eq(teacherGroups.id, t.groupId)),
+  const [tg, items, variants, kname] = await Promise.all([
+    testGroupsOf(t.id),
     itemsOf(t.id),
     variantsOf(t.id),
-    kindName(t.examKind),
+    testKindLabel(t),
   ]);
   const date = new Intl.DateTimeFormat("az-AZ", { timeZone: "Asia/Baku", day: "2-digit", month: "2-digit", year: "numeric" }).format(t.opensAt);
-  const head = (title: string, who: string, letter: string) => (
+  const head = (title: string, who: string, letter: string, groupName = tg.names) => (
     <>
       <div className="flex items-center justify-between border-b-[3px] border-double border-[#c8102e] pb-3">
         <div>
@@ -57,7 +54,7 @@ export default async function PrintPage(props: PageProps<"/muellim/cap/[id]/[kin
       <div className="my-3.5 grid grid-cols-[2fr_1fr_1fr] gap-2">
         {[
           ["Şagird", who],
-          ["Qrup", group.name],
+          ["Qrup", groupName],
           ["Tarix", date],
         ].map(([l, v]) => (
           <div key={l} className="rounded-[4px] border-[1.4px] border-[#bbb] px-2.5 py-1.5">
@@ -96,14 +93,14 @@ export default async function PrintPage(props: PageProps<"/muellim/cap/[id]/[kin
       {kind === "kitabca" &&
         variants.map((v) => (
           <Sheet key={v.userId}>
-            {head(KINDS.kitabca, v.name, v.letter)}
+            {head(KINDS.kitabca, v.name, v.letter, tg.groupOf.get(v.userId))}
             <Booklet v={v} items={items} />
           </Sheet>
         ))}
       {kind === "kart" &&
         variants.map((v) => (
           <Sheet key={v.userId}>
-            {head(KINDS.kart, v.name, v.letter)}
+            {head(KINDS.kart, v.name, v.letter, tg.groupOf.get(v.userId))}
             <AnswerCard v={v} items={items} />
           </Sheet>
         ))}

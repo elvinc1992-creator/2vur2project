@@ -57,7 +57,7 @@ export default async function Analytics(props: PageProps<"/muellim/analitika">) 
           </a>
         </form>
       </Top>
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card title="Zəif mövzular" sub="Qrupun orta mənimsəməsi, zəifdən güclüyə (saytın zəif mövzu təhlili)">
           <TopicRows rows={weak} />
         </Card>

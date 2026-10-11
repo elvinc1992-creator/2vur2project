@@ -2,7 +2,7 @@ import { asc } from "drizzle-orm";
 import type { Metadata } from "next";
 import { db } from "@/db";
 import { examKinds, topics } from "@/db/schema";
-import { saveStructureAction, saveTopicDistributionAction } from "@/lib/admin/teacher-actions";
+import { saveStructureAction, saveTeacherPricesAction, saveTopicDistributionAction } from "@/lib/admin/teacher-actions";
 import { sectionsOf } from "@/lib/exams/create";
 import { Notice, PageHead, Table, btn, input, td, th } from "../ui";
 
@@ -16,7 +16,8 @@ const lbl = "grid gap-1 text-[13px] font-semibold";
  */
 export default async function ExamStructure(props: PageProps<"/admin/sinaq-strukturu">) {
   const sp = await props.searchParams;
-  const kinds = (await db.select().from(examKinds).orderBy(asc(examKinds.sortOrder))).filter((k) => k.key !== "movzu");
+  const allKinds = await db.select().from(examKinds).orderBy(asc(examKinds.sortOrder));
+  const kinds = allKinds.filter((k) => k.key !== "movzu");
   const [sections, topicRows] = await Promise.all([Promise.all(kinds.map((k) => sectionsOf(k.key))), db.select().from(topics).orderBy(asc(topics.curriculumOrder))]);
 
   return (
@@ -54,6 +55,20 @@ export default async function ExamStructure(props: PageProps<"/admin/sinaq-struk
           );
         })}
       </div>
+
+      <form action={saveTeacherPricesAction} className="grid gap-3 rounded-[16px] border border-line bg-white p-4">
+        <h2 className="m-0 text-[16px] font-extrabold text-navy-900">Müəllimin onlayn sınaq qiyməti</h2>
+        <p className="m-0 text-[13px] text-ink-muted">Sınaq başına, müəllimin balansından tutulur (şagird sayından asılı deyil). Kağız sınaq pulsuzdur.</p>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {allKinds.map((k) => (
+            <label key={k.key} className={lbl}>
+              {k.name} (₼)
+              <input name={`price-${k.key}`} inputMode="decimal" defaultValue={k.teacherPrice} className={input} />
+            </label>
+          ))}
+        </div>
+        <button className={`${btn} justify-self-start`}>Qiymətləri saxla</button>
+      </form>
 
       <form action={saveTopicDistributionAction} className="grid gap-3">
         <Table caption="Mövzu bölgüsü">

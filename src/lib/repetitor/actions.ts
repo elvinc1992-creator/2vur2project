@@ -8,7 +8,7 @@ import { canUseRepetitor } from "@/lib/demo/plans";
 import { cleanMeta, rememberMeta, seedState, updateDemoState, type AnswerMeta, type DemoState } from "@/lib/demo/state";
 import { changePlan, examKey, todayIn } from "./plan";
 import { freeLessonOf, nextRepetitorHref, repetitorHref, tutorContext } from "./progress";
-import { findRepetitorQuestion, getRepetitorKey, getRepetitorKeys } from "./source";
+import { findRepetitorQuestion, getRepetitorKey, getRepetitorKeys, listAllRepetitorTopics } from "./source";
 
 // Onlayn repetitor yalnız abunəçilər (Pro) üçündür — hər əməliyyatda serverdə yoxlanılır.
 async function updatePaid<T>(fn: (state: DemoState) => T | Promise<T>) {
@@ -101,11 +101,16 @@ export async function submitTutorExamAction(n: number, formData: FormData) {
     const exam = view?.exams.find((e) => e.n === n);
     if (!exam || exam.status !== "open") return; // bağlıdır və ya artıq göndərilib
     const keys = await getRepetitorKeys(exam.questionIds);
+    // Uyğunluq sualının variantları — bank bir dəfə (yalnız belə sual varsa) yüklənir
+    const matchingIds = exam.questionIds.filter((id) => keys.get(id)?.format === "matching");
+    const matching = new Map(
+      matchingIds.length ? (await listAllRepetitorTopics()).flatMap((t) => t.questions.filter((q) => matchingIds.includes(q.id)).map((q) => [q.id, q.matching] as const)) : [],
+    );
     const answers: Record<string, string> = {};
     const results: Record<string, boolean> = {};
     for (const id of exam.questionIds) {
       const key = keys.get(id);
-      const given = key ? readFormAnswer(formData, `q-${id}`, { format: key.format, matching: (await findRepetitorQuestion(id))?.matching }) : null;
+      const given = key ? readFormAnswer(formData, `q-${id}`, { format: key.format, matching: matching.get(id) }) : null;
       if (given) answers[id] = given;
       results[id] = Boolean(key && given && checkAnswer(key, given));
     }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Page, Topbar } from "@/components/app/topbar";
-import { ArrowIcon, CheckCircleIcon, InfoIcon, RetryIcon } from "@/components/icons";
+import { ArrowIcon, BulbIcon, CheckCircleIcon, InfoIcon, RetryIcon } from "@/components/icons";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, Tag, h1Class } from "@/components/ui/display";
 import { EmptyState } from "@/components/ui/empty-art";
@@ -182,9 +182,32 @@ function MistakeCard({ m }: { m: Mistake }) {
           </dd>
         </div>
       </dl>
-      <Link href={m.href} className="justify-self-start text-small font-semibold text-navy-500 underline underline-offset-3">
-        {t.toSolution}
-      </Link>
+      {m.steps.length ? (
+        // Sual kartda artıq var — açılanda yalnız həll göstərilir (başqa səhifəyə keçmədən)
+        <details className="group grid gap-2">
+          <summary className="cursor-pointer justify-self-start text-small font-semibold text-navy-500 underline underline-offset-3 marker:content-none [&::-webkit-details-marker]:hidden">
+            <span className="group-open:hidden">{t.toSolution}</span>
+            <span className="hidden group-open:inline">{t.hideSolution}</span>
+          </summary>
+          <div className="mt-2 grid gap-2 rounded-2xl bg-navy-050 p-4">
+            <div className="flex items-center gap-2 font-bold text-navy-900">
+              <BulbIcon className="size-[22px]" />
+              {az.app.daily.solution}
+            </div>
+            <ol className="m-0 grid gap-1 pl-5 text-small">
+              {m.steps.map((s, i) => (
+                <li key={i}>
+                  <MathText text={s} />
+                </li>
+              ))}
+            </ol>
+          </div>
+        </details>
+      ) : (
+        <Link href={m.href} className="justify-self-start text-small font-semibold text-navy-500 underline underline-offset-3">
+          {t.toQuestion}
+        </Link>
+      )}
     </Card>
   );
 }

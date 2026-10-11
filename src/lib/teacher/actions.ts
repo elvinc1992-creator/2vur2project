@@ -58,11 +58,11 @@ export async function applyTeacherAction(formData: FormData) {
 
 export async function createGroupAction(formData: FormData) {
   const me = await requireTeacher();
-  const p = z.object({ name: z.string().trim().min(2).max(60), examKind: z.enum(TEACHER_KINDS) }).parse(Object.fromEntries(formData));
+  const p = z.object({ name: z.string().trim().min(2).max(60) }).parse(Object.fromEntries(formData));
   const id = crypto.randomUUID();
   for (let i = 0; i < 5; i++) {
     try {
-      await db.insert(teacherGroups).values({ id, teacherId: me.id, name: p.name, examKind: p.examKind, code: code6() });
+      await db.insert(teacherGroups).values({ id, teacherId: me.id, name: p.name, code: code6() });
       break;
     } catch (e) {
       if (i === 4) throw e;
@@ -95,9 +95,12 @@ export async function removeMemberAction(formData: FormData) {
 
 export async function createTestAction(formData: FormData) {
   const me = await requireTeacher("/muellim/sinaq-yarat");
+  const groupIds = formData.getAll("groupId").map(String).filter(Boolean);
   const p = z
     .object({
-      groupId: z.string().min(1),
+      kind: z.enum(TEACHER_KINDS),
+      topicId: z.coerce.number().int().optional(),
+      questionCount: z.coerce.number().int().optional(),
       mode: z.enum(["paper", "online"]),
       date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
@@ -105,18 +108,21 @@ export async function createTestAction(formData: FormData) {
       shuffle: z.string().optional(),
       noRepeat: z.string().optional(),
     })
-    .parse(Object.fromEntries([...formData].filter(([, v]) => v !== "")));
+    .parse(Object.fromEntries([...formData].filter(([k, v]) => v !== "" && k !== "groupId")));
   const opensAt = new Date(`${p.date}T${p.time ?? "09:00"}:00+04:00`);
   const r = await createTeacherTest({
     teacherId: me.id,
-    groupId: p.groupId,
+    groupIds,
+    kind: p.kind,
+    topicId: p.topicId,
+    questionCount: p.questionCount,
     mode: p.mode,
     opensAt,
     durationMin: p.durationMin,
     shuffle: p.shuffle === "on",
     noRepeat: p.noRepeat === "on",
   });
-  if (!r.ok) redirect(`/muellim/sinaq-yarat?xeta=${r.error}${r.need ? `&mebleg=${r.need}` : ""}&qrup=${p.groupId}`);
+  if (!r.ok) redirect(`/muellim/sinaq-yarat?xeta=${r.error}${r.need ? `&mebleg=${r.need}` : ""}`);
   if (p.mode === "online") await notifyOnline(r.id);
   revalidatePath("/muellim");
   redirect(`/muellim/sinaqlar/${r.id}?yaradildi=1${r.reused ? `&tekrar=${r.reused}` : ""}`);

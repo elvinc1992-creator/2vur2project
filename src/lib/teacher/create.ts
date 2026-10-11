@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, eq, gte, isNull, max } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNull, lt, max } from "drizzle-orm";
 import { db } from "@/db";
 import {
   bankTasks,
@@ -8,6 +8,7 @@ import {
   teacherBalanceTx,
   teacherGroupMembers,
   teacherGroups,
+  teacherTestGroups,
   teacherTestItems,
   teacherTests,
   teacherTestVariants,
@@ -19,13 +20,20 @@ import { EXAM_TYPE_OF } from "@/lib/exams/types";
 import type { Letter } from "@/lib/demo/content";
 import { makeVariants } from "./variants";
 
-export const ONLINE_PRICE = 1;
-export const TEACHER_KINDS = ["buraxilis-9", "buraxilis-11", "qebul-11"] as const;
+import { academicYear, TOPIC_COUNTS, topicCounts } from "./year";
+
+export { academicYear };
+export const TEACHER_KINDS = ["movzu", "buraxilis-9", "buraxilis-11", "qebul-11"] as const;
+export type TeacherKind = (typeof TEACHER_KINDS)[number];
 const DAY = 86_400_000;
 
 export type CreateInput = {
   teacherId: string;
-  groupId: string;
+  groupIds: string[];
+  kind: TeacherKind;
+  /** Yalnız mövzu sınağı. */
+  topicId?: number;
+  questionCount?: number;
   mode: "paper" | "online";
   opensAt: Date;
   durationMin: number;
@@ -33,19 +41,46 @@ export type CreateInput = {
   noRepeat: boolean;
 };
 
-export type CreateResult = { ok: true; id: string; reused: number } | { ok: false; error: "limit" | "balance" | "empty" | "group" | "bank"; need?: number };
+export type CreateError = "limit" | "balance" | "empty" | "group" | "bank" | "topic" | "topic-used";
+export type CreateResult = { ok: true; id: string; reused: number } | { ok: false; error: CreateError; need?: number };
+
+/** Onlayn sınağın qiyməti (sınaq başına, şagird sayından asılı deyil). */
+export async function priceOf(kind: string) {
+  const [k] = await db.select({ p: examKinds.teacherPrice }).from(examKinds).where(eq(examKinds.key, kind));
+  return k?.p ?? 0;
+}
+
+/** Bu tədris ilində müəllimin mövzu sınağı yaratdığı mövzular. */
+export async function usedTopicsThisYear(teacherId: string, now = Date.now()) {
+  const y = academicYear(now);
+  const rows = await db
+    .select({ topicId: teacherTests.topicId })
+    .from(teacherTests)
+    .where(and(eq(teacherTests.teacherId, teacherId), eq(teacherTests.examKind, "movzu"), gte(teacherTests.createdAt, new Date(y.from)), lt(teacherTests.createdAt, new Date(y.to))));
+  return new Set(rows.map((r) => r.topicId).filter((x): x is number => x !== null));
+}
 
 /**
- * Müəllim sınağı: imtahan növünün strukturu (exam_blueprint_sections — admin redaktə edir) və mövzu bölgüsü ilə
- * suallar bazadan təsadüfi seçilir. "Təkrarlama" açıqdırsa, bu qrupa əvvəl verilmiş suallar seçilmir;
- * yeni sual qalmayıbsa, ən köhnə istifadə olunanlar götürülür (reused — müəllimə xəbərdarlıq).
+ * Müəllim sınağı: imtahan növünün strukturu (exam_blueprint_sections — admin redaktə edir) və mövzu bölgüsü ilə və ya
+ * (mövzu sınağı) seçilmiş mövzudan 15 / 20 / 25 sual. Sınaq bir neçə qrupa bağlana bilər — hər şagirdə bir variant.
+ * "Təkrarlama" açıqdırsa, bu qruplara əvvəl verilmiş suallar seçilmir; yeni sual qalmayıbsa, ən köhnə istifadə
+ * olunanlar götürülür (reused — müəllimə xəbərdarlıq). Onlayn sınağın qiyməti balansdan tutulur (sınaq başına).
  */
 export async function createTeacherTest(input: CreateInput): Promise<CreateResult> {
-  const [group] = await db
-    .select()
-    .from(teacherGroups)
-    .where(and(eq(teacherGroups.id, input.groupId), eq(teacherGroups.teacherId, input.teacherId)));
-  if (!group) return { ok: false, error: "group" };
+  const groupIds = [...new Set(input.groupIds)];
+  const groups = groupIds.length
+    ? await db
+        .select()
+        .from(teacherGroups)
+        .where(and(inArray(teacherGroups.id, groupIds), eq(teacherGroups.teacherId, input.teacherId)))
+    : [];
+  if (!groups.length || groups.length !== groupIds.length) return { ok: false, error: "group" };
+
+  const isTopic = input.kind === "movzu";
+  if (isTopic) {
+    if (!input.topicId || !TOPIC_COUNTS.includes(input.questionCount as never)) return { ok: false, error: "topic" };
+    if ((await usedTopicsThisYear(input.teacherId)).has(input.topicId)) return { ok: false, error: "topic-used" };
+  }
 
   // Gündəlik limit (sual bankının kütləvi çıxarılmasının qarşısı)
   const [acc] = await db.select().from(teacherAccounts).where(eq(teacherAccounts.userId, input.teacherId));
@@ -55,21 +90,24 @@ export async function createTeacherTest(input: CreateInput): Promise<CreateResul
     .where(and(eq(teacherTests.teacherId, input.teacherId), gte(teacherTests.createdAt, new Date(Date.now() - DAY))));
   if (today >= (acc?.dailyLimit ?? 10)) return { ok: false, error: "limit" };
 
-  const members = await db
+  // Şagirdlər: seçilmiş qrupların üzvləri (bir neçə qrupda olan şagird bir dəfə)
+  const memberRows = await db
     .select({ userId: teacherGroupMembers.userId })
     .from(teacherGroupMembers)
-    .where(and(eq(teacherGroupMembers.groupId, group.id), isNull(teacherGroupMembers.leftAt)));
+    .where(and(inArray(teacherGroupMembers.groupId, groupIds), isNull(teacherGroupMembers.leftAt)));
+  const members = [...new Set(memberRows.map((m) => m.userId))];
   if (!members.length) return { ok: false, error: "empty" };
-  const cost = input.mode === "online" ? members.length * ONLINE_PRICE : 0;
+  const cost = input.mode === "online" ? await priceOf(input.kind) : 0;
   if (cost > (acc?.balance ?? 0)) return { ok: false, error: "balance", need: cost };
 
-  // Bu qrupa əvvəl verilmiş suallar: kod → ən son istifadə vaxtı (köhnə olan əvvəl təkrar götürülür)
+  // Bu qruplara əvvəl verilmiş suallar: kod → ən son istifadə vaxtı (köhnə olan əvvəl təkrar götürülür)
   const used = input.noRepeat
     ? await db
         .select({ code: teacherTestItems.taskCode, at: max(teacherTests.createdAt) })
         .from(teacherTestItems)
         .innerJoin(teacherTests, eq(teacherTests.id, teacherTestItems.testId))
-        .where(eq(teacherTests.groupId, group.id))
+        .innerJoin(teacherTestGroups, eq(teacherTestGroups.testId, teacherTests.id))
+        .where(inArray(teacherTestGroups.groupId, groupIds))
         .groupBy(teacherTestItems.taskCode)
     : [];
   // usage: istifadə olunmuşlar böyük çəki ilə (yenilər üstün), aralarında köhnələr əvvəl
@@ -77,12 +115,13 @@ export async function createTeacherTest(input: CreateInput): Promise<CreateResul
   const usage = new Map(used.map((u) => [u.code, 1 + ((u.at?.getTime() ?? 0) - oldest) / (Date.now() - oldest + 1)]));
 
   const [sections, topicRows, taskRows] = await Promise.all([
-    sectionsOf(group.examKind),
+    sectionsOf(input.kind, isTopic ? topicCounts(input.questionCount!) : undefined),
     db.select().from(topics),
     db
       .select({ code: bankTasks.code, topicId: bankTasks.topicId, format: bankTasks.format, answerValue: bankTasks.answerValue, options: bankTasks.options, correct: bankTasks.correctOption })
       .from(bankTasks),
   ]);
+  if (isTopic && !topicRows.some((t) => t.id === input.topicId)) return { ok: false, error: "topic" };
   // Müəllim kitabçasında nömrələr 1-dən
   let next = 1;
   const numbered = sections.map((s) => {
@@ -90,16 +129,23 @@ export async function createTeacherTest(input: CreateInput): Promise<CreateResul
     next += s.count;
     return x;
   });
-  const examType = EXAM_TYPE_OF[group.examKind];
+  const examType = EXAM_TYPE_OF[input.kind];
   const gen = (tasks: typeof taskRows) =>
     generateExam({
       sections: numbered,
       examType,
-      topics: topicRows.map((t) => ({ id: t.id, curriculumOrder: t.curriculumOrder, dimFrequency: t.dimFrequency, examTypes: t.examTypes.split(",").map((x) => x.trim()) })),
+      topics: topicRows
+        .filter((t) => !isTopic || t.id === input.topicId)
+        .map((t) => ({
+          id: t.id,
+          curriculumOrder: t.curriculumOrder,
+          dimFrequency: t.dimFrequency,
+          examTypes: isTopic ? [examType] : t.examTypes.split(",").map((x) => x.trim()),
+        })),
       tasks: tasks.filter((t) => t.format !== "closed" || t.correct).map((t) => ({ ...t, hasOptions: Boolean(t.options) })),
       usage,
     });
-  // Əvvəl yalnız bu qrupa verilməmiş suallarla; bölmələr dolmursa — bütün baza (köhnə istifadə olunanlar sonda)
+  // Əvvəl yalnız bu qruplara verilməmiş suallarla; bölmələr dolmursa — bütün baza (köhnə istifadə olunanlar sonda)
   const total = numbered.reduce((s, x) => s + x.count, 0);
   let items = usage.size ? gen(taskRows.filter((t) => !usage.has(t.code))) : [];
   if (items.length < total) items = gen(taskRows);
@@ -115,9 +161,9 @@ export async function createTeacherTest(input: CreateInput): Promise<CreateResul
   await db.insert(teacherTests).values({
     id,
     teacherId: input.teacherId,
-    groupId: group.id,
     number: (lastNo ?? 0) + 1,
-    examKind: group.examKind,
+    examKind: input.kind,
+    topicId: isTopic ? input.topicId! : null,
     mode: input.mode,
     opensAt: input.opensAt,
     durationMin: input.durationMin,
@@ -127,18 +173,19 @@ export async function createTeacherTest(input: CreateInput): Promise<CreateResul
     charged: cost,
     createdAt: new Date(),
   });
+  await db.insert(teacherTestGroups).values(groupIds.map((groupId) => ({ testId: id, groupId })));
   await db.insert(teacherTestItems).values(items.map((i) => ({ testId: id, n: i.n, taskCode: i.code, format: i.format })));
   await db.insert(teacherTestVariants).values(
-    members.map((m, k) => ({ testId: id, userId: m.userId, letter: variants[k].letter, order: JSON.stringify(variants[k].order), maps: JSON.stringify(variants[k].maps) })),
+    members.map((userId, k) => ({ testId: id, userId, letter: variants[k].letter, order: JSON.stringify(variants[k].order), maps: JSON.stringify(variants[k].maps) })),
   );
   if (cost > 0) {
     await db.update(teacherAccounts).set({ balance: (acc?.balance ?? 0) - cost }).where(eq(teacherAccounts.userId, input.teacherId));
-    await db.insert(teacherBalanceTx).values({ teacherId: input.teacherId, amount: -cost, kind: "charge", testId: id, note: `Onlayn sınaq: ${members.length} şagird × ${ONLINE_PRICE} AZN` });
+    await db.insert(teacherBalanceTx).values({ teacherId: input.teacherId, amount: -cost, kind: "charge", testId: id, note: `Onlayn sınaq №${(lastNo ?? 0) + 1}` });
   }
   return { ok: true, id, reused };
 }
 
-/** Struktur (müəllimə göstərilir; dəyişə bilməz): bölmələr, mövzu sayı, müddət. */
+/** Struktur (müəllimə göstərilir; dəyişə bilməz): bölmələr, mövzu sayı, müddət, onlayn qiymət. */
 export async function structureOf(kind: string) {
   const [sections, [k], topicRows] = await Promise.all([
     sectionsOf(kind),
@@ -151,6 +198,7 @@ export async function structureOf(kind: string) {
     total: sections.reduce((s, x) => s + x.count, 0),
     durationMin: k?.durationMin ?? 90,
     name: k?.name ?? kind,
-    topics: topicRows.filter((t) => t.examTypes.split(",").map((x) => x.trim()).includes(examType)).length,
+    price: k?.teacherPrice ?? 0,
+    topics: kind === "movzu" ? 1 : topicRows.filter((t) => t.examTypes.split(",").map((x) => x.trim()).includes(examType)).length,
   };
 }

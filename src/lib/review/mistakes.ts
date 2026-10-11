@@ -11,6 +11,8 @@ export type Mistake = {
   chosen: string;
   /** Düzgün cavab: hərf (qapalı) və ya göstəriləcək mətn. */
   correct: string;
+  /** Həllin addımları (kartda "Həllinə bax" açılanda göstərilir). */
+  steps: string[];
   /** Harada səhv edilib: "Günün sualı", "Repetitor", "Buraxılış sınağı №1", "Təkrar". */
   where: "daily" | "tutor" | "exam" | "practice";
   examTitle?: string;
@@ -54,7 +56,7 @@ export async function listMistakes(state: DemoState, pool: PracticeQuestion[]): 
     const q = byRef.get(ref);
     const key = keys.get(ref);
     if (out.has(ref) || !q || !key || checkAnswer(key, chosen)) continue;
-    out.set(ref, { q, chosen, correct: key.format === "closed" ? key.answer : key.answerText, where, examTitle, href: href ?? q.href, fixed: fixed.has(ref) });
+    out.set(ref, { q, chosen, correct: key.format === "closed" ? key.answer : key.answerText, steps: key.steps, where, examTitle, href: href ?? q.href, fixed: fixed.has(ref) });
   }
   return [...out.values()];
 }
