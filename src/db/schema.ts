@@ -511,19 +511,42 @@ export const weakPracticeSets = sqliteTable(
 
 export const EXAM_ITEM_FORMATS = ["closed", "coded", "written"] as const;
 
-/** Sınaq: imtahan quruluşuna (exam_blueprints) görə sual bankından yaradılır. */
+/**
+ * Sınaq tipləri: 9-cu sinif buraxılış, 11-ci sinif buraxılış, 11-ci sinif blok, Mövzu sınağı.
+ * Qiymət (AZN) — tək sınağın alınması üçün. blueprint_key — imtahan quruluşu (mövzu sınağında yoxdur).
+ */
+export const examKinds = sqliteTable("exam_kinds", {
+  /** "buraxilis-9", "buraxilis-11", "qebul-11", "movzu". */
+  key: text("key").primaryKey(),
+  name: text("name").notNull(),
+  price: real("price").notNull(),
+  blueprintKey: text("blueprint_key").references(() => examBlueprints.key),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const EXAM_STATUSES = ["active", "passive", "finished"] as const;
+export type ExamStatusDb = (typeof EXAM_STATUSES)[number];
+
+/**
+ * Sınaq: imtahan quruluşuna (exam_blueprints) görə sual bankından yaradılır.
+ * Status: active — saytda görünür; passive — görünmür (yeni yaradılan); finished — bitib (yalnız iştirak edənlər görür).
+ */
 export const exams = sqliteTable(
   "exams",
   {
     id: text("id").primaryKey(),
+    /** Mövzu sınağında "movzu" (bölmələri yoxdur — say adminin seçimidir). */
     blueprintKey: text("blueprint_key")
       .notNull()
       .references(() => examBlueprints.key),
+    kind: text("kind").references(() => examKinds.key),
+    /** Yalnız mövzu sınağında. */
+    topicId: integer("topic_id").references(() => topics.id),
     /** Eyni tip sınaqlar arasında sıra nömrəsi (№1, №2…). */
     number: integer("number").notNull(),
     title: text("title").notNull(),
     durationMin: integer("duration_min").notNull(),
-    status: text("status", { enum: ["published", "draft"] }).notNull().default("published"),
+    status: text("status", { enum: EXAM_STATUSES }).notNull().default("passive"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),

@@ -40,17 +40,17 @@ test("desktop: rəqəmlər bazadan, bölmələr və linklər", async ({ page }) 
   await expect(topics.getByRole("link", { name: "Bütün 27 mövzunu gör" })).toHaveAttribute("href", "/statistika");
 
   // Header anker linkləri və bölmələr
-  for (const id of ["movzular", "nece-isleyir", "sinaqlar", "qiymetler", "numune"]) {
+  for (const id of ["movzular", "nece-isleyir", "repetitor", "sinaqlar", "imtahan-qarsiligi", "qiymetler", "numune"]) {
     await expect(page.locator(`#${id}`)).toHaveCount(1);
   }
   const nav = page.getByRole("banner").getByRole("navigation", { name: "Əsas" });
-  await expect(nav.getByRole("link")).toHaveCount(4);
+  await expect(nav.getByRole("link")).toHaveCount(5);
 
-  // Qiymətlər: Free / Pro / Premium, Pro — "Ən çox seçilən", CTA-lar düzgün səhifələrə
+  // Qiymətlər: Abunəliklər səhifəsindəki kartlar — Free / Pro / Premium, Premium — "Ən çox seçilən"
   const pricing = page.locator("#qiymetler");
-  await expect(pricing.getByRole("article")).toHaveCount(3);
-  await expect(pricing.getByRole("article", { name: "Pro" })).toContainText("Ən çox seçilən");
-  await expect(pricing.getByRole("link", { name: "Pro-ya keç" })).toHaveAttribute("href", "/odenis?plan=pro");
+  await expect(pricing.getByRole("region")).toHaveCount(3);
+  await expect(pricing.getByRole("region", { name: "Premium" })).toContainText("Ən çox seçilən");
+  await expect(pricing.getByRole("link", { name: "Pro-ya keç · aylıq" })).toHaveAttribute("href", "/odenis?plan=pro&period=month");
   await expect(pricing.getByRole("link", { name: "Pulsuz başla" })).toHaveAttribute("href", "/qeydiyyat");
 
   // Footer: məcburi cümlə
@@ -95,11 +95,12 @@ test("mobil 390: menyu açılır/bağlanır, üfüqi sürüşmə yoxdur", async 
   await expect(page).toHaveURL(/#qiymetler$/);
   await expect(page.getByRole("button", { name: "Menyu" })).toHaveAttribute("aria-expanded", "false");
 
-  // Mobil-də Pro planı birinci gəlir
-  const plans = page.locator("#qiymetler article");
+  // Mobil-də kartlar bir sütunda: Free, Pro, Premium (alt-alta)
+  const plans = page.locator("#qiymetler").getByRole("region");
   const boxes = await Promise.all([0, 1, 2].map((i) => plans.nth(i).boundingBox()));
-  const monthly = await page.getByRole("article", { name: "Pro" }).boundingBox();
-  expect(monthly!.y).toBe(Math.min(...boxes.map((b) => b!.y)));
+  expect(boxes[0]!.y).toBeLessThan(boxes[1]!.y);
+  expect(boxes[1]!.y).toBeLessThan(boxes[2]!.y);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(await axe(page)).toEqual([]);
 });
 

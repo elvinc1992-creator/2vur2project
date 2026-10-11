@@ -1,5 +1,6 @@
 import "server-only";
 import type { PagerItem } from "@/lib/demo/logic";
+import { canUseRepetitor } from "@/lib/demo/plans";
 import type { DemoState, TutorProgress } from "@/lib/demo/state";
 import { buildCurriculum, planView, todayIn, type Curriculum, type PlanView } from "./plan";
 import { listRepetitorTopics, type RepetitorTopicWithQuestions } from "./source";
@@ -12,22 +13,31 @@ export const repetitorHref = (topic: string, n: number) => `/onlayn-repetitor/${
 export type TutorContext = {
   topics: RepetitorTopicWithQuestions[];
   curr: Curriculum;
-  /** Qrafik seçilməyibsə null — heç bir dərs açıq deyil. */
+  /** Premium deyilsə və ya qrafik seçilməyibsə null. */
   view: PlanView | null;
-  /** Sual açıq dərsdədirmi (qrafikə görə). */
+  /** Sual açıq dərsdədirmi: ilk dərs — hamıya, qalanları — Premium-da qrafikə görə. */
   isOpen: (questionId: string) => boolean;
+  /** İlk (pulsuz) dərsin sualları. */
+  isFree: (questionId: string) => boolean;
+  paid: boolean;
 };
+
+/** İlk dərs (tədris sırasının ilk mövzusu, 1-ci hissə) hamıya açıqdır — qonaq, Free və Pro planda da. */
+export const freeLessonOf = (curr: Curriculum) => curr.lessons[0];
 
 /** Mövzular → plan (dərslər, sınaqlar) → istifadəçinin qrafikinə görə statuslar. */
 export async function tutorContext(state: DemoState, now = new Date()): Promise<TutorContext> {
   const topics = await listRepetitorTopics();
   const curr = buildCurriculum(topics);
   const t = tutorOf(state);
-  const view = state.tutorPlan
-    ? planView(curr, state.tutorPlan, (id) => Boolean(t[id]?.a), state.tutorExams ?? {}, todayIn(now))
-    : null;
-  const open = new Set(view?.lessons.filter((l) => l.status !== "locked").flatMap((l) => l.questionIds));
-  return { topics, curr, view, isOpen: (id) => open.has(id) };
+  const paid = canUseRepetitor(state);
+  const view =
+    paid && state.tutorPlan
+      ? planView(curr, state.tutorPlan, (id) => Boolean(t[id]?.a), state.tutorExams ?? {}, todayIn(now))
+      : null;
+  const free = new Set(freeLessonOf(curr)?.questionIds ?? []);
+  const open = new Set([...(view?.lessons.filter((l) => l.status !== "locked").flatMap((l) => l.questionIds) ?? []), ...free]);
+  return { topics, curr, view, isOpen: (id) => open.has(id), isFree: (id) => free.has(id), paid };
 }
 
 export function topicProgress(state: DemoState, topic: RepetitorTopicWithQuestions) {

@@ -10,7 +10,8 @@ const PROTECTED = [
   "/profil",
   "/onboarding",
   "/gunun-suallari",
-  "/onlayn-repetitor",
+  // Onlayn repetitorun sınaqları — abunəçilər üçün; ilk dərs (mövzu səhifələri) hamıya açıqdır.
+  "/onlayn-repetitor/sinaq",
   "/sehvlerim",
   "/bal-simulyatoru",
   "/tapshiriq",

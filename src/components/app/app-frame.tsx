@@ -55,7 +55,7 @@ export function AppFrame({ state, admin = false, children }: { state: DemoState;
   );
 }
 
-/** Qeydiyyatsız ziyarətçi üçün sadə çərçivə (Statistika ictimaidir). */
+/** Qeydiyyatsız ziyarətçi üçün sadə çərçivə (Statistika və repetitorun ilk dərsi ictimaidir). */
 export function PublicFrame({ children }: { children: ReactNode }) {
   const t = az.app.stats;
   return (
@@ -64,7 +64,7 @@ export function PublicFrame({ children }: { children: ReactNode }) {
         <div className="mx-auto flex min-h-16 w-full max-w-content flex-wrap items-center justify-between gap-3 px-4 py-2 md:px-8">
           <Logo />
           <nav aria-label={az.app.nav.label} className="flex items-center gap-2">
-            <Link href="/daxil-ol?next=/statistika" className={buttonClass({ variant: "ghost", size: "sm" })}>
+            <Link href="/daxil-ol" className={buttonClass({ variant: "ghost", size: "sm" })}>
               {t.login}
             </Link>
             <Link href="/qeydiyyat" className={buttonClass({ variant: "navy", size: "sm" })}>

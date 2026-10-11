@@ -5,9 +5,9 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { acceptsAnswer, checkAnswer, feedbackOf, isValidGiven, readFormAnswer, type AnswerFeedback } from "@/lib/bank/check";
 import { canUseRepetitor } from "@/lib/demo/plans";
-import { cleanMeta, rememberMeta, updateDemoState, type AnswerMeta, type DemoState } from "@/lib/demo/state";
+import { cleanMeta, rememberMeta, seedState, updateDemoState, type AnswerMeta, type DemoState } from "@/lib/demo/state";
 import { changePlan, examKey, todayIn } from "./plan";
-import { nextRepetitorHref, tutorContext } from "./progress";
+import { freeLessonOf, nextRepetitorHref, repetitorHref, tutorContext } from "./progress";
 import { findRepetitorQuestion, getRepetitorKey, getRepetitorKeys } from "./source";
 
 // Onlayn repetitor yalnız abunəçilər (Pro) üçündür — hər əməliyyatda serverdə yoxlanılır.
@@ -46,7 +46,23 @@ export async function answerRepetitorAction(id: string, choice: string, meta?: A
   const key = await getRepetitorKey(id);
   if (!q || !key || !isValidGiven(key.format, key.selfCheck, choice)) throw new Error("Yanlış sorğu");
 
-  return updatePaid(async (state) => {
+  // Qonaq: yalnız ilk (pulsuz) dərs; cavab yoxlanılır, heç yerdə saxlanılmır.
+  const session = await auth();
+  if (!session?.user?.id) {
+    const ctx = await tutorContext(seedState(""));
+    if (!ctx.isFree(id)) throw new Error("Bu dərs abunə ilə açılır");
+    const lesson = freeLessonOf(ctx.curr)!;
+    const nextId = lesson.questionIds[lesson.questionIds.indexOf(id) + 1];
+    const topic = ctx.topics.find((t) => t.slug === q.topic)!;
+    return {
+      ...feedbackOf(key, choice),
+      hintUsed: false,
+      nextHref: nextId ? repetitorHref(topic.slug, topic.questions.findIndex((x) => x.id === nextId) + 1) : null,
+    };
+  }
+
+  // İlk dərs hamıya açıqdır; qalan dərslər — Premium-da qrafikə görə (isOpen yoxlayır).
+  return updateDemoState(session.user.id, async (state) => {
     const ctx = await tutorContext(state);
     if (!ctx.isOpen(id)) throw new Error("Bu dərs hələ açılmayıb");
     const tutor = (state.tutor ??= {});

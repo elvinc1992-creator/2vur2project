@@ -112,6 +112,19 @@ export function streakInfo(state: DemoState, now = new Date()) {
 export type ExamStatus = "done" | "in_progress" | "expired" | "purchased" | "locked";
 
 /** "purchased" — başlamağa hazırdır: alınıb, plan üzrə seçilib və ya Premium (bütün sınaqlar). */
+/**
+ * Sınaq saytda görünürmü: aktiv — hamıya; bitmiş — yalnız iştirak edənə (alıb, başlayıb və ya bitirib);
+ * passiv — heç kimə (admin yoxlayır).
+ */
+export function isExamVisible(state: DemoState, exam: Pick<ExamMeta, "id" | "status">): boolean {
+  if (exam.status === "active") return true;
+  if (exam.status === "finished") return Boolean(state.results[exam.id] || state.attempts[exam.id] || state.purchased.includes(exam.id));
+  return false;
+}
+
+/** Yeni alış / pulsuz seçim yalnız aktiv sınaqda olur. */
+export const isExamOpenForSale = (exam: Pick<ExamMeta, "status">) => exam.status === "active";
+
 export function examStatus(state: DemoState, exam: ExamMeta, now = Date.now()): ExamStatus {
   const id = exam.id;
   if (state.results[id]) return "done";

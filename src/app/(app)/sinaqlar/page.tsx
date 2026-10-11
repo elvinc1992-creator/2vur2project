@@ -1,28 +1,35 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Page, Topbar } from "@/components/app/topbar";
-import { ClockIcon, ListIcon } from "@/components/icons";
+import { CalendarIcon, CheckCircleIcon, ClockIcon, ListIcon } from "@/components/icons";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, FormatBar, Tag, h1Class, h3Class } from "@/components/ui/display";
 import { az } from "@/content/az";
 import { claimExamAction, startExamAction } from "@/lib/demo/actions";
 import { listExams } from "@/lib/exams/source";
-import { answeredCount, examStatus, formatDate, remainingMs } from "@/lib/demo/logic";
-import { EXAM_PRICE, examQuota } from "@/lib/demo/plans";
+import { priceText, type ExamMeta } from "@/lib/exams/types";
+import { answeredCount, examStatus, formatDate, isExamOpenForSale, isExamVisible, remainingMs, type ExamStatus } from "@/lib/demo/logic";
+import { examQuota } from "@/lib/demo/plans";
 import { initials, requireDemo } from "@/lib/demo/session";
+import type { DemoState } from "@/lib/demo/state";
 import { cn } from "@/lib/cn";
 
 export const metadata: Metadata = { title: az.app.store.title };
 
-const FILTERS = ["all", "owned", "new"] as const;
+const FILTERS = ["all", "new", "progress", "done"] as const;
 type Filter = (typeof FILTERS)[number];
-const TYPES = ["9", "11", "blok"] as const;
+const TYPES = ["9", "11", "blok", "movzu"] as const;
 type ExamTypeFilter = (typeof TYPES)[number];
+
+/** Şagird üçün vəziyyət: işlənib (nəticə var), yarımçıq (başlayıb), hələ işlənməyib. */
+type Progress = Exclude<Filter, "all">;
+const progressOf = (s: ExamStatus): Progress => (s === "done" ? "done" : s === "in_progress" || s === "expired" ? "progress" : "new");
+
+const isoOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 export default async function StorePage(props: PageProps<"/sinaqlar">) {
   const sp = await props.searchParams;
-  const f = sp.f;
-  const filter: Filter = FILTERS.includes(f as Filter) ? (f as Filter) : "all";
+  const filter: Filter = FILTERS.includes(sp.f as Filter) ? (sp.f as Filter) : "all";
   const { user, state } = await requireDemo("/sinaqlar");
   const quota = examQuota(state);
   const t = az.app.store;
@@ -37,10 +44,16 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
     return s ? `/sinaqlar?${s}` : "/sinaqlar";
   };
 
-  const exams = (await listExams())
-    .map((e) => ({ ...e, status: examStatus(state, e) }))
-    .filter((e) => (filter === "all" ? true : filter === "new" ? e.status === "locked" : e.status !== "locked"))
-    .filter((e) => !type || e.examType === type);
+  // Ən yeni sınaq birinci (yaradılma tarixi ilə); passivlər və iştirak etmədiyin bitmiş sınaqlar görünmür.
+  const visible = (await listExams())
+    .filter((e) => isExamVisible(state, e))
+    .filter((e) => !type || e.examType === type)
+    .map((e) => {
+      const status = examStatus(state, e);
+      return { ...e, userStatus: status, progress: progressOf(status), ended: e.status === "finished" };
+    });
+  const countOf = (f: Filter) => (f === "all" ? visible.length : visible.filter((e) => e.progress === f).length);
+  const exams = visible.filter((e) => filter === "all" || e.progress === filter);
 
   return (
     <>
@@ -57,11 +70,13 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
               href={qs({ f: key })}
               aria-current={filter === key ? "page" : undefined}
               className={cn(
-                "grid min-h-11 place-items-center rounded-md border-[1.5px] px-4 text-[15px] font-bold no-underline",
+                "inline-flex min-h-11 items-center gap-2 rounded-md border-[1.5px] px-4 text-[15px] font-bold no-underline",
                 filter === key ? "border-navy-900 bg-navy-900 text-white" : "border-control-border bg-white text-navy-900",
               )}
             >
+              {key !== "all" && <StateDot progress={key} />}
               {t.filters[key]}
+              <span className="tabular opacity-70">{countOf(key)}</span>
             </Link>
           ))}
         </nav>
@@ -103,80 +118,147 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
 
         {exams.length === 0 && <p className="text-ink-muted">{t.empty}</p>}
         <div className="grid gap-4 md:grid-cols-2">
-          {exams.map((e) => {
-            const result = state.results[e.id];
-            const done = answeredCount(state.attempts[e.id]);
-            const { closed, coded, written } = e.counts;
-            const total = e.total;
-            return (
-              <Card as="article" key={e.id} className="grid gap-3.5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <span className="text-small text-ink-muted">{e.group}</span>
-                    <h2 className={h3Class}>{e.title}</h2>
-                  </div>
-                  {e.status === "in_progress" && <Tag tone="warning">{t.inProgress}</Tag>}
-                  {e.status === "expired" && <Tag tone="danger">{t.expired}</Tag>}
-                  {e.status === "locked" && <Tag className="tabular">{EXAM_PRICE}</Tag>}
-                  {e.status === "done" && <Tag tone="solid">{t.score(result.score)}</Tag>}
-                  {e.status === "purchased" && <Tag tone="success">{t.owned}</Tag>}
-                </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-2 text-small text-ink-muted">
-                  <span className="inline-flex items-center gap-1.5">
-                    <ListIcon className="size-[18px] text-navy-900" />
-                    {t.questions(total)}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <ClockIcon className="size-[18px] text-navy-900" />
-                    {t.minutes(e.durationMin)}
-                  </span>
-                </div>
-                <FormatBar closed={closed} coded={coded} written={written} label={t.format(closed, coded, written)} />
-                <p className="text-small text-ink-muted">{t.format(closed, coded, written)}</p>
-                {e.status === "in_progress" && (
-                  <>
-                    <p className="text-small font-semibold text-ink">
-                      {t.paused(Math.ceil(remainingMs(state.attempts[e.id], e) / 60_000))}
-                    </p>
-                    <ButtonLink href={`/sinaq/${e.id}`} block>
-                      {t.resume(done, total)}
-                    </ButtonLink>
-                  </>
-                )}
-                {e.status === "expired" && (
-                  <ButtonLink href={`/sinaq/${e.id}`} variant="secondary" block>
-                    {t.result}
-                  </ButtonLink>
-                )}
-                {e.status === "locked" &&
-                  (quota.kind !== "all" && quota.left > 0 ? (
-                    <form action={claimExamAction.bind(null, e.id)}>
-                      <Button type="submit" block>
-                        {t.claim(quota.kind)}
-                      </Button>
-                    </form>
-                  ) : (
-                    <ButtonLink href={`/odenis?exam=${e.id}`} variant="secondary" block>
-                      {t.buy(EXAM_PRICE)}
-                    </ButtonLink>
-                  ))}
-                {e.status === "done" && (
-                  <ButtonLink href={`/sinaq/${e.id}/netice`} variant="secondary" block>
-                    {t.result}
-                  </ButtonLink>
-                )}
-                {e.status === "purchased" && (
-                  <form action={startExamAction.bind(null, e.id)}>
-                    <Button type="submit" block>
-                      {t.start}
-                    </Button>
-                  </form>
-                )}
-              </Card>
-            );
-          })}
+          {exams.map((e) => (
+            <ExamCard key={e.id} e={e} state={state} quota={quota} />
+          ))}
         </div>
       </Page>
     </>
+  );
+}
+
+function StateDot({ progress }: { progress: Progress }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "size-2.5 flex-none rounded-full",
+        progress === "done" ? "bg-success-700" : progress === "progress" ? "bg-warning-700" : "border-2 border-navy-200 bg-white",
+      )}
+    />
+  );
+}
+
+type CardExam = ExamMeta & { userStatus: ExamStatus; progress: Progress; ended: boolean };
+
+/**
+ * Sınaq kartı — vəziyyətə görə fərqli görünüş:
+ * işlənib — yaşıl zolaq və bal; yarımçıq — narıncı zolaq və irəliləyiş; hələ işlənməyib — sadə ağ kart.
+ */
+function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: ReturnType<typeof examQuota> }) {
+  const t = az.app.store;
+  const result = state.results[e.id];
+  const attempt = state.attempts[e.id];
+  const done = answeredCount(attempt);
+  const { closed, coded, written } = e.counts;
+  const canSell = isExamOpenForSale(e);
+
+  return (
+    <Card
+      as="article"
+      aria-label={`${e.title} — ${e.progress === "done" ? t.stateDone : e.progress === "progress" ? t.stateHalf : t.stateNew}`}
+      className={cn(
+        "relative grid gap-3.5 overflow-hidden border-l-[6px]",
+        e.progress === "done" && "border-l-success-700 bg-success-100/70",
+        e.progress === "progress" && "border-l-warning-700 bg-warning-100/40",
+        e.progress === "new" && "border-l-navy-200",
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        {e.progress === "done" && (
+          <Tag tone="success" icon={<CheckCircleIcon />}>
+            {t.stateDone}
+          </Tag>
+        )}
+        {e.progress === "progress" && <Tag tone="warning">{e.userStatus === "expired" ? t.expired : t.stateHalf}</Tag>}
+        {e.progress === "new" && <Tag>{t.stateNew}</Tag>}
+        {e.ended && <Tag tone="lock">{t.stateEnded}</Tag>}
+        <span className="ml-auto inline-flex items-center gap-1 text-[13px] text-ink-muted tabular">
+          <CalendarIcon className="size-4" />
+          {t.created(formatDate(isoOf(e.createdAt)))}
+        </span>
+      </div>
+
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span className="text-small text-ink-muted">{e.topicName ? t.topicExam(e.topicName) : e.group}</span>
+          <h2 className={h3Class}>{e.title}</h2>
+        </div>
+        {e.userStatus === "done" && <Tag tone="solid">{t.score(result.score)}</Tag>}
+        {e.userStatus === "locked" && canSell && <Tag className="tabular">{priceText(e.price)}</Tag>}
+        {e.userStatus === "purchased" && <Tag tone="success">{t.owned}</Tag>}
+      </div>
+
+      <div className="flex flex-wrap gap-x-4 gap-y-2 text-small text-ink-muted">
+        <span className="inline-flex items-center gap-1.5">
+          <ListIcon className="size-[18px] text-navy-900" />
+          {t.questions(e.total)}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <ClockIcon className="size-[18px] text-navy-900" />
+          {t.minutes(e.durationMin)}
+        </span>
+      </div>
+
+      {e.progress === "progress" && attempt ? (
+        <div className="grid gap-1.5">
+          <div
+            role="progressbar"
+            aria-label={t.answered(done, e.total)}
+            aria-valuemin={0}
+            aria-valuemax={e.total}
+            aria-valuenow={done}
+            className="h-2.5 overflow-hidden rounded-pill bg-white"
+          >
+            <i className="block h-full rounded-pill bg-warning-700" style={{ width: `${Math.round((done / Math.max(1, e.total)) * 100)}%` }} />
+          </div>
+          <p className="m-0 text-small font-semibold text-ink">
+            {t.answered(done, e.total)}
+            {e.userStatus === "in_progress" && ` · ${t.paused(Math.ceil(remainingMs(attempt, e) / 60_000))}`}
+          </p>
+        </div>
+      ) : (
+        <>
+          <FormatBar closed={closed} coded={coded} written={written} label={t.format(closed, coded, written)} />
+          <p className="text-small text-ink-muted">{t.format(closed, coded, written)}</p>
+        </>
+      )}
+
+      {e.userStatus === "in_progress" && (
+        <ButtonLink href={`/sinaq/${e.id}`} block>
+          {t.resume(done, e.total)}
+        </ButtonLink>
+      )}
+      {e.userStatus === "expired" && (
+        <ButtonLink href={`/sinaq/${e.id}`} variant="secondary" block>
+          {t.result}
+        </ButtonLink>
+      )}
+      {e.userStatus === "locked" &&
+        canSell &&
+        (quota.kind !== "all" && quota.left > 0 ? (
+          <form action={claimExamAction.bind(null, e.id)}>
+            <Button type="submit" block>
+              {t.claim(quota.kind)}
+            </Button>
+          </form>
+        ) : (
+          <ButtonLink href={`/odenis?exam=${e.id}`} variant="secondary" block>
+            {t.buy(priceText(e.price))}
+          </ButtonLink>
+        ))}
+      {e.userStatus === "done" && (
+        <ButtonLink href={`/sinaq/${e.id}/netice`} variant="secondary" block>
+          {t.result}
+        </ButtonLink>
+      )}
+      {e.userStatus === "purchased" && (
+        <form action={startExamAction.bind(null, e.id)}>
+          <Button type="submit" block>
+            {t.start}
+          </Button>
+        </form>
+      )}
+    </Card>
   );
 }

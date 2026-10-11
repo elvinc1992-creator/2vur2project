@@ -71,7 +71,7 @@ export async function overview() {
     revenueByMonth(),
     db.select({ kind: payments.kind, s: sum(payments.amount), n: count() }).from(payments).groupBy(payments.kind),
     db.select({ format: bankTasks.format, n: count() }).from(bankTasks).groupBy(bankTasks.format),
-    db.select({ n: count() }).from(exams).where(eq(exams.status, "published")),
+    db.select({ n: count() }).from(exams).where(eq(exams.status, "active")),
     db
       .select({ day: sql<string>`date(${users.createdAt} / 1000, 'unixepoch')`, n: count() })
       .from(users)

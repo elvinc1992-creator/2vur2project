@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AngleDeco, ArrowIcon, CameraIcon, ChartIcon, CheckIcon, ChevronIcon, CloseIcon, SendIcon } from "@/components/icons";
+import { AngleDeco, ArrowIcon, CameraIcon, ChartIcon, CheckIcon, ChevronIcon, LockIcon, SendIcon } from "@/components/icons";
 import { FooterDark } from "@/components/landing/footer-dark";
 import { SampleCard, type SampleQuestion } from "@/components/landing/sample-card";
 import { listAllRepetitorTopics } from "@/lib/repetitor/source";
 import { SiteHeader } from "@/components/landing/site-header";
+import { Welcome } from "@/components/landing/welcome";
+import { planInfos, examPricesText } from "@/components/plans-data";
+import { LandingPlans } from "@/components/plans-view";
+import { MathText } from "@/components/ui/math-text";
+import { listExamPairs, type ExamQuestionView } from "@/lib/bank/source";
+import { LETTERS } from "@/lib/demo/content";
 import { TopicIcon } from "@/components/landing/topic-icon";
 import { buttonClass, ButtonLink } from "@/components/ui/button";
 import { Card, FormatBar, Placeholder, Tag, eyebrowClass, h1Class, h3Class } from "@/components/ui/display";
@@ -60,8 +66,27 @@ async function loadData(): Promise<LandingData> {
   }
 }
 
+/** Repetitorun dərs planı (ilk 4 mövzu) və imtahan qarşılığı nümunəsi — bazadan; xəta olsa bölmə sadə görünür. */
+async function tutorAndMatch() {
+  try {
+    const [topics, pairs, examPrices] = await Promise.all([listAllRepetitorTopics(), listExamPairs(), examPricesText()]);
+    const plan = topics.filter((x) => x.questions.length).slice(0, 4).map((x) => ({ slug: x.slug, name: x.name, n: x.questions.length }));
+    const usable = pairs.filter((p) => p.counterparts.length && !p.counterparts[0].figureTikz);
+    const pair = usable.find((p) => p.matchLevel === "EYNİ") ?? usable[0] ?? null;
+    return { plan, pair, pairs: pairs.length, pairTopics: new Set(pairs.map((p) => p.topicSlug)).size, examPrices };
+  } catch (e) {
+    console.error("[landing] repetitor / qarşılıq yüklənmədi", e);
+    return { plan: [], pair: null, pairs: 0, pairTopics: 0, examPrices: "" };
+  }
+}
+
 export default async function HomePage() {
-  const [{ overview, ranking }, EXAM_FORMAT, sample] = await Promise.all([loadData(), examFormatOf("buraxilis-11"), sampleQuestion()]);
+  const [{ overview, ranking }, EXAM_FORMAT, sample, extra] = await Promise.all([
+    loadData(),
+    examFormatOf("buraxilis-11"),
+    sampleQuestion(),
+    tutorAndMatch(),
+  ]);
   const topicCount = fmtInt(overview?.topics || ranking.length || 27);
   const telegram = socialUrl(brand.telegramUrl);
   const instagram = socialUrl(brand.instagramUrl);
@@ -75,6 +100,7 @@ export default async function HomePage() {
           <div className="relative mx-auto grid w-full max-w-content gap-10 px-4 md:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16">
             <AngleDeco className="absolute -top-4 right-0 hidden text-navy-200 lg:block" />
             <div className="relative grid gap-5">
+              <Welcome />
               <Tag tone="coral" icon={<ChartIcon />} className="justify-self-start">
                 {t.hero.eyebrow}
               </Tag>
@@ -178,6 +204,64 @@ export default async function HomePage() {
           </Section>
         )}
 
+        {/* ---------- Onlayn repetitor ---------- */}
+        <Section id="repetitor" labelledBy="tutor-title">
+          <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
+            <div className="grid gap-4">
+              <span className={eyebrowClass}>{t.tutor.eyebrow}</span>
+              <h2 id="tutor-title" className={h1Class}>
+                {t.tutor.title}
+              </h2>
+              <p className="text-lead text-ink-muted">{t.tutor.lead}</p>
+              <FeatureList items={t.tutor.features} />
+              <div className="grid gap-3 md:flex md:flex-wrap">
+                <ButtonLink href={extra.plan[0] ? `/onlayn-repetitor/${extra.plan[0].slug}` : "/onlayn-repetitor"} variant="primary">
+                  {t.tutor.ctaFree}
+                  <ArrowIcon className="size-[22px]" />
+                </ButtonLink>
+                <ButtonLink href="/onlayn-repetitor" variant="secondary">
+                  {t.tutor.ctaMore}
+                </ButtonLink>
+              </div>
+            </div>
+            {extra.plan.length > 0 && (
+              <Card className="grid gap-3">
+                <h3 className={h3Class}>{t.tutor.planTitle}</h3>
+                <ol className="m-0 grid list-none gap-2 p-0">
+                  {extra.plan.map((x, i) => (
+                    <li
+                      key={x.slug}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg border px-3 py-2.5",
+                        i === 0 ? "border-success-700/40 bg-success-100" : "border-line bg-navy-050",
+                      )}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "grid size-9 flex-none place-items-center rounded-full font-bold tabular",
+                          i === 0 ? "bg-success-700 text-white" : "bg-white text-ink-muted",
+                        )}
+                      >
+                        {i === 0 ? i + 1 : <LockIcon className="size-4" />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-semibold text-navy-900">{x.name}</span>
+                        <span className="text-small text-ink-muted">
+                          {t.tutor.questions(x.n)} · {i === 0 ? t.tutor.free : t.tutor.locked}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                  <li className="rounded-lg border-2 border-dashed border-coral-500 bg-coral-100/40 px-3 py-2.5 text-small font-semibold text-navy-900">
+                    ★ {t.tutor.exam}
+                  </li>
+                </ol>
+              </Card>
+            )}
+          </div>
+        </Section>
+
         {/* ---------- Sınaqlar ---------- */}
         <section id="sinaqlar" aria-labelledby="exams-title" className="scroll-mt-16 overflow-hidden bg-navy-900 py-12 text-white md:py-[72px] lg:py-[88px]">
           <div className="mx-auto grid w-full max-w-content gap-8 px-4 md:px-8 lg:grid-cols-2 lg:items-center lg:gap-16">
@@ -214,16 +298,39 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* ---------- İmtahan qarşılığı ---------- */}
+        {extra.pair && (
+          <Section id="imtahan-qarsiligi" tone="tint" labelledBy="match-title">
+            <Head eyebrow={t.match.eyebrow} title={t.match.title} id="match-title">
+              <p className="max-w-[44rem] text-ink-muted">{t.match.lead}</p>
+            </Head>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <MatchCard
+                label={t.match.examLabel}
+                meta={t.match.exam(extra.pair.year, extra.pair.exam, extra.pair.questionNo)}
+                q={extra.pair.examQuestion}
+                tone="exam"
+              />
+              <MatchCard label={t.match.oursLabel} meta={`${extra.pair.topicName} · ${extra.pair.type}`} q={extra.pair.counterparts[0]} tone="ours" />
+            </div>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+              <ButtonLink href="/imtahan-qarsiligi" variant="primary">
+                {t.match.cta}
+                <ArrowIcon className="size-[22px]" />
+              </ButtonLink>
+              <span className="text-small text-ink-muted">{t.match.stat(extra.pairs, extra.pairTopics)}</span>
+            </div>
+          </Section>
+        )}
+
         {/* ---------- Qiymətlər ---------- */}
         <Section id="qiymetler" labelledBy="pricing-title">
           <Head eyebrow={t.pricing.eyebrow} title={t.pricing.title} id="pricing-title">
             <p className="max-w-[40rem] text-ink-muted">{t.pricing.lead}</p>
           </Head>
-          <div className="grid gap-4 lg:grid-cols-3 lg:items-stretch">
-            <PlanCard plan={t.pricing.plans.free} id="plan-free" href="/qeydiyyat" variant="secondary" />
-            <PlanCard plan={t.pricing.plans.monthly} id="plan-monthly" href="/odenis?plan=pro" variant="primary" featured />
-            <PlanCard plan={t.pricing.plans.exam} id="plan-exam" href="/odenis?plan=premium" variant="secondary" />
-          </div>
+          {/* Abunəliklər səhifəsindəki kartlarla eyni dizayn */}
+          <LandingPlans plans={planInfos()} />
+          {extra.examPrices && <p className="text-small text-ink-muted">{t.pricing.examPrices(extra.examPrices)}</p>}
         </Section>
 
         {/* ---------- Müəllim (yer tutucu) ---------- */}
@@ -477,71 +584,25 @@ function TopicTile({ row, max }: { row: RankingRow; max: number }) {
   );
 }
 
-type Plan = {
-  name: string;
-  price: string;
-  unit: string;
-  cta: string;
-  note?: string;
-  features: readonly { text: string; on: boolean }[];
-};
-
-function PlanCard({
-  plan,
-  id,
-  href,
-  variant,
-  featured,
-}: {
-  plan: Plan;
-  id: string;
-  href: string;
-  variant: "primary" | "secondary";
-  featured?: boolean;
-}) {
+/** İmtahan sualı və ya bizim qarşılığı — variantlarla (cavab göstərilmir). */
+function MatchCard({ label, meta, q, tone }: { label: string; meta: string; q: ExamQuestionView; tone: "exam" | "ours" }) {
   return (
-    <article
-      aria-labelledby={id}
-      className={cn(
-        "relative flex flex-col gap-5 rounded-lg bg-surface p-6",
-        featured ? "order-first border-2 border-navy-900 shadow-raised lg:order-none" : "border border-line",
-      )}
-    >
-      {featured && (
-        <Tag tone="coral" className="absolute -top-3.5 left-6">
-          {t.pricing.popular}
-        </Tag>
-      )}
-      <div className="grid gap-1">
-        <h3 id={id} className={h3Class}>
-          {plan.name}
-        </h3>
-        <p className="flex flex-wrap items-baseline gap-x-1.5">
-          <span className="font-display text-[32px] leading-10 font-extrabold text-navy-900 tabular">{plan.price}</span>
-          {plan.unit && <span className="text-ink-muted">{plan.unit}</span>}
-        </p>
+    <Card as="article" aria-label={label} className={cn("grid content-start gap-3 border-t-4", tone === "exam" ? "border-t-navy-900" : "border-t-coral-600")}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Tag tone={tone === "exam" ? "solid" : "coral"}>{label}</Tag>
+        <span className="text-small text-ink-muted">{meta}</span>
       </div>
-      <ul className="m-0 grid flex-1 list-none content-start gap-2.5 p-0">
-        {plan.features.map((f) => (
-          <li key={f.text} className={cn("flex items-start gap-2.5 text-[15px] leading-[22px]", !f.on && "text-ink-muted")}>
-            {f.on ? (
-              <CheckIcon className="mt-px size-5 flex-none text-success-700" />
-            ) : (
-              <CloseIcon className="mt-px size-5 flex-none text-ink-muted" />
-            )}
-            <span>
-              {f.text}
-              {!f.on && <span className="sr-only"> — {t.pricing.notIncluded}</span>}
-            </span>
+      <p className="m-0 text-[16px] leading-[1.6] text-ink">
+        <MathText text={q.question} />
+      </p>
+      <ul className="m-0 grid list-none gap-1.5 p-0 sm:grid-cols-2">
+        {LETTERS.map((l) => (
+          <li key={l} className="flex items-baseline gap-2 rounded-md border border-line bg-white px-3 py-2 text-[15px]">
+            <b className="text-navy-900">{l})</b>
+            <MathText text={q.options[l]} />
           </li>
         ))}
       </ul>
-      <div className="grid gap-2">
-        <ButtonLink href={href} variant={variant} block>
-          {plan.cta}
-        </ButtonLink>
-        {plan.note && <p className="text-center text-small text-ink-muted">{plan.note}</p>}
-      </div>
-    </article>
+    </Card>
   );
 }

@@ -20,7 +20,7 @@ export type PlanInfo = {
 
 type Props = {
   plans: PlanInfo[];
-  current: PlanInfo["tier"];
+  current: PlanInfo["tier"] | null;
   currentPeriod: "month" | "year";
   /** "Aylıq abunə · Növbəti ödəniş: …" — cari ödənişli plan üçün. */
   currentNote: string | null;
@@ -60,38 +60,11 @@ export function PlansView({ plans, current, currentPeriod, currentNote, examPric
             })}
           </ul>
         </div>
-        <div role="group" aria-label={t.periodLabel} className="inline-flex rounded-pill border border-line bg-white p-1 shadow-card">
-          {(["month", "year"] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              aria-pressed={period === p}
-              onClick={() => setPeriod(p)}
-              className={cn(
-                "inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-pill px-5 font-bold transition-colors",
-                "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-navy-500",
-                period === p ? "bg-navy-900 text-white" : "text-navy-900 hover:bg-navy-050",
-              )}
-            >
-              {p === "month" ? t.periodMonth : t.periodYear}
-              {p === "year" && maxSave > 0 && (
-                <span className={cn("rounded-pill px-2 py-0.5 text-caption", period === p ? "bg-coral-500 text-white" : "bg-success-100 text-success-700")}>
-                  {t.periodYearHint(maxSave)}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        <PeriodToggle period={period} onChange={setPeriod} maxSave={maxSave} />
       </section>
 
       {/* ---------- Kartlar ---------- */}
-      <ul className="m-0 grid list-none items-stretch gap-5 p-0 lg:grid-cols-3 lg:gap-6">
-        {plans.map((p) => (
-          <li key={p.tier}>
-            <PlanCard plan={p} period={period} current={current} currentPeriod={currentPeriod} currentNote={currentNote} />
-          </li>
-        ))}
-      </ul>
+      <PlanCards plans={plans} period={period} current={current} currentPeriod={currentPeriod} currentNote={currentNote} />
 
       {/* ---------- Müqayisə ---------- */}
       <section aria-labelledby="compare" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
@@ -139,6 +112,79 @@ export function PlansView({ plans, current, currentPeriod, currentNote, examPric
   );
 }
 
+/** Aylıq / İllik keçidi. */
+function PeriodToggle({ period, onChange, maxSave }: { period: "month" | "year"; onChange: (p: "month" | "year") => void; maxSave: number }) {
+  return (
+    <div role="group" aria-label={t.periodLabel} className="inline-flex rounded-pill border border-line bg-white p-1 shadow-card">
+      {(["month", "year"] as const).map((p) => (
+        <button
+          key={p}
+          type="button"
+          aria-pressed={period === p}
+          onClick={() => onChange(p)}
+          className={cn(
+            "inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-pill px-5 font-bold transition-colors",
+            "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-navy-500",
+            period === p ? "bg-navy-900 text-white" : "text-navy-900 hover:bg-navy-050",
+          )}
+        >
+          {p === "month" ? t.periodMonth : t.periodYear}
+          {p === "year" && maxSave > 0 && (
+            <span className={cn("rounded-pill px-2 py-0.5 text-caption", period === p ? "bg-coral-600 text-white" : "bg-success-100 text-success-700")}>
+              {t.periodYearHint(maxSave)}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PlanCards({
+  plans,
+  period,
+  current,
+  currentPeriod,
+  currentNote,
+  guest = false,
+  headingTag = "h2",
+}: {
+  plans: PlanInfo[];
+  period: "month" | "year";
+  current: PlanInfo["tier"] | null;
+  currentPeriod: "month" | "year";
+  currentNote: string | null;
+  guest?: boolean;
+  headingTag?: "h2" | "h3";
+}) {
+  return (
+    <ul className="m-0 grid list-none items-stretch gap-5 p-0 lg:grid-cols-3 lg:gap-6">
+      {plans.map((p) => (
+        <li key={p.tier}>
+          <PlanCard plan={p} period={period} current={current} currentPeriod={currentPeriod} currentNote={currentNote} guest={guest} headingTag={headingTag} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Ana səhifə: Abunəliklər səhifəsi ilə eyni kartlar (Aylıq / İllik keçidi, Premium — önə çıxarılıb).
+ * Qonaq üçün: Free — qeydiyyat, ödənişli planlar — ödəniş (girişdən sonra).
+ */
+export function LandingPlans({ plans }: { plans: PlanInfo[] }) {
+  const [period, setPeriod] = useState<"month" | "year">("month");
+  const maxSave = Math.max(0, ...plans.map((p) => p.yearlySave ?? 0));
+  return (
+    <div className="grid min-w-0 gap-8">
+      <div className="justify-self-start">
+        <PeriodToggle period={period} onChange={setPeriod} maxSave={maxSave} />
+      </div>
+      <PlanCards plans={plans} period={period} current={null} currentPeriod="month" currentNote={null} guest headingTag="h3" />
+    </div>
+  );
+}
+
 function Cell({ value }: { value: boolean | string }) {
   if (value === true)
     return (
@@ -163,12 +209,16 @@ function PlanCard({
   current,
   currentPeriod,
   currentNote,
+  guest,
+  headingTag: H,
 }: {
   plan: PlanInfo;
   period: "month" | "year";
-  current: PlanInfo["tier"];
+  current: PlanInfo["tier"] | null;
   currentPeriod: "month" | "year";
   currentNote: string | null;
+  guest: boolean;
+  headingTag: "h2" | "h3";
 }) {
   const isCurrent = p.tier === current;
   const dark = p.tier === "premium";
@@ -194,9 +244,9 @@ function PlanCard({
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <h2 id={`plan-${p.tier}`} className={cn("font-display text-h3 font-extrabold", dark ? "text-white" : "text-navy-900")}>
+        <H id={`plan-${p.tier}`} className={cn("font-display text-h3 font-extrabold", dark ? "text-white" : "text-navy-900")}>
           {p.name}
-        </h2>
+        </H>
         {isCurrent ? (
           <Tag tone="success">{pay.current}</Tag>
         ) : dark ? (
@@ -265,7 +315,13 @@ function PlanCard({
 
       <div className="mt-auto grid gap-2 pt-1">
         {p.tier === "free" ? (
-          !isCurrent && <p className="m-0 text-small text-ink-muted">{t.freeNote}</p>
+          guest ? (
+            <ButtonLink href="/qeydiyyat" variant="secondary" block>
+              {t.freeStart}
+            </ButtonLink>
+          ) : (
+            !isCurrent && <p className="m-0 text-small text-ink-muted">{t.freeNote}</p>
+          )
         ) : isCurrent ? (
           <>
             {/* Aylıq → illik: qalan günlər itmir, 12 ay onların üstünə gəlir. */}

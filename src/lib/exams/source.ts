@@ -1,41 +1,55 @@
 import "server-only";
-import { and, asc, count, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db";
-import { bankTasks, examBlueprints, examItems, exams, subtopics, topics } from "@/db/schema";
+import { bankTasks, examBlueprints, examItems, examKinds, exams, subtopics, topics } from "@/db/schema";
 import { LETTERS, type Letter } from "@/lib/demo/content";
 import { EXAM_TYPE_OF, type ExamFormat, type ExamKey, type ExamMeta, type ExamQuestion } from "./types";
 
 // Sınaqlar bazadan (exams + exam_items → bank_tasks). Köhnə statik sınaqlar silinib.
 
-/** Dərc olunmuş sınaqlar: imtahan tipi, sonra nömrə sırası ilə. */
+/**
+ * Sınaqlar — ən yenisi birinci (yaradılma tarixi ilə).
+ * Default: aktiv və bitmiş (bitmişlər saytda yalnız iştirak edənlərə görünür — bax: logic.isExamVisible);
+ * all — passivlər də (admin).
+ */
 export const listExams = cache(async (opts: { all?: boolean } = {}): Promise<ExamMeta[]> => {
   const [rows, counts] = await Promise.all([
     db
-      .select({ e: exams, group: examBlueprints.name, sort: examBlueprints.sortOrder })
+      .select({ e: exams, group: examKinds.name, price: examKinds.price, bp: examBlueprints.name, topic: topics.name })
       .from(exams)
       .innerJoin(examBlueprints, eq(examBlueprints.key, exams.blueprintKey))
-      .where(opts.all ? undefined : eq(exams.status, "published"))
-      .orderBy(asc(examBlueprints.sortOrder), asc(exams.number)),
+      .leftJoin(examKinds, eq(examKinds.key, exams.kind))
+      .leftJoin(topics, eq(topics.id, exams.topicId))
+      .where(opts.all ? undefined : inArray(exams.status, ["active", "finished"]))
+      .orderBy(desc(exams.createdAt), desc(exams.number)),
     db.select({ id: examItems.examId, format: examItems.format, n: count() }).from(examItems).groupBy(examItems.examId, examItems.format),
   ]);
-  return rows.map(({ e, group }) => {
+  return rows.map(({ e, group, price, bp, topic }) => {
     const c: Record<ExamFormat, number> = { closed: 0, coded: 0, written: 0 };
     for (const x of counts) if (x.id === e.id) c[x.format] = x.n;
+    const kind = e.kind ?? e.blueprintKey;
     return {
       id: e.id,
       title: e.title,
-      group,
+      group: group ?? bp,
+      kind,
       durationMin: e.durationMin,
       blueprintKey: e.blueprintKey,
-      examType: EXAM_TYPE_OF[e.blueprintKey] ?? "11",
+      examType: EXAM_TYPE_OF[kind] ?? "11",
       number: e.number,
       total: c.closed + c.coded + c.written,
       counts: c,
       status: e.status,
+      price: price ?? 3,
+      createdAt: e.createdAt.getTime(),
+      topicName: topic,
     };
   });
 });
+
+/** Sınaq tipləri (admin: yaratma formu). */
+export const listExamKinds = cache(async () => db.select().from(examKinds).orderBy(asc(examKinds.sortOrder)));
 
 export async function findExam(id: string): Promise<ExamMeta | undefined> {
   return (await listExams({ all: true })).find((e) => e.id === id);

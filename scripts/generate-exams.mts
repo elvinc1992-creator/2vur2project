@@ -13,7 +13,7 @@ const TYPE: Record<string, ExamType> = { "buraxilis-9": "9", "buraxilis-11": "11
 const TITLE: Record<string, string> = {
   "buraxilis-9": "9-cu sinif buraxılış sınağı",
   "buraxilis-11": "11-ci sinif buraxılış sınağı",
-  "qebul-11": "Blok (qəbul) sınağı",
+  "qebul-11": "11-ci sinif blok sınağı",
 };
 const PREFIX: Record<string, string> = { "buraxilis-9": "b9", "buraxilis-11": "b11", "qebul-11": "q11" };
 const DURATION: Record<string, number> = { "buraxilis-9": 90, "buraxilis-11": 90, "qebul-11": 120 };
@@ -22,7 +22,7 @@ const topics = (await db.execute("select id, curriculum_order, dim_frequency, ex
   id: Number(t.id),
   curriculumOrder: Number(t.curriculum_order),
   dimFrequency: Number(t.dim_frequency),
-  examTypes: String(t.exam_types).split(",") as ExamType[],
+  examTypes: String(t.exam_types).split(","),
 }));
 const tasks = (await db.execute("select code, topic_id, format, answer_value, options from bank_tasks")).rows.map((t) => ({
   code: String(t.code),
@@ -44,8 +44,8 @@ for (const key of Object.keys(TYPE)) {
     const usage = new Map(
       (
         await db.execute({
-          sql: "select i.task_code code, count(*) n from exam_items i join exams e on e.id = i.exam_id where e.blueprint_key = ? group by i.task_code",
-          args: [key],
+          sql: "select i.task_code code, count(*) n from exam_items i join exams e on e.id = i.exam_id where e.status in ('active', 'passive') group by i.task_code",
+          args: [],
         })
       ).rows.map((r) => [String(r.code), Number(r.n)]),
     );
@@ -56,8 +56,8 @@ for (const key of Object.keys(TYPE)) {
     await db.batch(
       [
         {
-          sql: "insert into exams (id, blueprint_key, number, title, duration_min, status, created_at) values (?, ?, ?, ?, ?, 'published', ?)",
-          args: [id, key, number, `${TITLE[key]} №${number}`, DURATION[key], Date.now()],
+          sql: "insert into exams (id, blueprint_key, kind, number, title, duration_min, status, created_at) values (?, ?, ?, ?, ?, ?, 'active', ?)",
+          args: [id, key, key, number, `${TITLE[key]} №${number}`, DURATION[key], Date.now()],
         },
         ...items.map((i) => ({ sql: "insert into exam_items (exam_id, n, task_code, format) values (?, ?, ?, ?)", args: [id, i.n, i.code, i.format] })),
       ],

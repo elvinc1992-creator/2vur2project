@@ -18,6 +18,8 @@ import {
   remainingMs,
   streakInfo,
   typeProgress,
+  isExamOpenForSale,
+  isExamVisible,
 } from "@/lib/demo/logic";
 import { canUseRepetitor, hasFullDaily, PLANS, tierOf } from "@/lib/demo/plans";
 import { initials } from "@/lib/demo/session";
@@ -48,15 +50,15 @@ export default async function PanelPage() {
   const progress = progressTopic ? typeProgress(state, ctx, progressTopic.slug) : [];
 
   // Vaxtı bitmiş sınaq "Davam et"-də göstərilmir.
-  const exams = await listExams();
+  const exams = (await listExams()).filter((e) => isExamVisible(state, e));
   const inProgress = exams.find((e) => examStatus(state, e) === "in_progress");
   const attempt = inProgress ? state.attempts[inProgress.id] : undefined;
   const doneCount = exams.filter((e) => ["done", "expired"].includes(examStatus(state, e))).length;
   const progressCount = exams.filter((e) => examStatus(state, e) === "in_progress").length;
   const newNames = exams
-    .filter((e) => examStatus(state, e) === "locked")
+    .filter((e) => examStatus(state, e) === "locked" && isExamOpenForSale(e))
     .slice(0, 4)
-    .map((e) => `${{ "9": "9-cu", "11": "11-ci", blok: "Blok" }[e.examType]} №${e.number}`)
+    .map((e) => (e.topicName ? `${e.topicName} №${e.number}` : `${{ "9": "9-cu", "11": "11-ci", blok: "Blok", movzu: "Mövzu" }[e.examType]} №${e.number}`))
     .join(", ");
 
   return (
@@ -268,7 +270,7 @@ export default async function PanelPage() {
                 </Link>
               )}
               <div className={listClass}>
-                <Link href="/sinaqlar?f=owned" className="text-ink">
+                <Link href="/sinaqlar?f=done" className="text-ink">
                   <span>
                     <b>{t.myExams}</b>
                     <br />

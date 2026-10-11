@@ -99,7 +99,8 @@ test("panel: sıfırdan başlayır, Free plan — günün hər mövzusundan 2 su
   }
   await expect(page.getByText("0 gün ardıcıl")).toBeVisible();
   await expect(page.getByText("0 tamamlanıb · 0 yarımçıq")).toBeVisible();
-  await expect(page.getByText("Yeni: 9-cu №1, 9-cu №2, 9-cu №3, 9-cu №4")).toBeVisible();
+  // Ən yeni aktiv sınaqlar birinci (yaradılma tarixi ilə)
+  await expect(page.getByText(/^Yeni: (9-cu|11-ci|Blok|Mövzu|.+) №\d+(, .+ №\d+){3}$/)).toBeVisible();
   await expect(page.getByRole("link", { name: "Əsas", exact: true }).first()).toHaveAttribute("aria-current", "page");
 });
 
@@ -338,15 +339,22 @@ test("sayğac: vaxtı bitmiş sınaq aktiv deyil — davam etmək olmur", async 
 });
 
 test("sınaq: Free — ayın sınağını seç → başla → cavabla → yenilə → bitir → nəticə; açar sızmır", async ({ page }) => {
-  // 3 imtahan növü × 4 sınaq; 11-ci sinif süzgəci — 4 sınaq
+  // Saytda yalnız aktiv sınaqlar; 11-ci sinif süzgəci — 11-ci sinif buraxılış sınaqları (ən yenisi birinci)
+  const db = createClient({ url: process.env.TURSO_DATABASE_URL!, authToken: process.env.TURSO_AUTH_TOKEN });
+  const active = await db.execute("select kind, count(*) n from exams where status = 'active' group by kind");
+  db.close();
+  const n = (k: string) => Number(active.rows.find((r) => r.kind === k)?.n ?? 0);
   await page.goto("/sinaqlar");
-  await expect(page.getByRole("article")).toHaveCount(12);
+  await expect(page.getByRole("article")).toHaveCount(active.rows.reduce((s, r) => s + Number(r.n), 0));
   await page.getByRole("link", { name: "11-ci sinif buraxılış" }).click();
   await expect(page).toHaveURL(/\/sinaqlar\?tip=11$/);
-  await expect(page.getByRole("article")).toHaveCount(4);
+  await expect(page.getByRole("article")).toHaveCount(n("buraxilis-11"));
   await expect(page.getByText("Bu ay 1 pulsuz sınaq seçə bilərsən.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Bu ayın sınağı kimi seç" })).toHaveCount(4);
-  await page.getByRole("button", { name: "Bu ayın sınağı kimi seç" }).first().click();
+  await expect(page.getByRole("button", { name: "Bu ayın sınağı kimi seç" })).toHaveCount(n("buraxilis-11"));
+  await page
+    .getByRole("article", { name: /^11-ci sinif buraxılış sınağı №1 —/ })
+    .getByRole("button", { name: "Bu ayın sınağı kimi seç" })
+    .click();
   await expect(page).toHaveURL(/\/sinaq\/b11-1$/);
   await page.getByRole("button", { name: "Başla" }).click();
   await expect(page).toHaveURL(/\/sinaq\/b11-1$/);
@@ -485,7 +493,8 @@ test("abunəliklər: menyuda; Free — Pro/Premium təklifi, Pro — yalnız ida
   // Müqayisə cədvəli
   const table = page.getByRole("table", { name: "Planlar üzrə imkanlar" });
   await expect(table.getByRole("rowheader", { name: "Onlayn repetitor" })).toBeVisible();
-  await expect(page.getByText("Plandan əlavə tək sınaq almaq da olar — 3 AZN.")).toBeVisible();
+  // Tək sınağın qiyməti tiplər üzrə bazadan (exam_kinds)
+  await expect(page.getByText(/^Plandan əlavə tək sınaq almaq da olar: .*11-ci sinif buraxılış — 3 AZN.*Mövzu sınağı — 2 AZN\.$/)).toBeVisible();
   await page.setViewportSize({ width: 390, height: 900 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.setViewportSize({ width: 1280, height: 900 });
