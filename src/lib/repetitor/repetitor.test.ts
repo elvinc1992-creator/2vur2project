@@ -26,7 +26,7 @@ describe("onlayn repetitor: fikstur (bazadakı ilkin suallar)", () => {
       expect(LETTERS).toContain(key.answer);
       expect(key.hint.length, q.id).toBeGreaterThan(0);
       expect(key.steps.length, q.id).toBeGreaterThan(0);
-      expect(new Set(Object.values(q.options)).size, q.id).toBe(5);
+      expect(new Set(Object.values(q.options ?? {})).size, q.id).toBe(5);
     }
   });
 });

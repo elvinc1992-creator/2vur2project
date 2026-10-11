@@ -1,5 +1,5 @@
 import "server-only";
-import { LETTERS, type Letter } from "@/lib/demo/content";
+import { checkAnswer, isPendingSelf } from "@/lib/bank/check";
 import { listExams } from "@/lib/exams/source";
 import { canPracticeSimilar } from "@/lib/demo/plans";
 import type { DemoState, ReviewSession } from "@/lib/demo/state";
@@ -7,8 +7,10 @@ import { getPracticeKeys, normRef, type PracticeQuestion } from "./pool";
 
 export type Mistake = {
   q: PracticeQuestion;
-  chosen: Letter | "skip";
-  correct: Letter;
+  /** Verilmiş cavab (bax: lib/bank/check.ts) və ya "skip". */
+  chosen: string;
+  /** Düzgün cavab: hərf (qapalı) və ya göstəriləcək mətn. */
+  correct: string;
   /** Harada səhv edilib: "Günün sualı", "Repetitor", "Buraxılış sınağı №1", "Təkrar". */
   where: "daily" | "tutor" | "exam" | "practice";
   examTitle?: string;
@@ -24,23 +26,24 @@ export async function listMistakes(state: DemoState, pool: PracticeQuestion[]): 
   const byRef = new Map(pool.map((q) => [q.ref, q]));
   const fixed = new Set(Object.keys(state.fixed ?? {}).map(normRef));
   // Əvvəl namizədlər yığılır, sonra açarlar bir sorğu ilə gəlir.
-  type Candidate = { ref: string; chosen: Letter | "skip"; where: Mistake["where"]; href?: string; examTitle?: string };
+  type Candidate = { ref: string; chosen: string; where: Mistake["where"]; href?: string; examTitle?: string };
   const candidates: Candidate[] = [];
-  const add = (ref: string, chosen: Letter | "skip", where: Mistake["where"], href?: string, examTitle?: string) => {
-    candidates.push({ ref, chosen, where, href, examTitle });
+  const add = (ref: string, chosen: string, where: Mistake["where"], href?: string, examTitle?: string) => {
+    // Özünüyoxlamada qiymət hələ verilməyib — səhv sayılmır.
+    if (!isPendingSelf(chosen)) candidates.push({ ref, chosen, where, href, examTitle });
   };
 
   for (const [id, a] of Object.entries(state.daily)) add(`q:${id}`, a, "daily", "/gunun-suallari");
   for (const [id, p] of Object.entries(state.tutor ?? {})) if (p.a && !p.ok) add(`q:${id}`, p.a, "tutor");
-  // Sınaq: qapalı suallara verilmiş yanlış cavablar (sualın bank kodu nəticədə saxlanılır).
+  // Sınaq: qapalı və kodlaşdırılan suallara verilmiş yanlış cavablar (sualın bank kodu nəticədə saxlanılır).
   const exams = Object.keys(state.results).length ? await listExams({ all: true }) : [];
   for (const [examId, res] of Object.entries(state.results)) {
     const title = exams.find((e) => e.id === examId)?.title;
     if (!title) continue;
     for (const [n, item] of Object.entries(res.items ?? {})) {
       const given = res.answers[n];
-      if (!given || item.ok !== false || !(LETTERS as readonly string[]).includes(given)) continue;
-      add(`q:${item.code}`, given as Letter, "exam", `/sinaq/${examId}/netice`, title);
+      if (!given || item.ok !== false) continue;
+      add(`q:${item.code}`, given, "exam", `/sinaq/${examId}/netice`, title);
     }
   }
   for (const [ref, a] of Object.entries(state.practiceMistakes ?? {})) add(normRef(ref), a, "practice");
@@ -50,8 +53,8 @@ export async function listMistakes(state: DemoState, pool: PracticeQuestion[]): 
   for (const { ref, chosen, where, href, examTitle } of candidates) {
     const q = byRef.get(ref);
     const key = keys.get(ref);
-    if (out.has(ref) || !q || !key || chosen === key.answer) continue;
-    out.set(ref, { q, chosen, correct: key.answer, where, examTitle, href: href ?? q.href, fixed: fixed.has(ref) });
+    if (out.has(ref) || !q || !key || checkAnswer(key, chosen)) continue;
+    out.set(ref, { q, chosen, correct: key.format === "closed" ? key.answer : key.answerText, where, examTitle, href: href ?? q.href, fixed: fixed.has(ref) });
   }
   return [...out.values()];
 }

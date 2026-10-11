@@ -3,7 +3,7 @@ import { createClient } from "@libsql/client";
 import { loadEnvConfig } from "@next/env";
 import { hash } from "@node-rs/argon2";
 import { expect, test, type Page } from "@playwright/test";
-import { bankKeys, topicCodes, wrongOf } from "./daily-fixture";
+import { answerBank, bankKeys, topicCodes } from "./daily-fixture";
 
 // Repetitor sualları müəllifin sual bankındandır; mövzular tədris sırası ilə (tasks_01 — Natural ədədlər, sonra
 // Adi və onluq kəsrlər; hər biri 1 dərs), sonra Sınaq 1. Düzgün cavablar bazadan oxunur.
@@ -59,8 +59,6 @@ async function axe(page: Page) {
     .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
 }
 
-const pick = (page: Page, letter: string) => page.locator(`label:has(input[aria-label^="Variant ${letter}:"])`).click();
-
 test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı mövzu", async ({ page }) => {
   await login(page);
 
@@ -105,7 +103,8 @@ test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı 
   await expect(plan.locator("li").nth(0)).toContainText("Açıqdır");
   await expect(plan.locator("li").nth(1)).toContainText("açılacaq");
   await expect(plan.locator("li").nth(2)).toContainText("Sınaq 1");
-  await expect(page.getByRole("heading", { name: "Tezliklə" })).toBeVisible();
+  // Bütün 27 mövzunun sualı var (açıq, uyğunluq və yazılı suallar da) — "Tezliklə" bölməsi yoxdur.
+  await expect(page.getByRole("heading", { name: "Tezliklə" })).toHaveCount(0);
   expect(await axe(page)).toEqual([]);
 
   // Bağlı mövzunun sualı açılmır
@@ -121,24 +120,36 @@ test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı 
   await page.getByRole("link", { name: "Dərsə başla" }).click();
   await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${LOQ}/1$`));
   const qHtml = await (await page.request.get(`/onlayn-repetitor/${LOQ}/1`)).text();
-  expect(qHtml).not.toMatch(/"answer":"[A-E]"/);
   const [c1, c2] = (await topicCodes(LOQ)).slice(0, 2);
   const keys = await bankKeys([c1, c2]);
+  // Cavab açarı səhifəyə düşmür (Natural ədədlərin ilk sualları açıq cavablıdır).
+  expect(qHtml).not.toMatch(/"answer":"/);
+  expect(keys.get(c1)!.format).toBe("open");
 
-  // Bankdakı suallarda ipucu yoxdur — düymə göstərilmir. 1-ci sual — düzgün cavab.
+  // Bankdakı suallarda ipucu yoxdur — düymə göstərilmir. 1-ci sual — düzgün cavab (vergüllü yazılış da qəbul olunur).
   await expect(page.getByRole("button", { name: "İpucu" })).toHaveCount(0);
-  await pick(page, keys.get(c1)!.answer);
+  await expect(page.getByLabel("Cavabını yaz")).toBeVisible();
+  await answerBank(page, keys.get(c1)!, true);
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
   await expect(page.getByText("Düzgündür!")).toBeVisible();
   expect(await axe(page)).toEqual([]);
 
   await page.getByRole("link", { name: "Növbəti sual" }).click();
   await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${LOQ}/2$`));
-  // 2-ci sual — yanlış seçirik
-  const right = keys.get(c2)!.answer;
-  await pick(page, wrongOf(right));
+  // 2-ci sual — yanlış cavab
+  await answerBank(page, keys.get(c2)!, false);
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
-  await expect(page.getByText(`Yanlışdır. Düzgün cavab: ${right}`)).toBeVisible();
+  await expect(page.getByText(`Yanlışdır. Düzgün cavab: ${keys.get(c2)!.answer}`)).toBeVisible();
+
+  // Uyğunluq sualı: hər bənd üçün hərflər seçilir
+  const m = (await topicCodes(LOQ, "matching"))[0];
+  const mn = (await topicCodes(LOQ)).indexOf(m) + 1;
+  await page.goto(`/onlayn-repetitor/${LOQ}/${mn}`);
+  await expect(page.getByText("Uyğunluğu qur")).toBeVisible();
+  await answerBank(page, (await bankKeys([m])).get(m)!, true);
+  await page.getByRole("button", { name: "Cavabı yoxla" }).click();
+  await expect(page.getByText("Düzgündür!")).toBeVisible();
+  expect(await axe(page)).toEqual([]);
 });
 
 test("mövzular bitir → ✓, 2 mövzudan sonra 20 suallıq sınaq → nəticə", async ({ page }) => {
@@ -169,11 +180,11 @@ test("mövzular bitir → ✓, 2 mövzudan sonra 20 suallıq sınaq → nəticə
   const sections = page.locator("form section");
   const codeOf = async (i: number) => (await sections.nth(i).getAttribute("aria-labelledby"))!.replace(/^tq-/, "");
   const keys = await bankKeys([await codeOf(0), await codeOf(1)]);
-  await sections.nth(0).locator("label", { hasText: `${keys.get(await codeOf(0))!.answer})` }).click();
-  await sections.nth(1).locator("label", { hasText: `${wrongOf(keys.get(await codeOf(1))!.answer)})` }).click();
+  await answerBank(sections.nth(0), keys.get(await codeOf(0))!, true);
+  await answerBank(sections.nth(1), keys.get(await codeOf(1))!, false);
   await page.getByRole("button", { name: "Sınağı bitir" }).click();
   await expect(page.getByText("Nəticə: 1 / 20")).toBeVisible();
-  await expect(page.getByText(/Səhv · düzgün cavab: [A-E]/)).toHaveCount(1);
+  await expect(page.getByText(/Səhv · düzgün cavab: /)).toHaveCount(1);
   await expect(page.getByText(/^Cavab verilməyib/)).toHaveCount(18);
 
   await page.goto("/onlayn-repetitor");

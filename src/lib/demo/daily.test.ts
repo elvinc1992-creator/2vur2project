@@ -20,6 +20,7 @@ const bank = ["a", "b", "c", "d", "e", "f"].map((slug) => ({
     type: `tip-${i % 2}`,
     freq: 1,
     text: `${slug}${i + 1}`,
+    format: "closed" as const,
     options: { A: "1", B: "2", C: "3", D: "4", E: "5" },
     ref: "",
   })),

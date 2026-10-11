@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { LETTERS, type Letter } from "@/lib/demo/content";
+import { acceptsAnswer, checkAnswer, feedbackOf, isValidGiven, readFormAnswer, type AnswerFeedback } from "@/lib/bank/check";
 import { canUseRepetitor } from "@/lib/demo/plans";
 import { cleanMeta, rememberMeta, updateDemoState, type AnswerMeta, type DemoState } from "@/lib/demo/state";
 import { changePlan, examKey, todayIn } from "./plan";
@@ -36,36 +36,29 @@ export async function saveTutorPlanAction(formData: FormData) {
 
 /* ---------------- Sual ---------------- */
 
-export type RepetitorResult = {
-  chosen: Letter | "skip";
-  correct: boolean;
-  answer: Letter;
-  steps: string[];
+export type RepetitorResult = AnswerFeedback & {
   hintUsed: boolean;
   nextHref: string | null;
 };
 
 export async function answerRepetitorAction(id: string, choice: string, meta?: AnswerMeta): Promise<RepetitorResult> {
-  const parsed = z.enum([...LETTERS, "skip"]).safeParse(choice);
   const q = await findRepetitorQuestion(id);
   const key = await getRepetitorKey(id);
-  if (!q || !key || !parsed.success) throw new Error("Yanlış sorğu");
+  if (!q || !key || !isValidGiven(key.format, key.selfCheck, choice)) throw new Error("Yanlış sorğu");
 
   return updatePaid(async (state) => {
     const ctx = await tutorContext(state);
     if (!ctx.isOpen(id)) throw new Error("Bu dərs hələ açılmayıb");
     const tutor = (state.tutor ??= {});
-    // Artıq cavablanıbsa, ilk cavab qalır.
-    if (!tutor[id]?.a) {
-      tutor[id] = { ...tutor[id], a: parsed.data, ok: parsed.data === key.answer };
-      rememberMeta(state, `tutor:${id}`, cleanMeta(meta));
+    // Artıq cavablanıbsa, ilk cavab qalır (özünüyoxlamada — qiymət bir dəfə verilir).
+    if (acceptsAnswer(tutor[id]?.a, choice)) {
+      const first = !tutor[id]?.a;
+      tutor[id] = { ...tutor[id], a: choice, ok: checkAnswer(key, choice) };
+      if (first) rememberMeta(state, `tutor:${id}`, cleanMeta(meta));
     }
     const p = tutor[id];
     return {
-      chosen: p.a!,
-      correct: Boolean(p.ok),
-      answer: key.answer,
-      steps: key.steps,
+      ...feedbackOf(key, p.a!),
       hintUsed: Boolean(p.hint),
       nextHref: nextRepetitorHref(state, ctx.topics, q, ctx.isOpen),
     };
@@ -92,13 +85,13 @@ export async function submitTutorExamAction(n: number, formData: FormData) {
     const exam = view?.exams.find((e) => e.n === n);
     if (!exam || exam.status !== "open") return; // bağlıdır və ya artıq göndərilib
     const keys = await getRepetitorKeys(exam.questionIds);
-    const answers: Record<string, Letter> = {};
+    const answers: Record<string, string> = {};
     const results: Record<string, boolean> = {};
     for (const id of exam.questionIds) {
-      const v = formData.get(`q-${id}`);
-      const a = z.enum(LETTERS).safeParse(v);
-      if (a.success) answers[id] = a.data;
-      results[id] = a.success && keys.get(id)?.answer === a.data;
+      const key = keys.get(id);
+      const given = key ? readFormAnswer(formData, `q-${id}`, { format: key.format, matching: (await findRepetitorQuestion(id))?.matching }) : null;
+      if (given) answers[id] = given;
+      results[id] = Boolean(key && given && checkAnswer(key, given));
     }
     (state.tutorExams ??= {})[examKey(n)] = { answers, results, finishedAt: Date.now() };
   });

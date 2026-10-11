@@ -3,50 +3,49 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { ArrowIcon, BookIcon, BulbIcon, CheckCircleIcon, XCircleIcon } from "@/components/icons";
-import { AnswerOptions } from "@/components/ui/answer-options";
+import { BankAnswerInput, canSubmit, SelfGrade, type BankQuestionShape } from "@/components/ui/bank-answer";
 import { useAnswerMeta } from "@/components/ui/use-answer-meta";
 import { Button, buttonClass } from "@/components/ui/button";
 import { MathText } from "@/components/ui/math-text";
 import { az } from "@/content/az";
+import { SELF_NO, SELF_OK, SELF_PENDING, SKIP } from "@/lib/bank/check";
 import { answerDailyAction, type DailyResult } from "@/lib/demo/actions";
-import type { Letter } from "@/lib/demo/content";
 import { cn } from "@/lib/cn";
 
 type Props = {
   id: string;
-  options: Record<Letter, string>;
+  q: BankQuestionShape;
   refText: string;
   initial: DailyResult | null;
 };
 
-export function DailyAnswer({ id, options, refText, initial }: Props) {
+export function DailyAnswer({ id, q, refText, initial }: Props) {
   const t = az.app.daily;
-  const [selected, setSelected] = useState<Letter | null>(null);
+  const [value, setValue] = useState("");
   const timing = useAnswerMeta();
   const [result, setResult] = useState<DailyResult | null>(initial);
   const [pending, startTransition] = useTransition();
   const answered = result !== null;
+  const ready = canSubmit(q, value);
 
-  const submit = (choice: Letter | "skip") =>
+  const submit = (choice: string) =>
     startTransition(async () => {
       setResult(await answerDailyAction(id, choice, timing.meta()));
     });
 
   return (
     <>
-      <AnswerOptions
+      <BankAnswerInput
         name={`ans-${id}`}
-        label={t.optionsLabel}
-        options={options}
-        value={selected}
-        onChange={(l) => {
-          timing.track(l);
-          setSelected(l);
+        q={q}
+        value={value}
+        onChange={(v) => {
+          if (q.format !== "open" && q.format !== "written") timing.track(v);
+          setValue(v);
         }}
-        onClear={() => setSelected(null)}
-        clearLabel={t.clearSelection}
+        onClear={() => setValue("")}
         disabled={pending}
-        feedback={result ? { answer: result.answer, chosen: result.chosen, correct: result.correct } : null}
+        feedback={result && !result.pendingSelf ? result : null}
       />
 
       {!answered && (
@@ -55,18 +54,24 @@ export function DailyAnswer({ id, options, refText, initial }: Props) {
             type="button"
             block
             loading={pending}
-            aria-disabled={!selected || undefined}
-            onClick={() => selected && submit(selected)}
+            aria-disabled={!ready || undefined}
+            onClick={() => ready && submit(q.selfCheck ? SELF_PENDING : value.trim())}
           >
-            {t.check}
+            {q.selfCheck ? az.app.answer.selfReveal : t.check}
           </Button>
-          <Button type="button" variant="ghost" block disabled={pending} onClick={() => submit("skip")}>
-            {t.dontKnow}
-          </Button>
+          {!q.selfCheck && (
+            <Button type="button" variant="ghost" block disabled={pending} onClick={() => submit(SKIP)}>
+              {t.dontKnow}
+            </Button>
+          )}
         </>
       )}
 
-      {answered && (
+      {answered && result.pendingSelf && (
+        <SelfGrade steps={result.steps} pending={pending} onGrade={(ok) => submit(ok ? SELF_OK : SELF_NO)} />
+      )}
+
+      {answered && !result.pendingSelf && (
         <>
           <div
             role="status"
@@ -84,13 +89,15 @@ export function DailyAnswer({ id, options, refText, initial }: Props) {
               <b className={cn("block", result.correct ? "text-success-700" : "text-danger-700")}>
                 {result.correct
                   ? t.correct
-                  : result.chosen === "skip"
-                    ? t.skipped(result.answer)
-                    : t.wrong(result.answer)}
+                  : result.selfCheck
+                    ? az.app.answer.selfWrong
+                    : result.chosen === SKIP
+                      ? t.skipped(result.answerText)
+                      : t.wrong(result.answerText)}
               </b>
               {result.correct
                 ? t.typeStats(result.stats.ok, result.stats.total)
-                : result.chosen === "skip"
+                : result.chosen === SKIP
                   ? t.skippedText
                   : t.wrongText}
             </div>

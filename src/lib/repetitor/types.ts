@@ -1,3 +1,4 @@
+import type { MatchingOptions, PracticeFormat } from "@/lib/bank/check";
 import type { Letter } from "@/lib/demo/content";
 
 // Onlayn repetitor: təhlil nəticəsində imtahanda çıxma ehtimalı yüksək olan suallar.
@@ -20,14 +21,25 @@ export type RepetitorQuestion = {
   /** Sualın şəkli (/images/tasks/KOD.png) və təsviri. */
   imageUrl?: string | null;
   imageAlt?: string | null;
-  options: Record<Letter, string>;
+  format: PracticeFormat;
+  /** Yalnız qapalı suallarda (A–E). */
+  options?: Record<Letter, string>;
+  /** Yalnız uyğunluq suallarında. */
+  matching?: MatchingOptions;
+  /** Yazılı sualın yekun cavabı ədəd deyil (isbat) — şagird həllə baxıb özünü yoxlayır. */
+  selfCheck?: boolean;
   /** Toplu istinadı: "2025 toplu, II hissə, səh.210 №4–9". */
   ref: string;
 };
 
 /** Yalnız serverdə: düzgün cavab, ipucu (istəyəndə) və addım-addım izah. */
 export type RepetitorKey = {
-  answer: Letter;
+  format: PracticeFormat;
+  /** closed: hərf; open/written: ədəd(lər); matching: "1:ad;2:b…". */
+  answer: string;
+  /** Ekranda göstərilən düzgün cavab. */
+  answerText: string;
+  selfCheck: boolean;
   hint: string;
   steps: string[];
 };

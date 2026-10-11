@@ -8,10 +8,10 @@ const LETTERS = ["A", "B", "C", "D", "E"] as const;
 const bank = [
   ...Array.from({ length: 9 }, (_, i) => ({ id: `f${i + 1}`, topic: "faiz", type: i % 3 === 1 ? "Ardıcıl faiz" : "Faizin tapılması" })),
   ...Array.from({ length: 20 }, (_, i) => ({ id: `t${i + 1}`, topic: "trig", type: "Eyniliklər" })),
-].map((q, i) => ({ ...q, freq: 0, text: q.id, options: { A: "1", B: "2", C: "3", D: "4", E: "5" }, ref: "", answer: LETTERS[i % 5] }));
+].map((q, i) => ({ ...q, freq: 0, text: q.id, format: "closed" as const, options: { A: "1", B: "2", C: "3", D: "4", E: "5" }, ref: "", answer: LETTERS[i % 5] }));
 const keyOf = (id: string) => {
   const q = bank.find((x) => x.id === id);
-  return q ? { answer: q.answer, hint: "", steps: ["həll"] } : null;
+  return q ? { format: "closed" as const, answer: q.answer, answerText: q.answer, selfCheck: false, hint: "", steps: ["həll"] } : null;
 };
 
 vi.mock("@/lib/repetitor/source", () => ({
@@ -42,7 +42,7 @@ describe("səhvlərim: sual hovuzu", () => {
 });
 
 describe("səhvlərim: siyahı", () => {
-  it("səhv və 'Bilmirəm' cavablar düşür, düzgünlər yox; sınağın qapalı səhvi bank sualı kimi", async () => {
+  it("səhv və 'Bilmirəm' cavablar düşür, düzgünlər yox; sınağın səhvləri (qapalı və kodlaşdırılan) bank sualı kimi", async () => {
     const pool = await practicePool();
     const s = paid();
     s.daily = { f2: wrong("f2"), f1: keyOf("f1")!.answer, t1: "skip" };
@@ -57,7 +57,7 @@ describe("səhvlərim: siyahı", () => {
       "1": { score: 0, correct: 0, wrong: 1, empty: 0, pending: 0, byTopic: [], weak: [], finishedAt: 1, answers: { "1": "A" } },
     };
     const mistakes = await listMistakes(s, pool);
-    expect(mistakes.map((m) => m.q.ref).sort()).toEqual(["q:f2", "q:t1", "q:t2", "q:t4"].sort());
+    expect(mistakes.map((m) => m.q.ref).sort()).toEqual(["q:f2", "q:t1", "q:t2", "q:t4", "q:t5"].sort());
     expect(mistakes.find((m) => m.q.ref === "q:t4")).toMatchObject({ where: "exam", examTitle: "11-ci sinif buraxılış sınağı №1" });
     expect(mistakes.find((m) => m.q.ref === "q:f2")!.correct).toBe(keyOf("f2")!.answer);
   });

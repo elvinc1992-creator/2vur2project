@@ -3,8 +3,6 @@
 // - Hər 2 mövzu bitəndən sonra həmin mövzuların suallarından EXAM_SIZE suallıq sınaq açılır.
 // Təmiz funksiyalar — vəziyyət və tarix parametr kimi gəlir (test olunur).
 
-import type { Letter } from "@/lib/demo/content";
-
 export const SPLIT_THRESHOLD = 60;
 export const EXAM_SIZE = 20;
 export const TOPICS_PER_EXAM = 2;
@@ -24,13 +22,13 @@ export type TutorPlan = {
 };
 
 export type TutorExamRecord = {
-  answers: Record<string, Letter>;
+  answers: Record<string, string>;
   /** Sual id → düzgündür (cavabsız — false). */
   results: Record<string, boolean>;
   finishedAt: number;
 };
 
-type TopicInput = { slug: string; name: string; questions: Array<{ id: string }> };
+type TopicInput = { slug: string; name: string; questions: Array<{ id: string; selfCheck?: boolean }> };
 
 export type Lesson = {
   index: number;
@@ -82,7 +80,8 @@ export function buildCurriculum(topics: TopicInput[]): Curriculum {
       exams.push({
         n: exams.length + 1,
         topics: pair.map((x) => ({ slug: x.slug, name: x.name })),
-        questionIds: mixQuestions(pair.map((x) => x.questions.map((q) => q.id))),
+        // İsbat (özünüyoxlama) sualları sınağa düşmür — onları avtomatik yoxlamaq olmur.
+        questionIds: mixQuestions(pair.map((x) => x.questions.filter((q) => !q.selfCheck).map((q) => q.id))),
         afterLesson: lessons.length - 1,
       });
       pair = [];
