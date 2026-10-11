@@ -21,6 +21,9 @@ const PROTECTED = [
   "/imtahan-qarsiligi",
   "/zeif-movzular",
   "/admin",
+  "/muellim",
+  "/muellim-sinaq",
+  "/qruplarim",
   // Demo mərhələsində mağaza da tətbiq daxilindədir (TZ-də ictimai /sinaqlar — landing mərhələsində).
   "/sinaqlar",
   "/odenis",

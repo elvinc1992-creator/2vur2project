@@ -527,6 +527,8 @@ export const examKinds = sqliteTable("exam_kinds", {
   price: real("price").notNull(),
   blueprintKey: text("blueprint_key").references(() => examBlueprints.key),
   sortOrder: integer("sort_order").notNull().default(0),
+  /** Standart müddət (dəq) — müəllim sınağında və yeni sınaqda (admin dəyişir). */
+  durationMin: integer("duration_min").notNull().default(90),
 });
 
 export const EXAM_STATUSES = ["active", "passive", "finished"] as const;
@@ -581,7 +583,7 @@ export const payments = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    kind: text("kind", { enum: ["subscription", "exam"] }).notNull(),
+    kind: text("kind", { enum: ["subscription", "exam", "teacher_topup"] }).notNull(),
     title: text("title").notNull(),
     /** AZN */
     amount: real("amount").notNull(),
@@ -812,6 +814,225 @@ export const contestResults = sqliteTable(
 
 export const CONTEST_EMAIL_KINDS = ["confirm", "reminder", "result", "finalist", "final"] as const;
 export type ContestEmailKind = (typeof CONTEST_EMAIL_KINDS)[number];
+
+/* ---------------- Müəllim paneli ---------------- */
+
+export const TEACHER_APP_STATUSES = ["pending", "approved", "rejected"] as const;
+
+/** Müəllim müraciəti: admin təsdiqləyəndə istifadəçinin rolu "teacher" olur. */
+export const teacherApplications = sqliteTable("teacher_applications", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  school: text("school").notNull(),
+  note: text("note"),
+  status: text("status", { enum: TEACHER_APP_STATUSES }).notNull().default("pending"),
+  adminNote: text("admin_note"),
+  createdAt: createdAt(),
+  decidedAt: integer("decided_at", { mode: "timestamp_ms" }),
+});
+
+/** Müəllim hesabı: balans (AZN) və gündəlik sınaq limiti (sual bankının kütləvi çıxarılmasının qarşısı). */
+export const teacherAccounts = sqliteTable("teacher_accounts", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  balance: real("balance").notNull().default(0),
+  dailyLimit: integer("daily_limit").notNull().default(10),
+  createdAt: createdAt(),
+});
+
+export const BALANCE_TX_KINDS = ["topup", "charge", "refund", "bonus", "adjust"] as const;
+
+/** Balans tarixçəsi: artırma, onlayn sınaq üçün tutulma, geri qaytarma, admin əməliyyatı. */
+export const teacherBalanceTx = sqliteTable(
+  "teacher_balance_tx",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    teacherId: text("teacher_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    amount: real("amount").notNull(),
+    kind: text("kind", { enum: BALANCE_TX_KINDS }).notNull(),
+    testId: text("test_id"),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("teacher_balance_tx_idx").on(t.teacherId, t.createdAt)],
+);
+
+/** Qrup: imtahan növü və unikal qoşulma kodu (şagird özü qoşulur). */
+export const teacherGroups = sqliteTable(
+  "teacher_groups",
+  {
+    id: text("id").primaryKey(),
+    teacherId: text("teacher_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    examKind: text("exam_kind").notNull(),
+    code: text("code").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("teacher_groups_code_uq").on(t.code), index("teacher_groups_teacher_idx").on(t.teacherId)],
+);
+
+/** Qrupun üzvləri; leftAt — qrupdan çıxıb (yeni sınaqlara düşmür, müəllim yeni nəticələrini görmür). */
+export const teacherGroupMembers = sqliteTable(
+  "teacher_group_members",
+  {
+    groupId: text("group_id")
+      .notNull()
+      .references(() => teacherGroups.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    joinedAt: integer("joined_at", { mode: "timestamp_ms" }).notNull(),
+    leftAt: integer("left_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [primaryKey({ columns: [t.groupId, t.userId] }), index("teacher_group_members_user_idx").on(t.userId)],
+);
+
+/**
+ * Müəllim sınağı: kağız (pulsuz) və ya onlayn (1 AZN / şagird). Suallar bazadan, imtahan növünün strukturu ilə.
+ * opensAt — onlayn sınağın açılma anı (24 saat açıq qalır); kağızda — sınağın tarixi.
+ */
+export const teacherTests = sqliteTable(
+  "teacher_tests",
+  {
+    id: text("id").primaryKey(),
+    teacherId: text("teacher_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => teacherGroups.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    examKind: text("exam_kind").notNull(),
+    mode: text("mode", { enum: ["paper", "online"] }).notNull(),
+    opensAt: integer("opens_at", { mode: "timestamp_ms" }).notNull(),
+    durationMin: integer("duration_min").notNull(),
+    shuffle: integer("shuffle", { mode: "boolean" }).notNull().default(true),
+    noRepeat: integer("no_repeat", { mode: "boolean" }).notNull().default(true),
+    /** Bazada yeni sual qalmayıb — köhnə istifadə olunmuş suallar götürülüb (müəllimə xəbərdarlıq). */
+    reused: integer("reused").notNull().default(0),
+    /** Onlayn: tutulan məbləğ; geri qaytarma bir dəfə. */
+    charged: real("charged").notNull().default(0),
+    refundedAt: integer("refunded_at", { mode: "timestamp_ms" }),
+    /** Kağız: nəticələr yadda saxlanıb. */
+    resultsAt: integer("results_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("teacher_tests_teacher_idx").on(t.teacherId, t.createdAt), index("teacher_tests_group_idx").on(t.groupId)],
+);
+
+/** Sınağın sualları (əsas sıra) — nəticələr və analitika bura bağlanır. */
+export const teacherTestItems = sqliteTable(
+  "teacher_test_items",
+  {
+    testId: text("test_id")
+      .notNull()
+      .references(() => teacherTests.id, { onDelete: "cascade" }),
+    n: integer("n").notNull(),
+    taskCode: text("task_code").notNull(),
+    format: text("format", { enum: EXAM_ITEM_FORMATS }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.testId, t.n] })],
+);
+
+/**
+ * Şagirdin variantı: hərf, sualların sırası (göstərilən yer → əsas n) və qapalı sualların variant xəritəsi
+ * (göstərilən hərf → orijinal hərf). Kitabça, cavab kartı, açar və yoxlama buna görədir.
+ */
+export const teacherTestVariants = sqliteTable(
+  "teacher_test_variants",
+  {
+    testId: text("test_id")
+      .notNull()
+      .references(() => teacherTests.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    letter: text("letter").notNull(),
+    /** JSON: [3, 1, 2, …] — göstərilən i-ci sual = əsas n */
+    order: text("order").notNull(),
+    /** JSON: {"3": {"A":"C",…}} */
+    maps: text("maps").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.testId, t.userId] })],
+);
+
+/** Cavablar (əsas n üzrə): verilən cavab və bal (qapalı/kodlaşdırılan — avtomatik 0/1, yazılı — müəllim 0/0,5/1). */
+export const teacherTestAnswers = sqliteTable(
+  "teacher_test_answers",
+  {
+    testId: text("test_id")
+      .notNull()
+      .references(() => teacherTests.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    n: integer("n").notNull(),
+    /** Qapalı: orijinal hərf; kodlaşdırılan: ədəd; yazılı: mətn (onlayn) və ya boş. */
+    given: text("given"),
+    score: real("score"),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.testId, t.userId, t.n] })],
+);
+
+/** Onlayn sınağın gedişi: vaxt serverdə, dayanmır. */
+export const teacherTestAttempts = sqliteTable(
+  "teacher_test_attempts",
+  {
+    testId: text("test_id")
+      .notNull()
+      .references(() => teacherTests.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+    finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [primaryKey({ columns: [t.testId, t.userId] })],
+);
+
+export const teacherTestEvents = sqliteTable(
+  "teacher_test_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    testId: text("test_id")
+      .notNull()
+      .references(() => teacherTests.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: CONTEST_EVENT_KINDS }).notNull(),
+    at: integer("at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("teacher_test_events_idx").on(t.testId, t.userId)],
+);
+
+/** Valideyn hesabatı: təxmin edilə bilməyən link (id), 30 gün etibarlı; məlumat yaradılan anda saxlanılır. */
+export const teacherReports = sqliteTable(
+  "teacher_reports",
+  {
+    id: text("id").primaryKey(),
+    teacherId: text("teacher_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    month: text("month").notNull(),
+    note: text("note"),
+    /** JSON — hesabatın məlumatı (yaradılan an). */
+    data: text("data").notNull(),
+    createdAt: createdAt(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("teacher_reports_teacher_idx").on(t.teacherId)],
+);
 
 /** Göndərilmiş e-poçtlar (təkrar göndərilməsin; admin əl ilə yenidən göndərə bilər). */
 export const contestEmails = sqliteTable(
