@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Logo } from "@/components/logo";
 import { TeacherMenu } from "@/components/teacher/menu";
 import { azn, brand } from "@/components/teacher/ui";
@@ -20,11 +21,13 @@ export default async function TeacherLayout({ children }: { children: React.Reac
             Sayta qayıt
           </Link>
         </div>
-        <TeacherMenu />
+        <Suspense>
+          <TeacherMenu />
+        </Suspense>
         <div className={cn(brand, "mt-4 hidden rounded-[16px] p-3.5 text-white lg:block")}>
           <small className="text-white/85">Balans</small>
           <b className="block text-[24px] font-black">{azn(me.balance)}</b>
-          <small className="text-white/85">Onlayn sınaq: 2–3 ₼ / sınaq</small>
+          <small className="text-white/85">Sınaq: 2–3 ₼ (kağız — 2 ₼)</small>
           <br />
           <Link href="/muellim/balans" className="mt-2 inline-block rounded-[9px] bg-white px-3 py-1.5 text-[13px] font-extrabold text-[#4f46e5] no-underline">
             Balansı artır

@@ -45,7 +45,7 @@ test.beforeAll(async () => {
       [u.id, u.email, `e2e_t${u.tag}${stamp % 1e9}`, u.name, u.surname, pw, u.role, now, now, now, now],
     );
   }
-  for (const t of [T1, T2]) await sql("insert into teacher_accounts (user_id, balance, daily_limit, created_at) values (?, 0, 20, ?)", [t.id, now]);
+  for (const t of [T1, T2]) await sql("insert into teacher_accounts (user_id, balance, daily_limit, created_at) values (?, 100, 30, ?)", [t.id, now]);
   // T1: iki qrup (G1 — 4 şagird, G3 — G1-dəki bir şagird + ayrıca bir şagird); T2: öz qrupu (izolyasiya üçün)
   await sql("insert into teacher_groups (id, teacher_id, name, code, created_at) values (?, ?, 'E2E 9-A', ?, ?)", [G1.id, T1.id, G1.code, now]);
   await sql("insert into teacher_groups (id, teacher_id, name, code, created_at) values (?, ?, 'E2E 9-B', ?, ?)", [G3.id, T1.id, G3.code, now]);
@@ -127,6 +127,9 @@ let paper2 = "";
 test("kağız sınağı: struktur imtahan növünə uyğundur, variantlar fərqlidir, ikinci sınaqda suallar təkrarlanmır", async ({ page }) => {
   await login(page, T1);
   paper1 = await createTest(page, "paper");
+  // Kağız sınağı — 2 AZN balansdan (şagird sayından asılı deyil)
+  expect(Number((await one("select charged from teacher_tests where id = ?", [paper1])).charged)).toBe(2);
+  expect(Number((await one("select balance from teacher_accounts where user_id = ?", [T1.id])).balance)).toBe(98);
   paper2 = await createTest(page, "paper");
 
   // Struktur: bölmələrin sayı imtahan növünün (admin) strukturu ilə eynidir
@@ -209,6 +212,47 @@ test("mövzu sınağı: mövzu və 15 / 20 / 25 sual; hər mövzu tədris ilind�
   await expect(opt).toContainText("bu tədris ilində yaradılıb");
 });
 
+test("blok — 30 sual; 11-ci sinif buraxılışda limit, törəmə, inteqral sualı yoxdur (müəllim və saytın sınaqları)", async ({ page }) => {
+  const total = async (kind: string) => Number((await one("select sum(question_count) n from exam_blueprint_sections where blueprint_key = ?", [kind])).n);
+  expect(await total("qebul-11")).toBe(30);
+  // Saytın sınaqları
+  for (const r of (await sql("select e.id, count(i.n) n, max(i.n) mx from exams e join exam_items i on i.exam_id = e.id where e.kind = 'qebul-11' group by e.id")).rows) {
+    expect([Number(r.n), Number(r.mx)], String(r.id)).toEqual([30, 30]);
+  }
+  const lim = "(select id from topics where slug = 'limit-toreme-inteqral')";
+  const siteLimit = await one(`select count(*) n from exam_items i join exams e on e.id = i.exam_id join bank_tasks b on b.code = i.task_code where e.kind = 'buraxilis-11' and b.topic_id = ${lim}`);
+  expect(Number(siteLimit.n)).toBe(0);
+
+  await login(page, T1);
+  for (const kind of ["11-ci sinif blok", "11-ci sinif buraxılış"]) {
+    await fillCreate(page, "paper", { kind });
+    await page.getByRole("button", { name: "Sınağı yarat →" }).click();
+    await expect(page).toHaveURL(/\/muellim\/sinaqlar\/[a-z0-9]+\?yaradildi=1/);
+    const id = new URL(page.url()).pathname.split("/").pop()!;
+    const n = Number((await one("select count(*) n from teacher_test_items where test_id = ?", [id])).n);
+    const limit = Number((await one(`select count(*) n from teacher_test_items i join bank_tasks b on b.code = i.task_code where i.test_id = ? and b.topic_id = ${lim}`, [id])).n);
+    if (kind === "11-ci sinif blok") expect(n).toBe(30);
+    else expect([n, limit]).toEqual([25, 0]);
+    await sql("delete from teacher_tests where id = ?", [id]);
+  }
+});
+
+test("menyu: Kağız nəticələri seçiləndə yalnız o vurğulanır", async ({ page }) => {
+  await login(page, T1);
+  await page.goto("/muellim");
+  const menu = page.getByRole("navigation", { name: "Müəllim paneli" });
+  await menu.getByRole("link", { name: "Kağız nəticələri" }).click();
+  await expect(page).toHaveURL(/\/muellim\/sinaqlar\?netice=1$/);
+  await expect(menu.getByRole("link", { name: "Kağız nəticələri" })).toHaveAttribute("aria-current", "page");
+  await expect(menu.getByRole("link", { name: "Sınaqlar və çap" })).not.toHaveAttribute("aria-current", "page");
+  await page.goto(`/muellim/sinaqlar/${paper1}/netice`);
+  await expect(menu.getByRole("link", { name: "Kağız nəticələri" })).toHaveAttribute("aria-current", "page");
+  await menu.getByRole("link", { name: "Sınaqlar və çap" }).click();
+  await expect(page).toHaveURL(/\/muellim\/sinaqlar$/);
+  await expect(menu.getByRole("link", { name: "Sınaqlar və çap" })).toHaveAttribute("aria-current", "page");
+  await expect(menu.getByRole("link", { name: "Kağız nəticələri" })).not.toHaveAttribute("aria-current", "page");
+});
+
 test("kağız nəticəsi şagirdin öz variantının açarı ilə yoxlanılır", async ({ page }) => {
   await login(page, T1);
   // Açardakı birinci şagirdin sütununu oxu və onun sətrinə yaz
@@ -260,9 +304,13 @@ test("sual bazası bitəndə təkrar suallar götürülür və müəllimə xəb�
 let online = "";
 
 test("onlayn sınaq: qiymət sınaq başına (şagird sayından asılı deyil), balans yoxdursa yaradılmır; şagird keçir; heç kim başlamasa qaytarılır", async ({ page }) => {
+  await sql("update teacher_accounts set balance = 1 where user_id = ?", [T1.id]);
   await login(page, T1);
   await fillCreate(page, "online");
   await expect(page.getByText(/Balans kifayət etmir/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sınağı yarat →" })).toBeDisabled();
+  // Kağız sınağı da ödənişlidir (2 AZN)
+  await fillCreate(page, "paper");
   await expect(page.getByRole("button", { name: "Sınağı yarat →" })).toBeDisabled();
 
   await sql("update teacher_accounts set balance = 10 where user_id = ?", [T1.id]);

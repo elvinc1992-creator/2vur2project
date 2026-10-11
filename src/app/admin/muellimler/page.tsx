@@ -38,7 +38,7 @@ export default async function AdminTeachers(props: PageProps<"/admin/muellimler"
 
   return (
     <>
-      <PageHead title="Müəllimlər" lead="Müəllim paneli yalnız təsdiqlənmiş müəllimlər üçündür. Onlayn sınağın qiyməti sınaq başınadır (balansdan) — “Sınaq strukturu” bölməsində dəyişilir." />
+      <PageHead title="Müəllimlər" lead="Müəllim paneli yalnız təsdiqlənmiş müəllimlər üçündür. Sınağın qiyməti (kağız və onlayn) sınaq başınadır, balansdan tutulur — “Sınaq strukturu” bölməsində dəyişilir." />
       {sp.tesdiq && <Notice tone="ok">Müraciət təsdiqləndi — istifadəçi müəllim oldu.</Notice>}
       {sp.redd && <Notice tone="ok">Müraciət rədd edildi.</Notice>}
       {sp.balans && <Notice tone="ok">Balans əməliyyatı yazıldı.</Notice>}

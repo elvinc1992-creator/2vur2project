@@ -14,6 +14,7 @@ const ITEMS = [
   { href: "/admin/sinaq-strukturu", label: "Sınaq strukturu" },
   { href: "/admin/yaris", label: "Yarış" },
   { href: "/admin/muellimler", label: "Müəllimlər" },
+  { href: "/admin/gozleme-siyahisi", label: "Gözləmə siyahısı" },
   { href: "/admin/zeif-movzular", label: "Mövzular və səhv tipləri" },
 ];
 

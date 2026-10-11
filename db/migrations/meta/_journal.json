@@ -169,6 +169,20 @@
       "when": 1791720698169,
       "tag": "0023_teacher_topic_test",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1791724495552,
+      "tag": "0024_paper_price_blok30",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1791726107880,
+      "tag": "0025_waitlist",
+      "breakpoints": true
     }
   ]
 }

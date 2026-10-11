@@ -531,6 +531,8 @@ export const examKinds = sqliteTable("exam_kinds", {
   durationMin: integer("duration_min").notNull().default(90),
   /** Müəllimin onlayn sınağının qiyməti (AZN, sınaq başına — şagird sayından asılı deyil; admin dəyişir). */
   teacherPrice: real("teacher_price").notNull().default(0),
+  /** Müəllimin kağız sınağının qiyməti (AZN, sınaq başına; admin dəyişir). */
+  teacherPaperPrice: real("teacher_paper_price").notNull().default(2),
 });
 
 export const EXAM_STATUSES = ["active", "passive", "finished"] as const;
@@ -895,7 +897,7 @@ export const teacherGroupMembers = sqliteTable(
 );
 
 /**
- * Müəllim sınağı: kağız (pulsuz) və ya onlayn (sınaq başına qiymət — exam_kinds.teacher_price). Suallar bazadan,
+ * Müəllim sınağı: kağız və ya onlayn (sınaq başına qiymət — exam_kinds.teacher_paper_price / teacher_price). Suallar bazadan,
  * imtahan növünün strukturu ilə; mövzu sınağı — seçilmiş mövzudan 15 / 20 / 25 sual. Bir və ya bir neçə qrupa bağlanır.
  * opensAt — onlayn sınağın açılma anı (24 saat açıq qalır); kağızda — sınağın tarixi.
  */
@@ -1062,3 +1064,15 @@ export const contestEmails = sqliteTable(
   },
   (t) => [index("contest_emails_reg_idx").on(t.registrationId, t.kind)],
 );
+
+export const WAITLIST_ROLES = ["sagird", "muellim", "valideyn"] as const;
+
+/** Açılışa qədər gözləmə siyahısı (production-da yalnız ana səhifə açıqdır). E-poçt unikaldır. */
+export const waitlist = sqliteTable("waitlist", {
+  email: text("email").primaryKey(),
+  name: text("name").notNull(),
+  role: text("role", { enum: WAITLIST_ROLES }).notNull(),
+  grade: text("grade"),
+  consent: integer("consent", { mode: "boolean" }).notNull(),
+  createdAt: createdAt(),
+});

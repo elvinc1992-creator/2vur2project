@@ -27,11 +27,11 @@ export default async function Balance(props: PageProps<"/muellim/balans">) {
   ]);
   const prices = TEACHER_KINDS.map((k) => kinds.find((x) => x.key === k))
     .filter((k) => k !== undefined)
-    .map((k) => `${k.name} — ${azn(k.teacherPrice)}`)
+    .map((k) => `${k.name} — onlayn ${azn(k.teacherPrice)}, kağız ${azn(k.teacherPaperPrice)}`)
     .join(" · ");
   return (
     <>
-      <Top title="Balans" lead={`Onlayn sınaq (sınaq başına, şagird sayından asılı deyil): ${prices}. Kağız sınaq pulsuzdur.`} />
+      <Top title="Balans" lead={`Sınağın qiyməti sınaq başınadır, şagird sayından asılı deyil: ${prices}.`} />
       {sp.ok && <Notice tone="ok">Balans artırıldı.</Notice>}
       {sp.xeta && <Notice tone="error">Məbləği seç və şərtlərlə razılığı təsdiqlə.</Notice>}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.4fr]">

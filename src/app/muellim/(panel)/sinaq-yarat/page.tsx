@@ -53,6 +53,7 @@ export default async function CreateTestPage(props: PageProps<"/muellim/sinaq-ya
           total: k.total,
           durationMin: k.durationMin,
           price: k.price,
+          paperPrice: k.paperPrice,
           sections: k.sections.map((s) => ({ format: s.format, count: s.count })),
           topics: k.topics,
         }))}

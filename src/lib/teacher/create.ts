@@ -44,10 +44,10 @@ export type CreateInput = {
 export type CreateError = "limit" | "balance" | "empty" | "group" | "bank" | "topic" | "topic-used";
 export type CreateResult = { ok: true; id: string; reused: number } | { ok: false; error: CreateError; need?: number };
 
-/** Onlayn sınağın qiyməti (sınaq başına, şagird sayından asılı deyil). */
-export async function priceOf(kind: string) {
-  const [k] = await db.select({ p: examKinds.teacherPrice }).from(examKinds).where(eq(examKinds.key, kind));
-  return k?.p ?? 0;
+/** Sınağın qiyməti (sınaq başına, şagird sayından asılı deyil): onlayn və kağız ayrıca (admin dəyişir). */
+export async function priceOf(kind: string, mode: "paper" | "online") {
+  const [k] = await db.select({ online: examKinds.teacherPrice, paper: examKinds.teacherPaperPrice }).from(examKinds).where(eq(examKinds.key, kind));
+  return (mode === "online" ? k?.online : k?.paper) ?? 0;
 }
 
 /** Bu tədris ilində müəllimin mövzu sınağı yaratdığı mövzular. */
@@ -97,7 +97,7 @@ export async function createTeacherTest(input: CreateInput): Promise<CreateResul
     .where(and(inArray(teacherGroupMembers.groupId, groupIds), isNull(teacherGroupMembers.leftAt)));
   const members = [...new Set(memberRows.map((m) => m.userId))];
   if (!members.length) return { ok: false, error: "empty" };
-  const cost = input.mode === "online" ? await priceOf(input.kind) : 0;
+  const cost = await priceOf(input.kind, input.mode);
   if (cost > (acc?.balance ?? 0)) return { ok: false, error: "balance", need: cost };
 
   // Bu qruplara əvvəl verilmiş suallar: kod → ən son istifadə vaxtı (köhnə olan əvvəl təkrar götürülür)
@@ -180,7 +180,7 @@ export async function createTeacherTest(input: CreateInput): Promise<CreateResul
   );
   if (cost > 0) {
     await db.update(teacherAccounts).set({ balance: (acc?.balance ?? 0) - cost }).where(eq(teacherAccounts.userId, input.teacherId));
-    await db.insert(teacherBalanceTx).values({ teacherId: input.teacherId, amount: -cost, kind: "charge", testId: id, note: `Onlayn sınaq №${(lastNo ?? 0) + 1}` });
+    await db.insert(teacherBalanceTx).values({ teacherId: input.teacherId, amount: -cost, kind: "charge", testId: id, note: `${input.mode === "online" ? "Onlayn" : "Kağız"} sınaq №${(lastNo ?? 0) + 1}` });
   }
   return { ok: true, id, reused };
 }
@@ -199,6 +199,7 @@ export async function structureOf(kind: string) {
     durationMin: k?.durationMin ?? 90,
     name: k?.name ?? kind,
     price: k?.teacherPrice ?? 0,
+    paperPrice: k?.teacherPaperPrice ?? 0,
     topics: kind === "movzu" ? 1 : topicRows.filter((t) => t.examTypes.split(",").map((x) => x.trim()).includes(examType)).length,
   };
 }

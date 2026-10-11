@@ -52,7 +52,14 @@ export default async function TeacherTest(props: PageProps<"/muellim/sinaqlar/[i
       )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
-        <Card title={t.mode === "paper" ? "Çap (pulsuz)" : "Onlayn sınaq"} sub={t.mode === "paper" ? "Hər şagird üçün ayrıca kitabça və kart — adları avtomatik yazılır. Brauzerdə “Çap → PDF kimi saxla”." : `Açılır: ${fmtDayLong(t.opensAt)} · 24 saat açıq qalır · ${t.charged} ₼ tutulub`}>
+        <Card
+          title={t.mode === "paper" ? "Kağız sınağı — çap" : "Onlayn sınaq"}
+          sub={
+            t.mode === "paper"
+              ? `Hər şagird üçün ayrıca kitabça və kart — adları avtomatik yazılır. Brauzerdə “Çap → PDF kimi saxla”. · ${t.charged} ₼ tutulub`
+              : `Açılır: ${fmtDayLong(t.opensAt)} · 24 saat açıq qalır · ${t.charged} ₼ tutulub`
+          }
+        >
           <div className="flex flex-wrap gap-2">
             <Link href={`/muellim/cap/${t.id}/kitabca`} target="_blank" className={btnGhost}>
               📘 Sual kitabçaları
