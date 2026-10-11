@@ -38,9 +38,35 @@ type Props = {
   /** Cavab kartının başlığı üçün. */
   studentName: string;
   today: string;
+  client?: RunnerClient;
 };
 
 const writtenKey = (examId: string, n: number) => `exam:${examId}:w:${n}`;
+
+/**
+ * Sınaq interfeysinin server tərəfi. Standart — saytın sınaqları (/api/exam); müəllimin onlayn sınağı öz API-sini verir
+ * (vaxt dayanmır, yazılı cavabın mətni serverə gedir, tab dəyişmə jurnala yazılır).
+ */
+export type RunnerClient = {
+  tick: (id: string) => Promise<TickResult | null>;
+  pause: (id: string) => Promise<TickResult | null>;
+  save: (id: string, n: number, value: string, ms?: number) => Promise<{ ok: boolean; expired?: boolean; answered?: number }>;
+  flag: (id: string, n: number) => Promise<{ ok: boolean }>;
+  timeout: (id: string) => Promise<{ answered: number }>;
+  beaconPause: (id: string) => boolean;
+  finish: (id: string) => Promise<unknown>;
+  resultHref: (id: string) => string;
+  /** Yazılı cavabın mətni serverə göndərilsin (standart: yalnız "yazılıb" işarəsi). */
+  writtenText?: boolean;
+  /** Tab dəyişmə / pəncərədən çıxma (jurnal üçün). */
+  onHidden?: (id: string) => void;
+};
+
+const DEFAULT_CLIENT: RunnerClient = {
+  ...examApi,
+  finish: (id) => finishExamAction(id),
+  resultHref: (id) => `/sinaq/${id}/netice`,
+};
 
 function fmt(ms: number) {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -52,8 +78,9 @@ function fmt(ms: number) {
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-export function ExamRunner({ exam, questions, initialAnswers, initialFlags, remaining, studentName, today }: Props) {
+export function ExamRunner({ exam, questions, initialAnswers, initialFlags, remaining, studentName, today, client }: Props) {
   const router = useRouter();
+  const api = client ?? DEFAULT_CLIENT;
   const total = questions.length;
   /** İmtahan kitabçasındakı son nömrə (9-cu sinif: 85) — "Sual 61 / 85". */
   const lastN = questions[questions.length - 1]?.n ?? total;
@@ -106,17 +133,20 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
       setRunning(true);
     };
     const tick = () => {
-      if (!finished.current) examApi.tick(exam.id).then(apply, () => {});
+      if (!finished.current) api.tick(exam.id).then(apply, () => {});
     };
     const pause = () => {
       if (finished.current) return;
       if (deadlineRef.current !== null) setPausedLeft(Math.max(0, deadlineRef.current - Date.now()));
       setRunning(false);
-      examApi.pause(exam.id).then((r) => alive && r?.expired && expire(r.answered), () => {});
+      api.pause(exam.id).then((r) => alive && r?.expired && expire(r.answered), () => {});
     };
-    const onVisibility = () => (document.visibilityState === "visible" ? tick() : pause());
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible" && !finished.current) api.onHidden?.(exam.id);
+      return document.visibilityState === "visible" ? tick() : pause();
+    };
     const onPageHide = () => {
-      if (!finished.current) examApi.beaconPause(exam.id);
+      if (!finished.current) api.beaconPause(exam.id);
     };
 
     if (document.visibilityState === "visible") tick();
@@ -129,9 +159,9 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onPageHide);
       // Tətbiq daxilində başqa səhifəyə keçid — sayğac dayanır.
-      if (!finished.current) examApi.pause(exam.id).catch(() => {});
+      if (!finished.current) api.pause(exam.id).catch(() => {});
     };
-  }, [exam.id]);
+  }, [exam.id, api]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -142,8 +172,8 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
   useEffect(() => {
     if (!running || left !== 0 || finished.current) return;
     finished.current = true;
-    examApi.timeout(exam.id).then((r) => setTimedOut(r.answered), () => setTimedOut(answeredCount));
-  }, [running, left, exam.id, answeredCount]);
+    api.timeout(exam.id).then((r) => setTimedOut(r.answered), () => setTimedOut(answeredCount));
+  }, [running, left, exam.id, answeredCount, api]);
 
   // Sual ekrandan gedəndə onun vaxtı yığılır.
   const shownN = view === "question" ? q.n : null;
@@ -163,7 +193,10 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
   };
 
   /** Optimist yeniləmə + debounce ilə serverə yazma. Server cavab verəndə resolve olur. */
-  const save = (n: number, value: string, delay = 0) => {
+  const save = (n: number, raw: string, delay = 0) => {
+    // Yazılı: standartda serverə yalnız "yazılıb" işarəsi (mətn bu cihazda), müəllim sınağında — mətn.
+    const written = questions.find((x) => x.n === n)?.format === "written";
+    const value = written ? (api.writtenText ? raw.trim().slice(0, WRITTEN_MAX) : raw.trim() ? "w" : "") : raw;
     setAnswers((prev) => {
       const next = { ...prev };
       if (value) next[n] = value;
@@ -173,7 +206,7 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
     clearTimeout(debounce.current[n]);
     return new Promise<boolean>((resolve) => {
       debounce.current[n] = setTimeout(async () => {
-        const res: { ok: boolean; expired?: boolean; answered?: number } = await examApi
+        const res: { ok: boolean; expired?: boolean; answered?: number } = await api
           .save(exam.id, n, value, spentOn(n))
           .catch(() => ({ ok: false }));
         if (res.expired && !finished.current) {
@@ -193,7 +226,7 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
       else next.add(n);
       return next;
     });
-    examApi.flag(exam.id, n).catch(() => setSaveError(true));
+    api.flag(exam.id, n).catch(() => setSaveError(true));
   };
 
   const go = (idx: number) => {
@@ -206,8 +239,8 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
   const finish = () =>
     startFinish(async () => {
       finished.current = true;
-      await finishExamAction(exam.id);
-      router.push(`/sinaq/${exam.id}/netice`);
+      await api.finish(exam.id);
+      router.push(api.resultHref(exam.id));
     });
 
   if (timedOut !== null) {
@@ -216,7 +249,7 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
         <EmptyState tone="warning" icon={<ClockIcon />} title={t.timeoutTitle}>
           {t.timeoutText(timedOut)}
         </EmptyState>
-        <ButtonLink href={`/sinaq/${exam.id}/netice`} block>
+        <ButtonLink href={api.resultHref(exam.id)} block>
           {t.toResult}
         </ButtonLink>
         <ButtonLink href="/panel" variant="ghost" block>
@@ -423,7 +456,7 @@ function ExamQuestionView({
         <CodedInput n={q.n} value={value} onChange={(v) => onAnswer(q.n, v, 500)} onClear={() => onAnswer(q.n, "")} />
       )}
       {q.format === "written" && (
-        <WrittenInput examId={examId} n={q.n} onChange={(has) => onAnswer(q.n, has ? "w" : "", 500)} />
+        <WrittenInput examId={examId} n={q.n} onChange={(text) => onAnswer(q.n, text, 500)} />
       )}
     </div>
   );
@@ -543,7 +576,7 @@ function WrittenInput({
 }: {
   examId: string;
   n: number;
-  onChange: (has: boolean) => Promise<boolean>;
+  onChange: (text: string) => Promise<boolean>;
 }) {
   const key = writtenKey(examId, n);
   const stored = useSyncExternalStore(subscribeStorage, () => readStorage(key), () => null);
@@ -570,7 +603,7 @@ function WrittenInput({
           try {
             localStorage.setItem(key, v);
           } catch {}
-          onChange(v.trim().length > 0).then((ok) => setStatus(ok ? "saved" : "idle"));
+          onChange(v).then((ok) => setStatus(ok ? "saved" : "idle"));
         }}
         className="min-h-[140px] w-full rounded-md border-[1.5px] border-control-border bg-white px-4 py-3.5 text-body text-ink focus:border-navy-500 focus-visible:ring-2 focus-visible:ring-navy-500 focus-visible:ring-offset-2 focus-visible:outline-none"
       />
@@ -929,7 +962,7 @@ function WrittenRow({
   n: number;
   total: number;
   answered: boolean;
-  onChange: (has: boolean) => void;
+  onChange: (text: string) => void;
   onGo: () => void;
 }) {
   const key = writtenKey(examId, n);
@@ -957,7 +990,7 @@ function WrittenRow({
           try {
             localStorage.setItem(key, v);
           } catch {}
-          onChange(v.trim().length > 0);
+          onChange(v);
         }}
         className="min-h-[52px] flex-1 resize-y border-none bg-[repeating-linear-gradient(transparent_0_25px,#e7dfd2_25px_26px)] text-[14.5px] leading-[26px] text-[#1e2a4a] outline-none placeholder:text-ink-placeholder"
       />
@@ -1091,7 +1124,7 @@ function AnswerSheet({
                     n={q.n}
                     total={total}
                     answered={Boolean(answers[q.n])}
-                    onChange={(has) => onPick(q.n, has ? "w" : "", 500)}
+                    onChange={(text) => onPick(q.n, text, 500)}
                     onGo={goTo(q)}
                   />
                 ))}

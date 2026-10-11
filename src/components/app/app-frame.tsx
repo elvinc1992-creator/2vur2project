@@ -11,7 +11,7 @@ import type { DemoState } from "@/lib/demo/state";
 import Link from "next/link";
 
 /** Tətbiq çərçivəsi: desktop-da sol yan panel, mobil-də alt tab paneli. */
-export function AppFrame({ state, admin = false, children }: { state: DemoState; admin?: boolean; children: ReactNode }) {
+export function AppFrame({ state, admin = false, teacher = false, children }: { state: DemoState; admin?: boolean; teacher?: boolean; children: ReactNode }) {
   const t = az.app;
   const days = daysLeft(state.sub.periodEnd);
   const plan = planStatus(state);
@@ -37,6 +37,9 @@ export function AppFrame({ state, admin = false, children }: { state: DemoState;
                 <Tag tone={tag.tone} dot className="justify-self-start">
                   {tag.text}
                 </Tag>
+                <Link href={teacher ? "/muellim" : "/muellim/muraciet"} className="text-small font-semibold">
+                  {teacher ? "Müəllim paneli →" : "Müəllimsən? Müraciət et →"}
+                </Link>
                 {admin && (
                   <Link href="/admin" className="text-small font-semibold">
                     Admin paneli →

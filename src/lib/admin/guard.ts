@@ -19,6 +19,13 @@ export const requireAdmin = cache(async (next = "/admin") => {
   return u;
 });
 
+/** Rol (aktiv hesab üçün) — tətbiq çərçivəsində admin / müəllim keçidləri. */
+export async function roleOf(userId: string | undefined) {
+  if (!userId) return null;
+  const [u] = await db.select({ role: users.role, status: users.status }).from(users).where(eq(users.id, userId));
+  return u?.status === "active" ? u.role : null;
+}
+
 export async function isAdmin(userId: string | undefined) {
   if (!userId) return false;
   const [u] = await db.select({ role: users.role, status: users.status }).from(users).where(eq(users.id, userId));

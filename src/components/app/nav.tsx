@@ -23,6 +23,8 @@ const EXAM_MATCH = { href: "/imtahan-qarsiligi", match: ["/imtahan-qarsiligi"], 
 const PLANS = { href: "/abunelikler", match: ["/abunelikler", "/odenis"], label: t.plans, long: t.plans, Icon: CardIcon };
 /** Riyaziyyat yarışı — pulsuz, hamı üçün eyni. */
 const CONTEST = { href: "/yaris", match: ["/yaris"], label: "Yarış", long: "Riyaziyyat yarışı", Icon: SparkleIcon };
+/** Müəllimin qrupları və onlayn sınaqları (şagird tərəfi). */
+const GROUPS = { href: "/qruplarim", match: ["/qruplarim", "/muellim-sinaq"], label: "Qruplarım", long: "Qruplarım", Icon: UserIcon };
 
 function useActive() {
   const path = usePathname();
@@ -34,7 +36,7 @@ export function SideNav({ footer }: { footer?: React.ReactNode }) {
   const isActive = useActive();
   return (
     <nav aria-label={t.label} className="grid content-start gap-1">
-      {[...ITEMS, MISTAKES, WEAK, SCORE, STATS, EXAM_MATCH, CONTEST, PLANS].map(({ href, match, long, Icon }) => {
+      {[...ITEMS, MISTAKES, WEAK, SCORE, STATS, EXAM_MATCH, CONTEST, GROUPS, PLANS].map(({ href, match, long, Icon }) => {
         const active = isActive(match);
         return (
           <Link

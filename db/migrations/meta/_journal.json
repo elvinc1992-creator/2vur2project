@@ -148,6 +148,13 @@
       "when": 1791713014791,
       "tag": "0020_contest_bank",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1791714755700,
+      "tag": "0021_teacher_panel",
+      "breakpoints": true
     }
   ]
 }

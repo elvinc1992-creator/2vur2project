@@ -10,7 +10,7 @@ export default async function AdminRevenue() {
   const exam = o.revenue.byKind.find((k) => k.kind === "exam");
   return (
     <>
-      <PageHead title="Qazanc" lead="Bütün ödənişlər (abunələr və tək sınaqlar). Ödəniş hələ test rejimindədir (mock)." />
+      <PageHead title="Qazanc" lead="Bütün ödənişlər (abunələr, tək sınaqlar, müəllim balansının artırılması). Ödəniş hələ test rejimindədir (mock)." />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat tone="navy" label="Cəmi" value={azn(o.revenue.total)} hint={`${o.revenue.count} ödəniş`} />
         <Stat label="Son 30 gün" value={azn(o.revenue.last30)} />
@@ -39,7 +39,9 @@ export default async function AdminRevenue() {
                 <span className="block text-[12.5px] text-ink-muted">{email ?? (username ? `@${username}` : "")}</span>
               </td>
               <td className={td}>{p.title}</td>
-              <td className={td}>{p.kind === "exam" ? "Tək sınaq" : p.period === "year" ? "Abunə · illik" : "Abunə · aylıq"}</td>
+              <td className={td}>
+                {p.kind === "exam" ? "Tək sınaq" : p.kind === "teacher_topup" ? "Müəllim balansı" : p.period === "year" ? "Abunə · illik" : "Abunə · aylıq"}
+              </td>
               <td className={`${td} font-bold tabular`}>{azn(p.amount)}</td>
             </tr>
           ))}
