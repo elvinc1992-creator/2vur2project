@@ -191,19 +191,19 @@ export const azLanding = {
     items: [
       {
         q: "Bu sayt DİM-in saytıdır?",
-        a: "Xeyr. Layihə müstəqildir və DİM ilə əlaqəli deyil. Biz açıq imtahan suallarını özümüz təhlil edirik.",
+        a: "Xeyr. Layihə müstəqildir və DİM-ə məxsus deyil. Biz açıq imtahan suallarını özümüz təhlil edirik.",
       },
       {
         q: "Sualların mətni haradadır?",
-        a: "Sualların mətni test toplularındadır. Kartda toplu, hissə, səhifə və nömrə göstərilir — kitabı açıb həll edirsən.",
+        a: "Bütün suallar saytdadır və 2vur2.az-a məxsusdur. Hər sualın addım-addım həlli də burada göstərilir.",
       },
       {
         q: "Hazırlığa nə qədər vaxt lazımdır?",
         a: "Gündə 20–30 dəqiqə ilə başla. Əvvəl ən çox çıxan tiplərə fokuslan, sonra zəif mövzulara keç.",
       },
       {
-        q: "Hansı toplular lazımdır?",
-        a: "DİM-in 2023 və 2025 test topluları (I və II hissə). Hər sual üçün hər iki toplunun səhifə və nömrəsi göstərilir.",
+        q: "Test topluları lazımdır?",
+        a: "Xeyr. Bütün suallar və həllər saytdadır. Statistikada isə keçmiş imtahan sual tiplərinin DİM test toplularında necə təkrarlandığını görə bilərsən.",
       },
     ],
   },
@@ -223,6 +223,6 @@ export const azLanding = {
     legal: "Hüquqi",
     links: { topics: "Mövzular", stats: "Statistika", exams: "Sınaqlar", pricing: "Qiymətlər", login: "Daxil ol" },
     legalLinks: { terms: "İstifadə şərtləri", privacy: "Məxfilik siyasəti", refund: "Geri qaytarma siyasəti" },
-    note: "Sualların mətni test toplularına aiddir; saytda yalnız istinad göstərilir.",
+    note: "Saytdakı bütün sualların mətni və həlləri 2vur2.az-a məxsusdur.",
   },
 } as const;

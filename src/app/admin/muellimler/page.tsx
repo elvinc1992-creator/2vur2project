@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type { Metadata } from "next";
 import { db } from "@/db";
 import { teacherAccounts, teacherApplications, teacherBalanceTx, teacherGroupMembers, teacherGroups, teacherTests, users } from "@/db/schema";
@@ -18,7 +18,7 @@ export default async function AdminTeachers(props: PageProps<"/admin/muellimler"
       .from(teacherApplications)
       .innerJoin(users, eq(users.id, teacherApplications.userId))
       .orderBy(desc(teacherApplications.createdAt)),
-    db.select({ u: users, acc: teacherAccounts }).from(users).leftJoin(teacherAccounts, eq(teacherAccounts.userId, users.id)).where(eq(users.role, "teacher")),
+    db.select({ u: users, acc: teacherAccounts }).from(users).leftJoin(teacherAccounts, eq(teacherAccounts.userId, users.id)).where(or(eq(users.role, "teacher"), and(eq(users.role, "admin"), isNotNull(teacherAccounts.userId)))),
   ]);
   const ids = teachers.map((t) => t.u.id);
   const [groups, members, tests, tx] = ids.length

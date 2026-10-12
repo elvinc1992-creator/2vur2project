@@ -143,6 +143,7 @@ export function TabBar({ teacher = false, admin = false }: { teacher?: boolean; 
       )}
       <nav
         aria-label={t.label}
+        data-tabbar
         className="sticky bottom-0 z-10 grid grid-cols-5 border-t border-line bg-white px-1 pt-1.5 pb-[max(10px,env(safe-area-inset-bottom))] lg:hidden"
       >
         {ITEMS.slice(0, 4).map(({ href, match, label, Icon }) => {

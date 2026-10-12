@@ -159,14 +159,18 @@ function PairCard({ p, premium }: { p: ExamPairView; premium: boolean }) {
             </div>
           ))}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[14px] bg-[linear-gradient(135deg,#047857,#0e7490)] px-4 py-3 text-white">
-            <span className="font-semibold">
-              {p.topicQuestions > 0 ? (
-                <>
-                  {t.more} <strong className="font-display text-[22px] tabular">{p.topicQuestions}</strong> {t.moreUnit}
-                </>
-              ) : (
-                t.soon
-              )}
+            <span className="grid gap-0.5">
+              <span className="font-semibold">
+                {p.topicQuestions > 0 ? (
+                  <>
+                    {t.more} <strong className="font-display text-[22px] tabular">{p.topicQuestions}</strong> {t.moreUnit}
+                  </>
+                ) : (
+                  t.soon
+                )}
+              </span>
+              {/* Bu suallar "Onlayn repetitor" bölməsində işlənir */}
+              {p.topicQuestions > 0 && <span className="text-[13.5px] opacity-90">{t.moreWhere}</span>}
             </span>
             <Link
               href={premium ? `/onlayn-repetitor/${p.topicSlug}` : "/abunelikler"}

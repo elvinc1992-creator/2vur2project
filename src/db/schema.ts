@@ -328,12 +328,14 @@ export const examBlueprintSections = sqliteTable(
   (t) => [uniqueIndex("exam_blueprint_sections_uq").on(t.blueprintKey, t.format)],
 );
 
-/** Mövzunun nəzəriyyəsi (Markdown + LaTeX). */
+/** Mövzunun nəzəriyyəsi (Markdown + LaTeX) və/və ya vərəqlənən kitab (topic_questions/theoria/kitab-<slug>.html). */
 export const tutorTheory = sqliteTable("tutor_theory", {
   topicId: integer("topic_id")
     .primaryKey()
     .references(() => topics.id),
   body: text("body").notNull(),
+  /** Hazır HTML kitab (scripts/import-theory.mts emal edir); null — yalnız mətn nəzəriyyəsi. */
+  bookHtml: text("book_html"),
 });
 
 export type User = typeof users.$inferSelect;

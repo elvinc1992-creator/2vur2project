@@ -184,7 +184,7 @@ function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: R
           <span className="text-small text-ink-muted">{e.topicName ? t.topicExam(e.topicName) : e.group}</span>
           <h2 className={h3Class}>{e.title}</h2>
         </div>
-        {e.userStatus === "done" && <Tag tone="solid">{t.score(result.score)}</Tag>}
+        {e.userStatus === "done" && <Tag tone="solid">{t.score(result.correct, result.wrong)}</Tag>}
         {e.userStatus === "locked" && canSell && <Tag className="tabular">{priceText(e.price)}</Tag>}
         {e.userStatus === "purchased" && <Tag tone="success">{t.owned}</Tag>}
       </div>

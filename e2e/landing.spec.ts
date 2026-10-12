@@ -54,7 +54,7 @@ test("desktop: rəqəmlər bazadan, bölmələr və linklər", async ({ page }) 
   await expect(pricing.getByRole("link", { name: "Pulsuz başla" })).toHaveAttribute("href", "/qeydiyyat");
 
   // Footer: məcburi cümlə
-  await expect(page.getByRole("contentinfo")).toContainText("Bu layihə müstəqildir və DİM ilə əlaqəli deyil.");
+  await expect(page.getByRole("contentinfo")).toContainText("Bu layihə müstəqildir və DİM-ə məxsus deyil.");
   expect(await axe(page)).toEqual([]);
 });
 

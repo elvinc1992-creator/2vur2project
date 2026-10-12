@@ -5,6 +5,8 @@ export const BRAND_NAME = "2vur2";
 export const brand = {
   name: BRAND_NAME,
   domain: "2vur2.az",
+  /** Əlaqə ünvanı (footer, xəta mesajları). */
+  email: "info@2vur2.az",
   telegramUrl: process.env.NEXT_PUBLIC_TELEGRAM_URL || "#",
   instagramUrl: process.env.NEXT_PUBLIC_INSTAGRAM_URL || "#",
   year: 2026,

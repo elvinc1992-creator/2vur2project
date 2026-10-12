@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { auth } from "@/auth";
-import { finalizeAttempt, loadExamCtx, pauseAttempt, saveAnswer, tickAttempt, toggleFlag } from "@/lib/demo/exam-session";
+import { WRITTEN_MAX, finalizeAttempt, loadExamCtx, pauseAttempt, saveAnswer, tickAttempt, toggleFlag } from "@/lib/demo/exam-session";
 import { updateDemoState } from "@/lib/demo/state";
 import { afterExamFinished } from "@/lib/weak/hooks";
 
@@ -11,7 +11,7 @@ const n = z.number().int().min(1).max(200);
 const body = z.discriminatedUnion("op", [
   z.object({ op: z.literal("tick") }),
   z.object({ op: z.literal("pause") }),
-  z.object({ op: z.literal("save"), n, value: z.string().max(8), ms: z.number().int().min(0).max(6 * 3_600_000).optional() }),
+  z.object({ op: z.literal("save"), n, value: z.string().max(WRITTEN_MAX), ms: z.number().int().min(0).max(6 * 3_600_000).optional() }),
   z.object({ op: z.literal("flag"), n }),
   z.object({ op: z.literal("timeout") }),
 ]);

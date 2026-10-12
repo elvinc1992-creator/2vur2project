@@ -333,7 +333,7 @@ export async function ContestLanding({ contestId }: { contestId: string }) {
             {disabledReg ? (
               <div role="status" className="grid gap-2 rounded-[24px] border border-[#fecaca] bg-[#fef2f2] p-6 text-center text-[#991b1b]">
                 <h3 className="m-0 text-[20px] font-black">Qeydiyyatın deaktiv edilib</h3>
-                <p className="m-0">Admin bu yarışa qeydiyyatını dayandırıb. Ətraflı məlumat üçün bizimlə əlaqə saxla.</p>
+                <p className="m-0">Admin bu yarışa qeydiyyatını dayandırıb. Ətraflı məlumat üçün bizimlə əlaqə saxla: info@2vur2.az</p>
               </div>
             ) : reg ? (
               <div role="status" className="grid gap-3 rounded-[24px] border border-[#e6e9f2] bg-white p-6 text-center">
@@ -397,7 +397,7 @@ export async function ContestLanding({ contestId }: { contestId: string }) {
       </main>
 
       <footer className="mx-auto mt-12 max-w-[1140px] border-t border-[#e6e9f2] px-4 pt-6 pb-9 text-center text-[13px] text-[#5b6785]">
-        © 2vur2.az · Bu material 2vur2.az saytına məxsusdur
+        © 2vur2.az · Bu material 2vur2.az saytına məxsusdur · Əlaqə: info@2vur2.az
       </footer>
     </div>
   );

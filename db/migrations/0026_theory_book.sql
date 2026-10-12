@@ -1,0 +1,1 @@
+ALTER TABLE `tutor_theory` ADD `book_html` text;

@@ -1,5 +1,5 @@
 import "server-only";
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db";
 import { bankTasks, topics, tutorTheory } from "@/db/schema";
@@ -117,12 +117,22 @@ export async function getRepetitorKeys(ids: string[]): Promise<Map<string, Repet
   return out;
 }
 
-/** Mövzunun nəzəriyyəsi; yoxdursa null. */
-export async function getTopicTheory(slug: string): Promise<string | null> {
+/** Mövzunun nəzəriyyəsi: mətn (boş ola bilər) və vərəqlənən kitabın olub-olmaması; yoxdursa null. */
+export async function getTopicTheory(slug: string): Promise<{ body: string; hasBook: boolean } | null> {
   const [r] = await db
-    .select({ body: tutorTheory.body })
+    .select({ body: tutorTheory.body, hasBook: sql<number>`${tutorTheory.bookHtml} is not null` })
     .from(tutorTheory)
     .innerJoin(topics, eq(topics.id, tutorTheory.topicId))
     .where(eq(topics.slug, slug));
-  return r?.body ?? null;
+  return r ? { body: r.body, hasBook: Boolean(r.hasBook) } : null;
+}
+
+/** Mövzunun nəzəriyyə kitabı (HTML, scripts/import-theory.mts); yoxdursa null. */
+export async function getTopicBook(slug: string): Promise<string | null> {
+  const [r] = await db
+    .select({ html: tutorTheory.bookHtml })
+    .from(tutorTheory)
+    .innerJoin(topics, eq(topics.id, tutorTheory.topicId))
+    .where(eq(topics.slug, slug));
+  return r?.html ?? null;
 }

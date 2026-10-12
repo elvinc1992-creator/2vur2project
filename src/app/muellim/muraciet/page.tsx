@@ -22,7 +22,7 @@ export default async function Apply(props: PageProps<"/muellim/muraciet">) {
     db.select({ role: users.role }).from(users).where(eq(users.id, session.user.id)),
     db.select().from(teacherApplications).where(eq(teacherApplications.userId, session.user.id)),
   ]);
-  if (u?.role === "teacher") redirect("/muellim");
+  if (u?.role === "teacher" || u?.role === "admin") redirect("/muellim");
 
   return (
     <main className="min-h-dvh bg-[#f4f6fb] px-4 py-8 text-[#0f1b3d]">

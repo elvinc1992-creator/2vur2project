@@ -259,7 +259,11 @@ test("kağız nəticəsi şagirdin öz variantının açarı ilə yoxlanılır",
   await page.goto(`/muellim/cap/${paper1}/acar`);
   const header = page.locator("thead th").nth(1);
   const studentName = (await header.innerText()).replace(/\s*\([A-H]\)\s*$/, "").replace(/\s+/g, " ").trim();
-  const key = await page.locator("tbody tr").evaluateAll((rows) => rows.map((r) => (r.querySelectorAll("td")[1] as HTMLElement | undefined)?.innerText.trim() ?? ""));
+  const key = await page
+    .locator("tbody tr")
+    .evaluateAll((rows) => rows.map((r) => ((r as HTMLElement).dataset.format === "written" ? "yazılı" : ((r.querySelectorAll("td")[1] as HTMLElement | undefined)?.innerText.trim() ?? ""))));
+  // Yazılı suallar üçün açarda nümunə cavab var (əvvəl yalnız "yazılı" yazılırdı)
+  await expect(page.locator("tbody tr[data-format=written] td").nth(1)).not.toHaveText(/^(yazılı|—)?$/);
 
   await page.goto(`/muellim/sinaqlar/${paper1}/netice`);
   const row = page.getByRole("row").filter({ hasText: studentName });

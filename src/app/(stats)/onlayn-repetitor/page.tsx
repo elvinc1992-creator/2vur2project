@@ -28,6 +28,8 @@ export default async function RepetitorPage(props: PageProps<"/onlayn-repetitor"
   const sp = await props.searchParams;
   const allTopics = await listAllRepetitorTopics();
   const soon = allTopics.filter((x) => !x.questions.length);
+  // Mövzu nömrəsi — tədris sırası ilə (bütün siyahılarda eyni)
+  const topicNo = new Map(allTopics.map((x, i) => [x.slug, i + 1]));
   const { view, curr } = await tutorContext(state);
   const free = freeLessonOf(curr);
 
@@ -36,7 +38,7 @@ export default async function RepetitorPage(props: PageProps<"/onlayn-repetitor"
       <Locked
         guest={!user}
         free={free ? { slug: free.topic, name: free.topicName, n: free.questionIds.length } : null}
-        topics={allTopics.map((x) => ({ slug: x.slug, name: x.name, n: x.questions.length }))}
+        topics={allTopics.map((x, i) => ({ slug: x.slug, name: x.name, n: x.questions.length, no: i + 1 }))}
       />
     );
   }
@@ -83,7 +85,7 @@ export default async function RepetitorPage(props: PageProps<"/onlayn-repetitor"
               </h2>
               <ol className="m-0 grid list-none gap-2 p-0">
                 {view.lessons.map((l) => (
-                  <LessonRows key={`${l.topic}-${l.part}`} lesson={l} doneTopic={view.doneTopics.has(l.topic)}>
+                  <LessonRows key={`${l.topic}-${l.part}`} lesson={l} no={topicNo.get(l.topic)} doneTopic={view.doneTopics.has(l.topic)}>
                     {view.exams
                       .filter((e) => e.afterLesson === l.index)
                       .map((e) => (
@@ -106,7 +108,10 @@ export default async function RepetitorPage(props: PageProps<"/onlayn-repetitor"
               {soon.map((x) => (
                 <li key={x.slug} className="flex items-center gap-3 rounded-lg border border-line bg-white px-4 py-2.5">
                   <TopicIcon name={x.name} className="size-5 flex-none text-ink-muted" />
-                  <span className="min-w-0 flex-1 text-[15px] text-navy-900">{x.name}</span>
+                  <span className="min-w-0 flex-1 text-[15px] text-navy-900">
+                    <TopicNo no={topicNo.get(x.slug)} />
+                    {x.name}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -157,7 +162,22 @@ function Summary({ view, days }: { view: NonNullable<Awaited<ReturnType<typeof t
   );
 }
 
-function LessonRows({ lesson: l, doneTopic, children }: { lesson: LessonView; doneTopic: boolean; children?: React.ReactNode }) {
+/** Mövzunun nömrəsi adın qarşısında: "3. Faiz". */
+function TopicNo({ no }: { no: number | undefined }) {
+  return no ? <span className="mr-1.5 font-bold text-ink-muted tabular">{no}.</span> : null;
+}
+
+function LessonRows({
+  lesson: l,
+  no,
+  doneTopic,
+  children,
+}: {
+  lesson: LessonView;
+  no: number | undefined;
+  doneTopic: boolean;
+  children?: React.ReactNode;
+}) {
   const locked = l.status === "locked";
   const done = l.status === "done";
   return (
@@ -180,6 +200,7 @@ function LessonRows({ lesson: l, doneTopic, children }: { lesson: LessonView; do
           </span>
           <div className="min-w-0 flex-1">
             <p className="m-0 font-semibold text-navy-900">
+              <TopicNo no={no} />
               {l.topicName}
               {l.parts > 1 && <span className="font-normal text-ink-muted"> · {t.lessonPart(l.part, l.parts)}</span>}
               {doneTopic && l.part === l.parts && (
@@ -249,7 +270,7 @@ function Locked({
   free,
   guest,
 }: {
-  topics: Array<{ slug: string; name: string; n: number }>;
+  topics: Array<{ slug: string; name: string; n: number; no: number }>;
   free: { slug: string; name: string; n: number } | null;
   guest: boolean;
 }) {
@@ -315,7 +336,10 @@ function Locked({
                 <span className="grid size-9 flex-none place-items-center rounded-[10px] bg-navy-050 text-ink-muted">
                   <TopicIcon name={x.name} className="size-5" />
                 </span>
-                <span className="min-w-0 flex-1 font-semibold text-navy-900">{x.name}</span>
+                <span className="min-w-0 flex-1 font-semibold text-navy-900">
+                  <TopicNo no={x.no} />
+                  {x.name}
+                </span>
                 {free?.slug === x.slug ? (
                   <Link href={`/onlayn-repetitor/${x.slug}`} className="text-small font-bold text-success-700 underline underline-offset-3">
                     {t.freeTag}

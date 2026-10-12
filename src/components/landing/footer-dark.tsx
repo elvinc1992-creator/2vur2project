@@ -3,14 +3,14 @@ import { InfoIcon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { az } from "@/content/az";
 
-/** Tünd footer (landing). Məcburi cümlə: "Bu layihə müstəqildir və DİM ilə əlaqəli deyil." */
+/** Tünd footer (landing). Məcburi cümlə: "Bu layihə müstəqildir və DİM-ə məxsus deyil." */
 export function FooterDark() {
   const t = az.landing.footer;
   const link = "text-white no-underline hover:underline underline-offset-3";
   return (
     <footer className="bg-navy-900 pt-10 pb-6 text-on-navy-muted">
       <div className="mx-auto grid w-full max-w-content gap-8 px-4 md:px-8">
-        <div className="grid gap-6 md:grid-cols-[2fr_1fr_1fr]">
+        <div className="grid gap-6 md:grid-cols-[2fr_1fr_1fr_1fr]">
           <div className="grid content-start gap-2">
             <Logo onNavy />
             <p className="text-small">{t.tagline}</p>
@@ -43,6 +43,12 @@ export function FooterDark() {
               {t.legalLinks.refund}
             </Link>
           </nav>
+          <div className="grid content-start gap-2.5">
+            <h2 className="text-small font-bold text-white">{az.common.contact}</h2>
+            <a href={`mailto:${az.common.email}`} className={link}>
+              {az.common.email}
+            </a>
+          </div>
         </div>
         <div className="grid gap-2 border-t border-white/18 pt-5 text-small">
           <p className="flex items-start gap-2 text-white">

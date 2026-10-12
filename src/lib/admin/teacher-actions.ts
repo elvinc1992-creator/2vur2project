@@ -1,6 +1,6 @@
 "use server";
 
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -18,7 +18,8 @@ export async function decideTeacherAction(formData: FormData) {
     .set({ status: p.decision === "approve" ? "approved" : "rejected", adminNote: p.note || null, decidedAt: new Date() })
     .where(eq(teacherApplications.userId, p.userId));
   if (p.decision === "approve") {
-    await db.update(users).set({ role: "teacher", updatedAt: new Date() }).where(eq(users.id, p.userId));
+    // Admin rolu əzilmir (admin müəllim panelindən də istifadə edir)
+    await db.update(users).set({ role: "teacher", updatedAt: new Date() }).where(and(eq(users.id, p.userId), ne(users.role, "admin")));
     await db.insert(teacherAccounts).values({ userId: p.userId }).onConflictDoNothing();
   }
   revalidatePath("/admin/muellimler");

@@ -114,7 +114,7 @@ export function ContestSoon() {
       </main>
 
       <footer className="mx-auto mt-12 max-w-[1140px] border-t border-[#e6e9f2] px-4 pt-6 pb-9 text-center text-[13px] text-[#5b6785]">
-        © 2vur2.az · Bu material 2vur2.az saytına məxsusdur
+        © 2vur2.az · Bu material 2vur2.az saytına məxsusdur · Əlaqə: info@2vur2.az
       </footer>
     </div>
   );

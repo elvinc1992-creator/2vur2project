@@ -320,7 +320,21 @@ test("sayğac: vaxt səhifədə bitəndə sınaq avtomatik bitir və bağlanır"
   await expect(page).toHaveURL(/\/sinaq\/b11-1\/netice$/);
   await expect(page.getByText(/Vaxt bitdiyi üçün sınaq avtomatik göndərildi/)).toBeVisible();
   await page.goto("/sinaqlar");
-  await expect(page.getByText("Bal: 4")).toBeVisible();
+  await expect(page.getByText("1 düzgün · 0 yanlış")).toBeVisible();
+});
+
+test("köhnə nəticə: serverdə yalnız 'yazılıb' işarəsi — mətn bu brauzerdən göstərilir", async ({ page }) => {
+  await setDemo({ answers: { "19": "w" }, startedAt: Date.now() - 100_000, elapsedMs: 90 * 60_000 - 1_000, lastSeenAt: null });
+  await page.addInitScript(() => localStorage.setItem("exam:b11-1:w:19", "Köhnə yazılı cavab"));
+  await page.goto("/sinaq/b11-1");
+  await expect(page.getByRole("heading", { name: "Sınaq vaxtı bitdi" })).toBeVisible({ timeout: 15_000 });
+  await page.goto("/sinaq/b11-1/netice");
+  await expect(page.locator("#sol-19").locator("xpath=ancestor::article")).toContainText("Köhnə yazılı cavab");
+  // Brauzerdə mətn yoxdursa — "Yazılıb · yoxlanılır"
+  // init skriptləri qeydiyyat sırası ilə işləyir: əvvəl yazır, sonra silir
+  await page.addInitScript(() => localStorage.removeItem("exam:b11-1:w:19"));
+  await page.reload();
+  await expect(page.locator("#sol-19").locator("xpath=ancestor::article")).toContainText("Yazılıb · yoxlanılır");
 });
 
 test("sayğac: vaxtı bitmiş sınaq aktiv deyil — davam etmək olmur", async ({ page }) => {
@@ -387,7 +401,7 @@ test("sınaq: Free — ayın sınağını seç → başla → cavabla → yenil�
 
   await page.getByRole("button", { name: "Cavab vərəqi" }).first().click();
   await expect(page.getByText("3 / 25 cavablanıb")).toBeVisible();
-  await expect(page.getByText("Yazılıb")).toBeVisible();
+  await expect(page.getByText("Yazılıb", { exact: true })).toBeVisible();
   await page.screenshot({ path: "screenshots/cavab-karti-1280.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 900 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
@@ -399,13 +413,17 @@ test("sınaq: Free — ayın sınağını seç → başla → cavabla → yenil�
   await page.getByRole("button", { name: "Bitir", exact: true }).click();
 
   await expect(page).toHaveURL(/\/sinaq\/b11-1\/netice$/);
-  await expect(page.getByText("2 düzgün")).toBeVisible();
+  // Bal yox — düzgün / yanlış sayı
+  await expect(page.getByText("25 sualdan 2 düzgün, 0 yanlış")).toBeAttached();
+  await expect(page.getByText("/100")).toHaveCount(0);
   await expect(page.getByText("1 yoxlanılır")).toBeVisible();
-  await expect(page.getByText(/İlkin bal/)).toBeVisible();
+  await expect(page.getByText(/avtomatik yoxlanılmır — düzgün/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Həll izahları" })).toBeVisible();
+  // Yazılı sualda şagirdin yazdığı mətn göstərilir ("Yazılıb" yox)
+  await expect(page.locator("#sol-19").locator("xpath=ancestor::article")).toContainText("x · 1,21 = 242, x = 200");
 
   await page.goto("/sinaqlar?tip=11");
-  await expect(page.getByText("Bal: 8")).toBeVisible();
+  await expect(page.getByText("2 düzgün · 0 yanlış")).toBeVisible();
   // Ayın kvotası istifadə olunub — qalanları yalnız alına bilər (3 AZN)
   await expect(page.getByText(/Bu ayın sınağını seçmisən/)).toBeVisible();
   await expect(page.getByRole("link", { name: "Satın al · 3 AZN" })).toHaveCount(3);

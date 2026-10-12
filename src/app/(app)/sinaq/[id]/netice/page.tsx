@@ -11,6 +11,7 @@ import { isCorrect } from "@/lib/exams/grade";
 import { findExam, getExamKeys, getExamQuestions } from "@/lib/exams/source";
 import { requireDemo } from "@/lib/demo/session";
 import { cn } from "@/lib/cn";
+import { LocalWrittenAnswer } from "./written-answer";
 
 export const metadata: Metadata = { title: az.app.result.title };
 
@@ -28,84 +29,33 @@ export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">)
     <>
       <Topbar title={t.title} back="/sinaqlar" />
       <Page>
-        <div className="grid items-start gap-6 lg:grid-cols-[1.6fr_1fr]">
-          <div className="grid gap-6">
-            <div className="grid place-items-center gap-1 rounded-xl bg-navy-900 p-6 text-center text-white">
-              <h1 className="text-small font-normal text-on-navy-muted">{t.heading(exam.title)}</h1>
-              <p className="font-display text-[56px] leading-[60px] font-extrabold tabular">
-                <span aria-hidden="true">
-                  {r.score}
-                  <small className="text-2xl opacity-80">/100</small>
-                </span>
-                <span className="sr-only">{t.scoreSr(r.score)}</span>
-              </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                <Tag tone="onNavy">{t.correct(r.correct)}</Tag>
-                <Tag tone="onNavy">{t.wrong(r.wrong)}</Tag>
-                <Tag tone="onNavy">{t.empty(r.empty)}</Tag>
-                {r.pending > 0 && <Tag tone="onNavy">{t.pending(r.pending)}</Tag>}
-              </div>
+        {/* Sıra: nəticə → həll izahları → mövzular üzrə və tövsiyələr */}
+        <div className="grid gap-6">
+          <div className="grid place-items-center gap-1 rounded-xl bg-navy-900 p-6 text-center text-white">
+            <h1 className="text-small font-normal text-on-navy-muted">{t.heading(exam.title)}</h1>
+            {/* Bal yox — düzgün və yanlış cavabların sayı */}
+            <p className="flex items-end justify-center gap-8 font-display leading-none font-extrabold tabular">
+              <span aria-hidden="true" className="grid gap-1">
+                <span className="text-[56px] text-success-100">{r.correct}</span>
+                <small className="text-small font-bold tracking-[0.08em] uppercase opacity-80">
+                  {t.correctBig}
+                </small>
+              </span>
+              <span aria-hidden="true" className="grid gap-1">
+                <span className="text-[56px] text-coral-500">{r.wrong}</span>
+                <small className="text-small font-bold tracking-[0.08em] uppercase opacity-80">
+                  {t.wrongBig}
+                </small>
+              </span>
+              <span className="sr-only">{t.countSr(r.correct, r.wrong, questions.length)}</span>
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Tag tone="onNavy">{t.empty(r.empty)}</Tag>
+              {r.pending > 0 && <Tag tone="onNavy">{t.pending(r.pending)}</Tag>}
             </div>
-            {r.timedOut && <Alert tone="warning">{t.timedOut}</Alert>}
-            {r.pending > 0 && <Alert tone="info">{t.provisional(r.pending)}</Alert>}
-
-            <Card as="section" aria-labelledby="bt" className="grid gap-4">
-              <div className="grid gap-1">
-                <h2 className={h3Class} id="bt">
-                  {t.byTopic}
-                </h2>
-                {r.pending > 0 && <p className="text-small text-ink-muted">{t.byTopicNote}</p>}
-              </div>
-              {[...r.byTopic]
-                .sort((a, b) => a.ok / a.total - b.ok / b.total)
-                .map((x) => {
-                const pct = Math.round((x.ok / x.total) * 100);
-                return (
-                  <div key={x.topic} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5">
-                    <span>{x.name}</span>
-                    <b className="tabular">{t.topicRow(x.ok, x.total, pct)}</b>
-                    <Meter
-                      className="col-span-2"
-                      value={pct}
-                      label={x.name}
-                      tone={pct === 100 ? "success" : pct < 50 ? "coral" : "navy"}
-                    />
-                  </div>
-                );
-              })}
-            </Card>
           </div>
-
-          <div className="grid gap-6">
-            <section className="grid gap-4" aria-labelledby="rc">
-              <div className="grid gap-2">
-                <h2 className={h3Class} id="rc">
-                  {t.weakTitle}
-                </h2>
-                <p className="text-small text-ink-muted">{r.weak.length ? t.weakText : t.noWeak}</p>
-              </div>
-              {r.weak.map((w) => (
-                <Card key={w.type} tone="flat" className="grid gap-2">
-                  <div className="flex flex-wrap gap-2">
-                    <Tag tone="coral">{w.topicName}</Tag>
-                    <Tag tone="type">{w.type}</Tag>
-                  </div>
-                  {w.ref && (
-                    <div className="flex items-center gap-2 font-semibold text-navy-900">
-                      <BookIcon className="size-5 flex-none" />
-                      {w.ref}
-                    </div>
-                  )}
-                </Card>
-              ))}
-            </section>
-            <ButtonLink href="#izahlar" block>
-              {t.solutions}
-            </ButtonLink>
-            <ButtonLink href="/sinaqlar" variant="secondary" block>
-              {t.newExam}
-            </ButtonLink>
-          </div>
+          {r.timedOut && <Alert tone="warning">{t.timedOut}</Alert>}
+          {r.pending > 0 && <Alert tone="info">{t.provisional(r.pending)}</Alert>}
         </div>
 
         <section id="izahlar" aria-labelledby="iz" className="grid scroll-mt-20 gap-4">
@@ -154,12 +104,27 @@ export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">)
                       )}
                     >
                       {status === "empty" && <span>— {t.statusEmpty}</span>}
-                      {status === "pending" && <span>{t.writtenGiven}</span>}
+                      {/* Köhnə nəticələrdə mətn yoxdur — yalnız "w" işarəsi */}
+                      {status === "pending" &&
+                        (given === "w" ? (
+                          <LocalWrittenAnswer examId={id} n={q.n} fallback={t.writtenGiven} />
+                        ) : (
+                          <span className="grid gap-0.5">
+                            <span className="font-normal whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">
+                              {given}
+                            </span>
+                            <span className="text-[12.5px] text-ink-muted">{t.writtenPending}</span>
+                          </span>
+                        ))}
                       {(status === "correct" || status === "wrong") && (
                         <>
                           <span className="text-ink">{given}</span>
                           <span className="inline-flex items-center gap-1">
-                            {status === "correct" ? <CheckIcon className="size-4" /> : <CloseIcon className="size-4" />}
+                            {status === "correct" ? (
+                              <CheckIcon className="size-4" />
+                            ) : (
+                              <CloseIcon className="size-4" />
+                            )}
                             {status === "correct" ? t.statusCorrect : t.statusWrong}
                           </span>
                         </>
@@ -167,7 +132,18 @@ export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">)
                     </dd>
                     <dt className="text-ink-muted">{auto ? t.key : t.sample}</dt>
                     <dd className="m-0 font-semibold">
-                      {key.answer ? <MathText text={q.format === "closed" && q.options ? `${key.answer}) ${q.options[key.answer as keyof typeof q.options]}` : key.answer} displayStyle /> : "—"}
+                      {key.answer ? (
+                        <MathText
+                          text={
+                            q.format === "closed" && q.options
+                              ? `${key.answer}) ${q.options[key.answer as keyof typeof q.options]}`
+                              : key.answer
+                          }
+                          displayStyle
+                        />
+                      ) : (
+                        "—"
+                      )}
                     </dd>
                   </dl>
                   <ol className="m-0 grid gap-0.5 pl-5 text-small text-ink-muted">
@@ -182,6 +158,64 @@ export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">)
             })}
           </div>
         </section>
+
+        <div className="grid items-start gap-6 lg:grid-cols-[1.6fr_1fr]">
+          <div className="grid gap-6">
+            <Card as="section" aria-labelledby="bt" className="grid gap-4">
+              <div className="grid gap-1">
+                <h2 className={h3Class} id="bt">
+                  {t.byTopic}
+                </h2>
+                {r.pending > 0 && <p className="text-small text-ink-muted">{t.byTopicNote}</p>}
+              </div>
+              {[...r.byTopic]
+                .sort((a, b) => a.ok / a.total - b.ok / b.total)
+                .map((x) => {
+                  const pct = Math.round((x.ok / x.total) * 100);
+                  return (
+                    <div key={x.topic} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5">
+                      <span>{x.name}</span>
+                      <b className="tabular">{t.topicRow(x.ok, x.total, pct)}</b>
+                      <Meter
+                        className="col-span-2"
+                        value={pct}
+                        label={x.name}
+                        tone={pct === 100 ? "success" : pct < 50 ? "coral" : "navy"}
+                      />
+                    </div>
+                  );
+                })}
+            </Card>
+          </div>
+
+          <div className="grid gap-6">
+            <section className="grid gap-4" aria-labelledby="rc">
+              <div className="grid gap-2">
+                <h2 className={h3Class} id="rc">
+                  {t.weakTitle}
+                </h2>
+                <p className="text-small text-ink-muted">{r.weak.length ? t.weakText : t.noWeak}</p>
+              </div>
+              {r.weak.map((w) => (
+                <Card key={w.type} tone="flat" className="grid gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Tag tone="coral">{w.topicName}</Tag>
+                    <Tag tone="type">{w.type}</Tag>
+                  </div>
+                  {w.ref && (
+                    <div className="flex items-center gap-2 font-semibold text-navy-900">
+                      <BookIcon className="size-5 flex-none" />
+                      {w.ref}
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </section>
+            <ButtonLink href="/sinaqlar" variant="secondary" block>
+              {t.newExam}
+            </ButtonLink>
+          </div>
+        </div>
       </Page>
     </>
   );

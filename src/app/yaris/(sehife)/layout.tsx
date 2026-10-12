@@ -12,7 +12,7 @@ export default async function ContestLayout({ children }: { children: React.Reac
   await ensureActive(session.user.id);
   const [state, role] = await Promise.all([getDemoState(session.user.id), roleOf(session.user.id)]);
   return (
-    <AppFrame state={state} admin={role === "admin"} teacher={role === "teacher"}>
+    <AppFrame state={state} admin={role === "admin"} teacher={role === "teacher" || role === "admin"}>
       <div className="row-span-2 min-w-0">{children}</div>
     </AppFrame>
   );
