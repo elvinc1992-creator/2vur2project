@@ -34,13 +34,13 @@ function useActive() {
 
 /**
  * Əsas üç bölmə — yan paneldə "Əsas"-dan dərhal sonra, rəngli ikon, fon və qısa izahla seçilir.
- * Rənglər: repetitor — nəzəriyyə kitabının üz qabığı kimi bənövşəyi, sınaqlar — brendin mərcanı,
- * imtahan qarşılığı — zümrüd (həmin səhifədə "bizim sual" kartının rəngi).
+ * Sıra: imtahan qarşılığı, sınaqlar, repetitor. Rənglər: imtahan qarşılığı — zümrüd (həmin səhifədə "bizim sual"
+ * kartının rəngi), sınaqlar — brendin mərcanı, repetitor — nəzəriyyə kitabının üz qabığı kimi bənövşəyi.
  */
 const FEATURED = [
-  { item: ITEMS[2], hint: t.tutorHint, badge: t.newBadge, tile: "from-violet-600 to-indigo-900", tint: "border-violet-200 bg-violet-50 hover:border-violet-400", on: "border-violet-600 bg-violet-100" },
-  { item: ITEMS[3], hint: t.examsHint, badge: null, tile: "from-coral-600 to-coral-700", tint: "border-coral-100 bg-coral-100/50 hover:border-coral-500", on: "border-coral-600 bg-coral-100" },
   { item: EXAM_MATCH, hint: t.examMatchHint, badge: null, tile: "from-emerald-600 to-emerald-900", tint: "border-emerald-200 bg-emerald-50 hover:border-emerald-500", on: "border-emerald-600 bg-emerald-100" },
+  { item: ITEMS[3], hint: t.examsHint, badge: null, tile: "from-coral-600 to-coral-700", tint: "border-coral-100 bg-coral-100/50 hover:border-coral-500", on: "border-coral-600 bg-coral-100" },
+  { item: ITEMS[2], hint: t.tutorHint, badge: t.newBadge, tile: "from-violet-600 to-indigo-900", tint: "border-violet-200 bg-violet-50 hover:border-violet-400", on: "border-violet-600 bg-violet-100" },
 ];
 
 /** Desktop yan panel (≥1024px). */

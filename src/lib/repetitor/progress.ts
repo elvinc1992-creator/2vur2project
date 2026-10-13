@@ -1,7 +1,4 @@
 import "server-only";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { users } from "@/db/schema";
 import type { PagerItem } from "@/lib/demo/logic";
 import { canUseRepetitor } from "@/lib/demo/plans";
 import type { DemoState, TutorProgress } from "@/lib/demo/state";
@@ -25,18 +22,6 @@ export type TutorContext = {
   paid: boolean;
 };
 
-/**
- * MÜVƏQQƏTİ: bu hesablarda qrafikdən asılı olmayaraq bütün mövzular (dərslər və nəzəriyyə) açıqdır —
- * nəzəriyyə kitablarını yoxlamaq üçün. Yoxlama bitəndə siyahını boşaltmaq kifayətdir.
- */
-const PREVIEW_ALL_TOPICS = new Set(["elvinc1992@gmail.com"]);
-
-async function previewsAllTopics(uid: string) {
-  if (!uid || !PREVIEW_ALL_TOPICS.size) return false;
-  const u = await db.query.users.findFirst({ where: eq(users.id, uid), columns: { email: true } });
-  return Boolean(u?.email && PREVIEW_ALL_TOPICS.has(u.email.toLowerCase()));
-}
-
 /** İlk dərs (tədris sırasının ilk mövzusu, 1-ci hissə) hamıya açıqdır — qonaq, Free və Pro planda da. */
 export const freeLessonOf = (curr: Curriculum) => curr.lessons[0];
 
@@ -51,10 +36,6 @@ export async function tutorContext(state: DemoState, now = new Date()): Promise<
       ? planView(curr, state.tutorPlan, (id) => Boolean(t[id]?.a), state.tutorExams ?? {}, todayIn(now))
       : null;
   const free = new Set(freeLessonOf(curr)?.questionIds ?? []);
-  if (await previewsAllTopics(state.uid)) {
-    const all = view && { ...view, lessons: view.lessons.map((l) => (l.status === "locked" ? { ...l, status: "open" as const } : l)) };
-    return { topics, curr, view: all, isOpen: () => true, isFree: (id) => free.has(id), paid };
-  }
   const open = new Set([...(view?.lessons.filter((l) => l.status !== "locked").flatMap((l) => l.questionIds) ?? []), ...free]);
   return { topics, curr, view, isOpen: (id) => open.has(id), isFree: (id) => free.has(id), paid };
 }
