@@ -15,6 +15,7 @@ export const azApp = {
     examsHint: "9 · 11 · blok",
     examMatchHint: "İmtahan sualı → bizdə",
     newBadge: "Yeni",
+    soonBadge: "Tezliklə",
     profile: "Profil",
     stats: "Statistika",
     subscription: "Abunə",

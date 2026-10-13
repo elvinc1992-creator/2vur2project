@@ -22,8 +22,8 @@ const SCORE = { href: "/bal-simulyatoru", match: ["/bal-simulyatoru"], label: t.
 const STATS = { href: "/statistika", match: ["/statistika"], label: t.stats, long: t.stats, Icon: ChartIcon };
 const EXAM_MATCH = { href: "/imtahan-qarsiligi", match: ["/imtahan-qarsiligi"], label: az.app.examMatch.nav, long: az.app.examMatch.nav, Icon: BookIcon };
 const PLANS = { href: "/abunelikler", match: ["/abunelikler", "/odenis"], label: t.plans, long: t.plans, Icon: CardIcon };
-/** Riyaziyyat yarışı — pulsuz, hamı üçün eyni. */
-const CONTEST = { href: "/yaris", match: ["/yaris"], label: "Yarış", long: "Riyaziyyat yarışı", Icon: SparkleIcon };
+/** Riyaziyyat yarışı — pulsuz, hamı üçün eyni. Hələ hazırlanır: menyuda "Tezliklə" nişanı ilə. */
+const CONTEST = { href: "/yaris", match: ["/yaris"], label: "Yarış", long: "Riyaziyyat yarışı", Icon: SparkleIcon, soon: true };
 /** Müəllimin qrupları və onlayn sınaqları (şagird tərəfi). */
 const GROUPS = { href: "/qruplarim", match: ["/qruplarim", "/muellim-sinaq"], label: "Qruplarım", long: "Qruplarım", Icon: UserIcon };
 
@@ -83,7 +83,7 @@ export function SideNav({ footer }: { footer?: React.ReactNode }) {
   );
 }
 
-function NavLink({ href, long, Icon, active }: { href: string; long: string; Icon: (typeof ITEMS)[number]["Icon"]; active: boolean }) {
+function NavLink({ href, long, Icon, active, soon }: { href: string; long: string; Icon: (typeof ITEMS)[number]["Icon"]; active: boolean; soon?: boolean }) {
   return (
     <Link
       href={href}
@@ -96,12 +96,23 @@ function NavLink({ href, long, Icon, active }: { href: string; long: string; Ico
       )}
     >
       <Icon className={cn("size-[22px]", active ? "text-navy-900" : "text-ink-muted")} />
-      {long}
+      <span className="grid min-w-0">
+        {long}
+        {soon && <SoonBadge />}
+      </span>
     </Link>
   );
 }
 
-const TAB_TINT: Record<string, string | undefined> = { [ITEMS[2].href]: "text-violet-700", [ITEMS[3].href]: "text-coral-600", [EXAM_MATCH.href]: "text-emerald-700" };
+function SoonBadge() {
+  return (
+    <b className="text-[10px] leading-3 font-bold tracking-[0.03em] text-warning-700 uppercase">
+      {t.soonBadge}
+    </b>
+  );
+}
+
+const TAB_TINT:Record<string, string | undefined> = { [ITEMS[2].href]: "text-violet-700", [ITEMS[3].href]: "text-coral-600", [EXAM_MATCH.href]: "text-emerald-700" };
 
 /** Mobil alt menyunun "Menyu" panelindəki bölmələr (alt menyuda olmayanlar da daxil — telefonda hamısı açılsın). */
 const MORE = [EXAM_MATCH, ITEMS[4], MISTAKES, WEAK, SCORE, STATS, CONTEST, GROUPS, PLANS];
@@ -153,7 +164,7 @@ export function TabBar({ teacher = false, admin = false }: { teacher?: boolean; 
               </button>
             </div>
             <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
-              {MORE.map(({ href, match, long, Icon }) => {
+              {MORE.map(({ href, match, long, Icon, ...rest }) => {
                 const active = isActive(match);
                 return (
                   <li key={href}>
@@ -167,7 +178,10 @@ export function TabBar({ teacher = false, admin = false }: { teacher?: boolean; 
                       )}
                     >
                       <Icon className={cn("size-[22px] shrink-0", active ? "text-coral-600" : (TAB_TINT[href] ?? "text-ink-muted"))} />
-                      {long}
+                      <span className="grid gap-0.5">
+                        {long}
+                        {"soon" in rest && rest.soon === true && <span className="text-[10px] leading-3 font-bold tracking-[0.03em] text-warning-700 uppercase">{t.soonBadge}</span>}
+                      </span>
                     </Link>
                   </li>
                 );

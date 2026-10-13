@@ -55,7 +55,7 @@ test("telefon: Menyu bütün bölmələri açır, keçiddən sonra bağlanır, �
   await expect(menu).toHaveAttribute("aria-expanded", "false");
   await menu.click();
   const dialog = page.getByRole("dialog", { name: "Bütün bölmələr" });
-  for (const name of ["Profil", "Səhvlərim", "Zəif mövzular", "Bal simulyatoru", "Statistika", "İmtahan qarşılığı", "Riyaziyyat yarışı", "Qruplarım", "Abunəliklər"]) {
+  for (const name of ["Profil", "Səhvlərim", "Zəif mövzular", "Bal simulyatoru", "Statistika", "İmtahan qarşılığı", "Riyaziyyat yarışı Tezliklə", "Qruplarım", "Abunəliklər"]) {
     await expect(dialog.getByRole("link", { name, exact: true })).toBeVisible();
   }
   await dialog.getByRole("link", { name: "Səhvlərim", exact: true }).click();
