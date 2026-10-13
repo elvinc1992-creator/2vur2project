@@ -4,26 +4,13 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getRepetitorKey } from "@/lib/repetitor/source";
 import { acceptsAnswer, checkAnswer, feedbackOf, isValidGiven, type AnswerFeedback } from "@/lib/bank/check";
-import { CARD_LABEL } from "./content";
 import { ensureDaily } from "./daily";
-import { db } from "@/db";
-import { payments } from "@/db/schema";
 import { findExam } from "@/lib/exams/source";
-import { priceText } from "@/lib/exams/types";
-import {
-  daysLeft,
-  examStatus,
-  isExamOpenForSale,
-  isExamVisible,
-  isDailyOpen,
-  nextDailyHref,
-  todayIso,
-  typeStats,
-} from "./logic";
+import { daysLeft, examStatus, isExamOpenForSale, isExamVisible, isDailyOpen, nextDailyHref, typeStats } from "./logic";
 import { afterExamFinished } from "@/lib/weak/hooks";
 import { finalizeAttempt, loadExamCtx } from "./exam-session";
-import { examQuota, periodEndFrom, PLANS, priceOf, type BillingPeriod } from "./plans";
-import { cleanMeta, rememberMeta, resetDemoState, updateDemoState, type AnswerMeta, type PaidTier } from "./state";
+import { examQuota } from "./plans";
+import { cleanMeta, rememberMeta, resetDemoState, updateDemoState, type AnswerMeta } from "./state";
 
 async function userId(): Promise<string> {
   const session = await auth();
@@ -112,51 +99,7 @@ export async function finishExamAction(id: string, timedOut = false): Promise<{ 
   return res;
 }
 
-/* ---------------- Ödəniş (mock) və abunə ---------------- */
-
-export async function mockPayAction(formData: FormData) {
-  const kind = formData.get("kind") === "exam" ? "exam" : "monthly";
-  const examId = String(formData.get("exam") ?? "");
-  const tier: PaidTier = formData.get("plan") === "pro" ? "pro" : "premium";
-  const period: BillingPeriod = formData.get("period") === "year" ? "year" : "month";
-  if (formData.get("consent") !== "on") {
-    redirect(`/odenis?${kind === "exam" ? `exam=${examId}` : `plan=${tier}&period=${period}`}&consent=0`);
-  }
-
-  const uid = await userId();
-  const exam = kind === "exam" ? await findExam(examId) : undefined;
-  if (kind === "exam" && (!exam || !isExamOpenForSale(exam))) redirect("/sinaqlar");
-  const today = todayIso();
-  const receiptId = `${Date.now().toString().slice(-8, -4)}-${Date.now().toString().slice(-4)}`;
-  const payment = exam
-    ? { kind: "exam" as const, title: exam.title, amount: priceText(exam.price), examId, tier: null, period: null }
-    : { kind: "subscription" as const, title: `${PLANS[tier].name} · ${period === "year" ? "illik" : "aylıq"} abunə`, amount: priceOf(tier, period), examId: null, tier, period };
-  await updateDemoState(uid, (state) => {
-    if (exam) {
-      if (!state.purchased.includes(examId)) state.purchased.push(examId);
-      state.payments.unshift({ id: receiptId, title: exam.title, date: today, method: CARD_LABEL, examId, amount: priceText(exam.price) });
-    } else {
-      // Eyni plan uzadılır; plan dəyişəndə yeni dövr bu gündən başlayır. İllik — 12 ay, aylıq — 30 gün.
-      const sameTier = state.sub.status !== "none" && (state.sub.tier ?? "premium") === tier;
-      const base = sameTier && state.sub.periodEnd > today ? state.sub.periodEnd : today;
-      state.sub = { status: "active", periodEnd: periodEndFrom(base, period), tier, period };
-      state.payments.unshift({
-        id: receiptId,
-        title: `${PLANS[tier].name} · ${period === "year" ? "illik" : "aylıq"} abunə`,
-        date: today,
-        method: CARD_LABEL,
-        amount: priceOf(tier, period),
-        period,
-      });
-    }
-  });
-  // Qazanc hesabatı üçün (admin) — ödəniş ayrıca cədvələ də yazılır.
-  await db
-    .insert(payments)
-    .values({ id: `${uid}:${receiptId}`, userId: uid, ...payment, amount: Number(payment.amount.replace(/[^\d.]/g, "")) })
-    .onConflictDoNothing();
-  redirect(`/odenis/ugurlu?r=${receiptId}`);
-}
+/* ---------------- Abunə (ödəniş — src/lib/payments) ---------------- */
 
 export async function cancelSubscriptionAction() {
   const target = await updateDemoState(await userId(), (state) => {

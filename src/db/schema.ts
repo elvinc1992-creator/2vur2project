@@ -603,6 +603,40 @@ export const payments = sqliteTable(
   (t) => [index("payments_created_idx").on(t.createdAt), index("payments_user_idx").on(t.userId)],
 );
 
+export const PAYMENT_ORDER_STATUSES = ["new", "success", "failed"] as const;
+
+/**
+ * Epoint sifarişi: ödəniş səhifəsinə yönləndirmədən əvvəl yaranır (id = Epoint-dəki order_id).
+ * Plan / sınaq yalnız Epoint-in imzalı bildirişi (result_url) və ya status yoxlaması "success" deyəndə açılır.
+ */
+export const paymentOrders = sqliteTable(
+  "payment_orders",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["subscription", "exam"] }).notNull(),
+    title: text("title").notNull(),
+    /** AZN */
+    amount: real("amount").notNull(),
+    tier: text("tier", { enum: ["pro", "premium"] }),
+    period: text("period", { enum: ["month", "year"] }),
+    examId: text("exam_id"),
+    status: text("status", { enum: PAYMENT_ORDER_STATUSES }).notNull().default("new"),
+    /** Epoint əməliyyatı (te…) */
+    transaction: text("transaction"),
+    /** Bank cavabı / xəta mesajı (son bildirişdən) */
+    message: text("message"),
+    cardMask: text("card_mask"),
+    /** İstifadəçinin qəbzi (state.payments[].id) — ödəniş tətbiq olunanda */
+    receiptId: text("receipt_id"),
+    createdAt: createdAt(),
+    paidAt: integer("paid_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [index("payment_orders_user_idx").on(t.userId)],
+);
+
 /* ---------------- Riyaziyyat yarışı ---------------- */
 
 export const CONTEST_STATUSES = ["draft", "registration", "running", "finished", "final", "results"] as const;
