@@ -185,8 +185,9 @@ function LessonRows({
       <li>
         <div
           className={cn(
-            "flex items-center gap-3 rounded-lg border px-4 py-3",
+            "relative flex items-center gap-3 rounded-lg border px-4 py-3",
             done ? "border-success-700/30 bg-success-100" : locked ? "border-line bg-navy-050" : "border-navy-200 bg-white",
+            !locked && "hover:border-navy-900",
           )}
         >
           <span
@@ -212,10 +213,11 @@ function LessonRows({
               {t.lessonQuestions(l.done, l.questionIds.length)}
             </p>
           </div>
+          {/* Link bütün sətri örtür — mövzunun adına klik də dərsi açır */}
           {!locked && (
             <Link
               href={`/onlayn-repetitor/${l.topic}`}
-              className="flex-none text-small font-bold text-navy-500 underline underline-offset-3"
+              className="flex-none text-small font-bold text-navy-500 underline underline-offset-3 after:absolute after:inset-0 after:rounded-lg after:content-['']"
             >
               {done ? t.lessonReview : l.done ? t.lessonContinue : t.lessonStart}
               <span className="sr-only">: {l.topicName}</span>
@@ -234,8 +236,8 @@ function ExamRow({ exam: e }: { exam: ExamView }) {
     <li>
       <div
         className={cn(
-          "flex items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3",
-          e.status === "locked" ? "border-line bg-white" : "border-coral-500 bg-coral-100/40",
+          "relative flex items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3",
+          e.status === "locked" ? "border-line bg-white" : "border-coral-500 bg-coral-100/40 hover:border-coral-600",
         )}
       >
         <span className="grid size-9 flex-none place-items-center rounded-full bg-coral-600 text-white" aria-hidden="true">
@@ -253,7 +255,7 @@ function ExamRow({ exam: e }: { exam: ExamView }) {
         {e.status !== "locked" && (
           <Link
             href={`/onlayn-repetitor/sinaq/${e.n}`}
-            className="flex-none text-small font-bold text-navy-500 underline underline-offset-3"
+            className="flex-none text-small font-bold text-navy-500 underline underline-offset-3 after:absolute after:inset-0 after:rounded-lg after:content-['']"
           >
             {e.status === "done" ? t.lessonReview : t.examStart}
             <span className="sr-only">: {t.examTitle(e.n)}</span>
@@ -332,7 +334,7 @@ function Locked({
           </h2>
           <ul className="m-0 grid list-none gap-2 p-0">
             {topics.map((x) => (
-              <li key={x.slug} className="flex items-center gap-3 rounded-lg border border-line bg-white px-4 py-3">
+              <li key={x.slug} className="relative flex items-center gap-3 rounded-lg border border-line bg-white px-4 py-3">
                 <span className="grid size-9 flex-none place-items-center rounded-[10px] bg-navy-050 text-ink-muted">
                   <TopicIcon name={x.name} className="size-5" />
                 </span>
@@ -341,7 +343,7 @@ function Locked({
                   {x.name}
                 </span>
                 {free?.slug === x.slug ? (
-                  <Link href={`/onlayn-repetitor/${x.slug}`} className="text-small font-bold text-success-700 underline underline-offset-3">
+                  <Link href={`/onlayn-repetitor/${x.slug}`} className="text-small font-bold text-success-700 underline underline-offset-3 after:absolute after:inset-0 after:rounded-lg after:content-['']">
                     {t.freeTag}
                     <span className="sr-only">: {x.name}</span>
                   </Link>

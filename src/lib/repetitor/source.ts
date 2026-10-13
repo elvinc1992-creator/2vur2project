@@ -127,6 +127,12 @@ export async function getTopicTheory(slug: string): Promise<{ body: string; hasB
   return r ? { body: r.body, hasBook: Boolean(r.hasBook) } : null;
 }
 
+/** Nəzəriyyə kitabı olan mövzuların sayı (ana səhifə üçün). */
+export async function countTheoryBooks(): Promise<number> {
+  const [r] = await db.select({ n: sql<number>`count(*)` }).from(tutorTheory).where(sql`${tutorTheory.bookHtml} is not null`);
+  return Number(r?.n ?? 0);
+}
+
 /** Mövzunun nəzəriyyə kitabı (HTML, scripts/import-theory.mts); yoxdursa null. */
 export async function getTopicBook(slug: string): Promise<string | null> {
   const [r] = await db

@@ -116,9 +116,11 @@ test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı 
   await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${SECOND}$`));
   await expect(page.getByText(/tarixində açılacaq/)).toBeVisible();
 
-  // İlk mövzu: nəzəriyyə → praktiki testlər
+  // İlk mövzu: adına klik də dərsi açır; nəzəriyyə → praktiki testlər
   await page.goto("/onlayn-repetitor");
-  await page.getByRole("link", { name: /Dərsə başla: Natural ədədlər/ }).first().click();
+  // (sətri örtən link adın üstündədir — istifadəçi kimi adın yerinə klikləyirik)
+  const name = (await page.locator("#curriculum + ol li").nth(0).locator("p").first().boundingBox())!;
+  await page.mouse.click(name.x + 20, name.y + name.height / 2);
   await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${LOQ}$`));
   await expect(page.getByRole("heading", { name: "Nəzəriyyə" })).toBeVisible();
   await page.getByRole("link", { name: "Dərsə başla" }).click();

@@ -32,37 +32,79 @@ function useActive() {
   return (match: string[]) => match.some((m) => path === m || path.startsWith(`${m}/`));
 }
 
+/**
+ * Əsas üç bölmə — yan paneldə "Əsas"-dan dərhal sonra, rəngli ikon, fon və qısa izahla seçilir.
+ * Rənglər: repetitor — nəzəriyyə kitabının üz qabığı kimi bənövşəyi, sınaqlar — brendin mərcanı,
+ * imtahan qarşılığı — zümrüd (həmin səhifədə "bizim sual" kartının rəngi).
+ */
+const FEATURED = [
+  { item: ITEMS[2], hint: t.tutorHint, badge: t.newBadge, tile: "from-violet-600 to-indigo-900", tint: "border-violet-200 bg-violet-50 hover:border-violet-400", on: "border-violet-600 bg-violet-100" },
+  { item: ITEMS[3], hint: t.examsHint, badge: null, tile: "from-coral-600 to-coral-700", tint: "border-coral-100 bg-coral-100/50 hover:border-coral-500", on: "border-coral-600 bg-coral-100" },
+  { item: EXAM_MATCH, hint: t.examMatchHint, badge: null, tile: "from-emerald-600 to-emerald-900", tint: "border-emerald-200 bg-emerald-50 hover:border-emerald-500", on: "border-emerald-600 bg-emerald-100" },
+];
+
 /** Desktop yan panel (≥1024px). */
 export function SideNav({ footer }: { footer?: React.ReactNode }) {
   const isActive = useActive();
   return (
     <nav aria-label={t.label} className="grid content-start gap-1">
-      {[...ITEMS, MISTAKES, WEAK, SCORE, STATS, EXAM_MATCH, CONTEST, GROUPS, PLANS].map(({ href, match, long, Icon }) => {
-        const active = isActive(match);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "relative flex min-h-12 items-center gap-3 rounded-[12px] px-3 font-semibold no-underline",
-              active
-                ? "bg-navy-100 text-navy-900 before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-pill before:bg-navy-900"
-                : "text-ink hover:bg-navy-050",
-            )}
-          >
-            <Icon className={cn("size-[22px]", active ? "text-navy-900" : "text-ink-muted")} />
-            {long}
-          </Link>
-        );
-      })}
+      <NavLink {...ITEMS[0]} active={isActive(ITEMS[0].match)} />
+      <div className="my-1.5 grid gap-2">
+        {FEATURED.map(({ item: { href, match, long, Icon }, hint, badge, tile, tint, on }) => {
+          const active = isActive(match);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={cn("relative flex items-center gap-3 rounded-[14px] border-[1.5px] px-2.5 py-2 no-underline transition-colors", active ? on : tint)}
+            >
+              <span className={cn("grid size-10 flex-none place-items-center rounded-[11px] bg-linear-to-br text-white shadow-[0_6px_14px_-8px_rgba(15,27,61,.7)]", tile)}>
+                <Icon className="size-[22px]" />
+              </span>
+              <span className="grid min-w-0 gap-0.5">
+                <span className="leading-5 font-bold text-navy-900">{long}</span>
+                <span className="truncate text-[12.5px] leading-4 font-medium text-ink-muted">{hint}</span>
+              </span>
+              {badge && (
+                <b className="absolute -top-2 right-2 rounded-pill bg-coral-600 px-1.5 py-px text-[10.5px] leading-4 font-bold tracking-[0.04em] text-white uppercase shadow-card">
+                  {badge}
+                </b>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+      {[ITEMS[1], ITEMS[4], MISTAKES, WEAK, SCORE, STATS, CONTEST, GROUPS, PLANS].map((item) => (
+        <NavLink key={item.href} {...item} active={isActive(item.match)} />
+      ))}
       {footer}
     </nav>
   );
 }
 
+function NavLink({ href, long, Icon, active }: { href: string; long: string; Icon: (typeof ITEMS)[number]["Icon"]; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "relative flex min-h-12 items-center gap-3 rounded-[12px] px-3 font-semibold no-underline",
+        active
+          ? "bg-navy-100 text-navy-900 before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-pill before:bg-navy-900"
+          : "text-ink hover:bg-navy-050",
+      )}
+    >
+      <Icon className={cn("size-[22px]", active ? "text-navy-900" : "text-ink-muted")} />
+      {long}
+    </Link>
+  );
+}
+
+const TAB_TINT: Record<string, string | undefined> = { [ITEMS[2].href]: "text-violet-700", [ITEMS[3].href]: "text-coral-600", [EXAM_MATCH.href]: "text-emerald-700" };
+
 /** Mobil alt menyunun "Menyu" panelindəki bölmələr (alt menyuda olmayanlar da daxil — telefonda hamısı açılsın). */
-const MORE = [ITEMS[4], MISTAKES, WEAK, SCORE, STATS, EXAM_MATCH, CONTEST, GROUPS, PLANS];
+const MORE = [EXAM_MATCH, ITEMS[4], MISTAKES, WEAK, SCORE, STATS, CONTEST, GROUPS, PLANS];
 
 /**
  * Mobil alt tab paneli (<1024px): 4 əsas bölmə + "Menyu" — bütün qalan bölmələr (Profil, Səhvlərim, Zəif mövzular,
@@ -124,7 +166,7 @@ export function TabBar({ teacher = false, admin = false }: { teacher?: boolean; 
                         active ? "border-navy-100 bg-navy-100 text-navy-900" : "border-line text-ink",
                       )}
                     >
-                      <Icon className={cn("size-[22px] shrink-0", active ? "text-coral-600" : "text-ink-muted")} />
+                      <Icon className={cn("size-[22px] shrink-0", active ? "text-coral-600" : (TAB_TINT[href] ?? "text-ink-muted"))} />
                       {long}
                     </Link>
                   </li>
@@ -158,7 +200,8 @@ export function TabBar({ teacher = false, admin = false }: { teacher?: boolean; 
                 active ? "text-navy-900" : "text-ink-muted",
               )}
             >
-              <Icon className={cn("size-6", active && "text-coral-600")} />
+              {/* Repetitor və Sınaqlar — həmişə rəngli ikon (əsas bölmələr) */}
+              <Icon className={cn("size-6", active ? "text-coral-600" : TAB_TINT[href])} />
               {label}
             </Link>
           );

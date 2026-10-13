@@ -98,6 +98,28 @@ export const azLanding = {
     written: "yazılı (açıq)",
     formatLabel: (c: number, k: number, w: number) => `${c} qapalı, ${k} kodlaşdırılan, ${w} yazılı`,
     features: ["Vaxt sayğacı və cavab vərəqi", "Hər sualın həll izahı", "Zəif tiplər üçün toplu istinadı"],
+    typesTitle: "Sınaq tipləri",
+    typeMeta: (q: number, min: number) => `${q} sual · ${min} dəq`,
+    typeOpen: "Sınaqlara bax",
+  },
+  /** Hero-dan sonra: iki əsas bölmə — Onlayn repetitor və Sınaqlar. */
+  products: {
+    title: "Hazırlığın iki əsas yolu",
+    tutor: {
+      tag: "Yeni · nəzəriyyə kitabları",
+      title: "Onlayn repetitor",
+      text: "Öz qrafikinlə mövzu-mövzu irəlilə: əvvəl vərəqlənən nəzəriyyə kitabı, sonra imtahan tipli suallar və addım-addım həll.",
+      topics: "mövzu",
+      books: "nəzəriyyə kitabı",
+      questions: "sual",
+      cta: "İlk dərsə pulsuz başla",
+    },
+    exams: {
+      tag: "Real imtahan formatı",
+      title: "Sınaq imtahanları",
+      text: "İmtahan şəraitində yoxla: vaxt sayğacı, cavab vərəqi, sonra mövzular üzrə nəticə və hər sualın həlli.",
+      cta: "Sınağını seç",
+    },
   },
   tutor: {
     eyebrow: "Onlayn repetitor",
@@ -108,6 +130,9 @@ export const azLanding = {
       "Qapalı, açıq, uyğunluq və yazılı suallar — imtahandakı kimi",
       "Səhv etdiyin suallar avtomatik Səhvlərimə düşür",
     ],
+    bookTag: "Yeni",
+    bookTitle: "Hər mövzunun vərəqlənən nəzəriyyə kitabı",
+    bookText: "Qaydalar, düsturlar, həll edilmiş nümunələr və DİM-də tipik səhvlər — kitab kimi vərəqlə, telefonda da rahat oxu.",
     ctaFree: "İlk dərsə pulsuz başla",
     ctaMore: "Repetitora bax",
     planTitle: "Dərs planı",

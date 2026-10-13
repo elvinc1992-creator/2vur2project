@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Page, Topbar } from "@/components/app/topbar";
+import { EXAM_TYPE_LOOK, ExamTypeBand } from "@/components/exam-type";
 import { CalendarIcon, CheckCircleIcon, ClockIcon, ListIcon } from "@/components/icons";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, FormatBar, Tag, h1Class, h3Class } from "@/components/ui/display";
@@ -88,10 +89,11 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
               href={qs({ tip: key })}
               aria-current={type === key ? "page" : undefined}
               className={cn(
-                "grid min-h-10 place-items-center rounded-pill border-[1.5px] px-3.5 text-[14px] font-semibold no-underline",
+                "inline-flex min-h-10 items-center gap-2 rounded-pill border-[1.5px] px-3.5 text-[14px] font-semibold no-underline",
                 type === key ? "border-coral-600 bg-coral-100 text-navy-900" : "border-line bg-white text-ink-muted",
               )}
             >
+              {key && <i aria-hidden="true" className={cn("size-2.5 flex-none rounded-full bg-linear-to-br", EXAM_TYPE_LOOK[key].band)} />}
               {key ? t.types[key] : t.typesAll}
             </Link>
           ))}
@@ -142,8 +144,8 @@ function StateDot({ progress }: { progress: Progress }) {
 type CardExam = ExamMeta & { userStatus: ExamStatus; progress: Progress; ended: boolean };
 
 /**
- * Sınaq kartı — vəziyyətə görə fərqli görünüş:
- * işlənib — yaşıl zolaq və bal; yarımçıq — narıncı zolaq və irəliləyiş; hələ işlənməyib — sadə ağ kart.
+ * Sınaq kartı. Başlıq zolağı — sınağın tipi (9-cu sinif / 11-ci sinif / blok / mövzu, hər birinin öz rəngi);
+ * vəziyyət — etiket və fon: işlənib — yaşıl fon və nəticə; yarımçıq — narıncı fon və irəliləyiş; hələ işlənməyib — ağ.
  */
 function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: ReturnType<typeof examQuota> }) {
   const t = az.app.store;
@@ -158,12 +160,13 @@ function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: R
       as="article"
       aria-label={`${e.title} — ${e.progress === "done" ? t.stateDone : e.progress === "progress" ? t.stateHalf : t.stateNew}`}
       className={cn(
-        "relative grid gap-3.5 overflow-hidden border-l-[6px]",
-        e.progress === "done" && "border-l-success-700 bg-success-100/70",
-        e.progress === "progress" && "border-l-warning-700 bg-warning-100/40",
-        e.progress === "new" && "border-l-navy-200",
+        "relative grid gap-3.5 overflow-hidden",
+        e.progress === "done" && "border-success-700/40 bg-success-100/70",
+        e.progress === "progress" && "border-warning-700/40 bg-warning-100/40",
       )}
     >
+      <ExamTypeBand type={e.examType} label={t.types[e.examType] ?? e.group} />
+
       <div className="flex flex-wrap items-center gap-2">
         {e.progress === "done" && (
           <Tag tone="success" icon={<CheckCircleIcon />}>
@@ -181,7 +184,7 @@ function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: R
 
       <div className="flex items-start justify-between gap-3">
         <div>
-          <span className="text-small text-ink-muted">{e.topicName ? t.topicExam(e.topicName) : e.group}</span>
+          {e.topicName && <span className={cn("text-small font-semibold", EXAM_TYPE_LOOK.movzu.ink)}>{t.topicExam(e.topicName)}</span>}
           <h2 className={h3Class}>{e.title}</h2>
         </div>
         {e.userStatus === "done" && <Tag tone="solid">{t.score(result.correct, result.wrong)}</Tag>}
