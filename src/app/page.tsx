@@ -14,7 +14,7 @@ import { listExamPairs, type ExamQuestionView } from "@/lib/bank/source";
 import { LETTERS } from "@/lib/demo/content";
 import { TopicIcon } from "@/components/landing/topic-icon";
 import { buttonClass, ButtonLink } from "@/components/ui/button";
-import { Card, FormatBar, Placeholder, Tag, eyebrowClass, h1Class, h3Class } from "@/components/ui/display";
+import { Card, FormatBar, Tag, eyebrowClass, h1Class, h3Class } from "@/components/ui/display";
 import { brand, socialUrl } from "@/config/brand";
 import { az } from "@/content/az";
 import { cn } from "@/lib/cn";
@@ -331,33 +331,6 @@ export default async function HomePage() {
           {/* Abunəliklər səhifəsindəki kartlarla eyni dizayn */}
           <LandingPlans plans={planInfos()} />
           {extra.examPrices && <p className="text-small text-ink-muted">{t.pricing.examPrices(extra.examPrices)}</p>}
-        </Section>
-
-        {/* ---------- Müəllim (yer tutucu) ---------- */}
-        <Section tone="tint" labelledBy="teacher-title">
-          <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
-            <div className="flex items-start gap-5">
-              <Placeholder className="aspect-square w-[120px] flex-none rounded-full! p-2!">{t.teacher.photo}</Placeholder>
-              <div className="grid gap-2">
-                <span className={eyebrowClass}>{t.teacher.eyebrow}</span>
-                <h2 id="teacher-title" className={h1Class}>
-                  {t.teacher.name}
-                </h2>
-                <p className="text-ink-muted">{t.teacher.years}</p>
-              </div>
-            </div>
-            <div className="grid gap-4">
-              <blockquote className="m-0 text-lead text-ink">{t.teacher.quote}</blockquote>
-              <p className="text-ink-muted">{t.teacher.bio}</p>
-              <div className="grid gap-2">
-                <span className={eyebrowClass}>{t.teacher.results}</span>
-                <div className="grid grid-cols-2 gap-3">
-                  <Placeholder className="min-h-24!">{t.teacher.resultCard}</Placeholder>
-                  <Placeholder className="min-h-24!">{t.teacher.resultCard}</Placeholder>
-                </div>
-              </div>
-            </div>
-          </div>
         </Section>
 
         {/* ---------- FAQ ---------- */}

@@ -175,16 +175,6 @@ export const azLanding = {
       },
     },
   },
-  teacher: {
-    eyebrow: "Müəllim",
-    photo: "Müəllim şəkli",
-    name: "[Müəllimin adı]",
-    years: "[X] il riyaziyyat müəllimi",
-    quote: "“Şagird hər şeyi işləməli deyil. İmtahanda nə çıxdığını bilsə, vaxtını düz bölər.”",
-    bio: "[Qısa tanıtım mətni: təcrübə, yanaşma, niyə bu layihə yaradılıb — 2–3 cümlə.]",
-    results: "Şagirdlərin nəticələri",
-    resultCard: "Nəticə kartı (bal, il)",
-  },
   faq: {
     eyebrow: "FAQ",
     title: "Tez-tez verilən suallar",
@@ -200,10 +190,6 @@ export const azLanding = {
       {
         q: "Hazırlığa nə qədər vaxt lazımdır?",
         a: "Gündə 20–30 dəqiqə ilə başla. Əvvəl ən çox çıxan tiplərə fokuslan, sonra zəif mövzulara keç.",
-      },
-      {
-        q: "Test topluları lazımdır?",
-        a: "Xeyr. Bütün suallar və həllər saytdadır. Statistikada isə keçmiş imtahan sual tiplərinin DİM test toplularında necə təkrarlandığını görə bilərsən.",
       },
     ],
   },
