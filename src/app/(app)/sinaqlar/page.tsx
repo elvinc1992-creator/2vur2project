@@ -8,9 +8,9 @@ import { Card, FormatBar, Tag, h1Class, h3Class } from "@/components/ui/display"
 import { az } from "@/content/az";
 import { claimExamAction, startExamAction } from "@/lib/demo/actions";
 import { listExams } from "@/lib/exams/source";
-import { priceText, type ExamMeta } from "@/lib/exams/types";
+import { priceText, type ExamMeta, type ExamType } from "@/lib/exams/types";
 import { answeredCount, examStatus, formatDate, isExamOpenForSale, isExamVisible, remainingMs, type ExamStatus } from "@/lib/demo/logic";
-import { examQuota } from "@/lib/demo/plans";
+import { canClaimExam, examQuota, freeExamsOfMonth } from "@/lib/demo/plans";
 import { initials, requireDemo } from "@/lib/demo/session";
 import type { DemoState } from "@/lib/demo/state";
 import { cn } from "@/lib/cn";
@@ -19,7 +19,8 @@ export const metadata: Metadata = { title: az.app.store.title };
 
 const FILTERS = ["all", "new", "progress", "done"] as const;
 type Filter = (typeof FILTERS)[number];
-const TYPES = ["9", "11", "blok", "movzu"] as const;
+/** Tiplərin sırası (süzgəc düymələri və siyahı, hamı üçün): 11 buraxılış, 11 blok, 9 buraxılış, mövzu. */
+const TYPES = ["11", "blok", "9", "movzu"] as const satisfies ExamType[];
 type ExamTypeFilter = (typeof TYPES)[number];
 
 /** Şagird üçün vəziyyət: işlənib (nəticə var), yarımçıq (başlayıb), hələ işlənməyib. */
@@ -32,7 +33,8 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
   const sp = await props.searchParams;
   const filter: Filter = FILTERS.includes(sp.f as Filter) ? (sp.f as Filter) : "all";
   const { user, state } = await requireDemo("/sinaqlar");
-  const quota = examQuota(state);
+  const allExams = await listExams();
+  const quota = examQuota(state, allExams);
   const t = az.app.store;
   const type = TYPES.includes(sp.tip as ExamTypeFilter) ? (sp.tip as ExamTypeFilter) : null;
   const qs = (next: { f?: string; tip?: string | null }) => {
@@ -46,14 +48,19 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
   };
 
   // Ən yeni sınaq birinci (yaradılma tarixi ilə); passivlər və iştirak etmədiyin bitmiş sınaqlar görünmür.
-  const visible = (await listExams())
+  const visible = allExams
     .filter((e) => isExamVisible(state, e))
     .filter((e) => !type || e.examType === type)
     .map((e) => {
       const status = examStatus(state, e);
       return { ...e, userStatus: status, progress: progressOf(status), ended: e.status === "finished" };
     });
-  const countOf = (f: Filter) => (f === "all" ? visible.length : visible.filter((e) => e.progress === f).length);
+  // Sıra: 11-ci sinif buraxılış → 11-ci sinif blok → 9-cu sinif buraxılış → mövzu; tip daxilində ən yeni birinci.
+  // Free: ayın sınaqları (götürülüb-götürülməməsindən asılı olmayaraq) hamısından əvvəl, eyni tip sırası ilə.
+  const monthIds = quota.kind === "month" ? freeExamsOfMonth(allExams) : [];
+  const rank = (e: ExamMeta) => (monthIds.includes(e.id) ? 0 : 10) + TYPES.indexOf(e.examType);
+  visible.sort((a, b) => rank(a) - rank(b));
+  const countOf =(f: Filter) => (f === "all" ? visible.length : visible.filter((e) => e.progress === f).length);
   const exams = visible.filter((e) => filter === "all" || e.progress === filter);
 
   return (
@@ -154,6 +161,8 @@ function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: R
   const done = answeredCount(attempt);
   const { closed, coded, written } = e.counts;
   const canSell = isExamOpenForSale(e);
+  // Free: ayın sınağı (9 və 11 buraxılışından bir — hamı üçün eyni).
+  const freeOfMonth = quota.kind === "month" && quota.examIds.includes(e.id);
 
   return (
     <Card
@@ -188,7 +197,7 @@ function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: R
           <h2 className={h3Class}>{e.title}</h2>
         </div>
         {e.userStatus === "done" && <Tag tone="solid">{t.score(result.correct, result.wrong)}</Tag>}
-        {e.userStatus === "locked" && canSell && <Tag className="tabular">{priceText(e.price)}</Tag>}
+        {e.userStatus === "locked" && canSell && (freeOfMonth ? <Tag tone="success">{t.freeOfMonth}</Tag> : <Tag className="tabular">{priceText(e.price)}</Tag>)}
         {e.userStatus === "purchased" && <Tag tone="success">{t.owned}</Tag>}
       </div>
 
@@ -239,10 +248,10 @@ function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: R
       )}
       {e.userStatus === "locked" &&
         canSell &&
-        (quota.kind !== "all" && quota.left > 0 ? (
+        (canClaimExam(quota, e.id) ? (
           <form action={claimExamAction.bind(null, e.id)}>
             <Button type="submit" block>
-              {t.claim(quota.kind)}
+              {t.claim(freeOfMonth ? "month" : "week")}
             </Button>
           </form>
         ) : (

@@ -51,7 +51,7 @@ test("desktop: rəqəmlər bazadan, bölmələr və linklər", async ({ page }) 
   await expect(pricing.getByRole("region")).toHaveCount(3);
   await expect(pricing.getByRole("region", { name: "Premium" })).toContainText("Ən çox seçilən");
   await expect(pricing.getByRole("link", { name: "Pro-ya keç · aylıq" })).toHaveAttribute("href", "/odenis?plan=pro&period=month");
-  await expect(pricing.getByRole("link", { name: "Pulsuz başla" })).toHaveAttribute("href", "/qeydiyyat");
+  await expect(pricing.getByRole("link", { name: "Ödənişsiz başla" })).toHaveAttribute("href", "/qeydiyyat");
 
   // Footer: məcburi cümlə
   await expect(page.getByRole("contentinfo")).toContainText("Bu layihə müstəqildir və DİM-ə məxsus deyil.");

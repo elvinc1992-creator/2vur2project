@@ -5,11 +5,11 @@ import { auth } from "@/auth";
 import { getRepetitorKey } from "@/lib/repetitor/source";
 import { acceptsAnswer, checkAnswer, feedbackOf, isValidGiven, type AnswerFeedback } from "@/lib/bank/check";
 import { ensureDaily } from "./daily";
-import { findExam } from "@/lib/exams/source";
+import { findExam, listExams } from "@/lib/exams/source";
 import { daysLeft, examStatus, isExamOpenForSale, isExamVisible, isDailyOpen, nextDailyHref, typeStats } from "./logic";
 import { afterExamFinished } from "@/lib/weak/hooks";
 import { finalizeAttempt, loadExamCtx } from "./exam-session";
-import { examQuota } from "./plans";
+import { canClaimExam, examQuota } from "./plans";
 import { cleanMeta, rememberMeta, resetDemoState, updateDemoState, type AnswerMeta } from "./state";
 
 async function userId(): Promise<string> {
@@ -51,14 +51,17 @@ export async function answerDailyAction(id: string, choice: string, meta?: Answe
   });
 }
 
-/** Plan üzrə sınaq seçimi: Free — ayda 1, Pro — həftədə 1 (Premium — hamısı açıqdır). */
+/**
+ * Plan üzrə pulsuz sınaq: Free — ayın sınaqları (9-cu və 11-ci sinif buraxılışından bir, hamı üçün eyni),
+ * Pro — həftədə 1 (özü seçir). Premium — hamısı açıqdır.
+ */
 export async function claimExamAction(id: string) {
   const exam = await findExam(id);
   if (!exam || !isExamOpenForSale(exam)) redirect("/sinaqlar");
+  const exams = await listExams();
   const ok = await updateDemoState(await userId(), (state) => {
     if (examStatus(state, exam) !== "locked") return true;
-    const q = examQuota(state);
-    if (q.kind === "all" || q.left <= 0) return false;
+    if (!canClaimExam(examQuota(state, exams), id)) return false;
     state.purchased.push(id);
     (state.examClaims ??= []).push({ id, at: Date.now() });
     return true;

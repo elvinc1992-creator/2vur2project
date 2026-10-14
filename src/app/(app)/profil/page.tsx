@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { logoutAction } from "@/app/(auth)/actions";
 import { Page, Topbar } from "@/components/app/topbar";
-import { ChevronIcon, LogoutIcon, PlusIcon, ReceiptIcon, RetryIcon } from "@/components/icons";
+import { ChevronIcon, LogoutIcon, ReceiptIcon, RetryIcon } from "@/components/icons";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, KeyValues, Tag, eyebrowClass, listClass } from "@/components/ui/display";
 import { az } from "@/content/az";
@@ -17,6 +17,7 @@ import { initials, requireDemo } from "@/lib/demo/session";
 import { cn } from "@/lib/cn";
 import { CancelSubscription } from "./cancel-subscription";
 import { EmailForm, PhoneForm } from "./contact-forms";
+import { GradeExamRow, GuardianRow } from "./profile-forms";
 
 export const metadata: Metadata = { title: az.app.profile.title };
 
@@ -64,29 +65,8 @@ export default async function ProfilePage() {
                     {[me?.name, me?.surname, me?.fatherName ? `(${me.fatherName})` : null].filter(Boolean).join(" ")}
                   </span>
                 </div>
-                <div>
-                  <span>
-                    <span className="text-small text-ink-muted">{t.gradeExam}</span>
-                    <br />
-                    {t.gradeExamValue(me?.grade ?? null, target)}
-                  </span>
-                </div>
-                <div>
-                  <span>
-                    <span className="text-small text-ink-muted">{t.guardian}</span>
-                    <br />
-                    {t.guardianNone}
-                  </span>
-                  <button
-                    type="button"
-                    disabled
-                    aria-label={t.guardianAdd}
-                    title={t.googleSoon}
-                    className="grid size-11 cursor-not-allowed place-items-center rounded-[12px] text-ink-muted"
-                  >
-                    <PlusIcon />
-                  </button>
-                </div>
+                <GradeExamRow grade={me?.grade ?? null} target={me?.targetExam ?? null} />
+                <GuardianRow name={me?.guardianName ?? null} email={me?.guardianEmail ?? null} />
               </div>
             </section>
 

@@ -21,6 +21,22 @@ function shuffle<T>(xs: T[], rand: () => number): T[] {
   return a;
 }
 
+/** Toxumlu təsadüfi ardıcıllıq (mulberry32): eyni istifadəçi və gün üçün həmişə eyni. */
+export function seededRand(seed: string): () => number {
+  let h = 1779033703 ^ seed.length;
+  for (let i = 0; i < seed.length; i++) {
+    h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  let a = h >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 /** Təsadüfi dəst: həll olunmamış sualı olan mövzular öndə, mövzu daxilində həll olunmamış suallar öndə. */
 export function pickDailySet(bank: Bank, answered: Set<string>, date: string, rand: () => number = Math.random): DailySet {
   const fresh = (t: Bank[number]) => t.questions.filter((q) => !answered.has(q.id)).length;
@@ -59,12 +75,20 @@ export async function ensureDaily(uid: string, now = new Date()): Promise<{ stat
   const today = todayIn(now);
   const known = new Set(pool.flatMap((t) => t.questions.map((q) => q.id)));
   let state!: DemoState;
+  // Seçim istifadəçi + gün ilə toxumlanır: paralel sorğular və ya təkrar seçim eyni dəsti verir.
+  const rand = () => seededRand(`${uid}:${today}`);
   await updateDemoState(uid, (s) => {
-    // Yeni gün və ya dəstin bir mövzusunun bütün sualları bankdan çıxıb (məs. köhnə test sualları) — yeni dəst.
-    const stale = s.dailySet?.topics.some((t) => !t.ids.some((id) => known.has(id)));
-    if (s.dailySet?.date !== today || stale) {
-      const answered = new Set([...Object.keys(s.daily), ...Object.keys(s.tutor ?? {})]);
-      s.dailySet = pickDailySet(bank, answered, today);
+    const answered = new Set([...Object.keys(s.daily), ...Object.keys(s.tutor ?? {})]);
+    if (s.dailySet?.date !== today) {
+      s.dailySet = pickDailySet(bank, answered, today, rand());
+    } else {
+      // Gün ərzində dəst dəyişmir; yalnız bütün sualları bankdan çıxmış mövzu (məs. köhnə test sualları) əvəz olunur.
+      const keep = s.dailySet.topics.filter((t) => t.ids.some((id) => known.has(id)));
+      if (keep.length < s.dailySet.topics.length) {
+        const rest = bank.filter((t) => !keep.some((k) => k.slug === t.slug));
+        const extra = pickDailySet(rest, answered, today, rand()).topics.slice(0, DAILY_TOPICS_PER_DAY - keep.length);
+        s.dailySet = { date: today, topics: [...keep, ...extra] };
+      }
     }
     state = s;
   });

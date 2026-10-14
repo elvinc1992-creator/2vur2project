@@ -34,7 +34,7 @@ const RULES = [
 ] as const;
 
 const FAQ = [
-  ["İştirak pulludur?", "Xeyr. Qeydiyyatdan keçən hər kəs pulsuz iştirak edir və mükafat qazana bilir. Pulsuz, Pro və Premium hesablar arasında yarışda heç bir fərq yoxdur."],
+  ["İştirak pulludur?", "Xeyr. Qeydiyyatdan keçən hər kəs ödənişsiz iştirak edir və mükafat qazana bilir. Ödənişsiz, Pro və Premium hesablar arasında yarışda heç bir fərq yoxdur."],
   ["Telefondan iştirak etmək olar?", "Bəli, amma kompüter və ya planşet daha rahatdır. Sabit internet bağlantısı olsun."],
   ["İnternet kəsilsə, nə olacaq?", "Verdiyin cavablar saxlanılır, amma vaxt sayğacı dayanmır. Bağlantı kəsildiyi müddətdə vaxt işləməyə davam edir və itən vaxt geri qaytarılmır. Bu, qəsdən çıxıb kənar kömək almağın qarşısını almaq üçündür. Yarışdan əvvəl internet bağlantını yoxla."],
   ["Final necə keçirilir?", "Final yalnız əyani keçirilir, onlayn variantı yoxdur. Vaxt və məkan barədə məlumat finalçılara ayrıca bildiriləcək."],
@@ -73,7 +73,7 @@ export async function ContestLanding({ contestId }: { contestId: string }) {
           ? "Yekun nəticələr elan olunub"
           : "Onlayn tur bitib"
         : regOpen
-          ? "Qeydiyyat açıqdır · iştirak pulsuzdur"
+          ? "Qeydiyyat açıqdır · iştirak ödənişsizdir"
           : now < c.regStartAt.getTime()
             ? `Qeydiyyat ${fmtDay(c.regStartAt)} açılır`
             : "Qeydiyyat bağlanıb";
@@ -322,7 +322,7 @@ export async function ContestLanding({ contestId }: { contestId: string }) {
                 Qeydiyyat {fmtDay(c.regEndAt)} saat {fmtTime(c.regEndAt)}-da bağlanır.
               </p>
               <ul className="mt-3 mb-0 grid gap-2 pl-[18px]">
-                <li>İştirak tamamilə pulsuzdur</li>
+                <li>İştirak tamamilə ödənişsizdir</li>
                 <li>
                   Tur {fmtDay(c.startAt)} saat {fmtTime(c.startAt)}-da başlayır
                 </li>

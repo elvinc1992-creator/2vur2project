@@ -8,8 +8,8 @@ import { EmptyState } from "@/components/ui/empty-art";
 import { az } from "@/content/az";
 import { claimExamAction, startExamAction } from "@/lib/demo/actions";
 import { answeredCount, examStatus, formatDate, isExamVisible, remainingMs, todayIso } from "@/lib/demo/logic";
-import { findExam, getExamQuestions } from "@/lib/exams/source";
-import { examQuota } from "@/lib/demo/plans";
+import { findExam, getExamQuestions, listExams } from "@/lib/exams/source";
+import { canClaimExam, examQuota } from "@/lib/demo/plans";
 import { priceText } from "@/lib/exams/types";
 import { requireDemo } from "@/lib/demo/session";
 import { ExamRunner } from "./exam-runner";
@@ -24,7 +24,7 @@ export default async function ExamPage(props: PageProps<"/sinaq/[id]">) {
   const { user, state } = await requireDemo(`/sinaq/${id}`);
   if (!isExamVisible(state, exam)) notFound();
   const status = examStatus(state, exam);
-  const quota = examQuota(state);
+  const quota = examQuota(state, await listExams());
   const t = az.app;
 
   if (status === "done") redirect(`/sinaq/${id}/netice`);
@@ -40,10 +40,10 @@ export default async function ExamPage(props: PageProps<"/sinaq/[id]">) {
               <EmptyState icon={<LockIcon />} title={exam.title}>
                 {t.exam.locked}
               </EmptyState>
-              {quota.kind !== "all" && quota.left > 0 ? (
+              {canClaimExam(quota, id) ? (
                 <form action={claimExamAction.bind(null, id)}>
                   <Button type="submit" block>
-                    {t.store.claim(quota.kind)}
+                    {t.store.claim(quota.kind === "week" ? "week" : "month")}
                   </Button>
                 </form>
               ) : (

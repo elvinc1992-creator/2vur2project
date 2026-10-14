@@ -15,7 +15,7 @@ export default async function AdminContests() {
   const counts = await Promise.all(rows.map((c) => registrationCount(c.id)));
   return (
     <>
-      <PageHead title="Riyaziyyat yarışı" lead="Yarış pulsuzdur və bütün istifadəçilər üçün eynidir. Onlayn tur → əyani final (ilk N nəfər) → mükafatlandırma. Bildirişlər yalnız e-poçtla." />
+      <PageHead title="Riyaziyyat yarışı" lead="Yarış ödənişsizdir və bütün istifadəçilər üçün eynidir. Onlayn tur → əyani final (ilk N nəfər) → mükafatlandırma. Bildirişlər yalnız e-poçtla." />
       <Table caption="Yarışlar">
         <thead className="bg-navy-050">
           <tr>

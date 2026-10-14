@@ -3,7 +3,7 @@ export type FormState = {
   fieldErrors?: Partial<Record<string, string>>;
   formError?: string;
   /** Formanın altında əlavə izah üçün (məs. "Yeni istifadəçisən?"). */
-  notice?: "not_found" | "unverified" | "email_taken" | "code_sent" | "email_verified" | "phone_saved";
+  notice?: "not_found" | "unverified" | "email_taken" | "code_sent" | "email_verified" | "phone_saved" | "grade_saved" | "guardian_saved" | "guardian_removed";
   /** Kod göndərilmiş e-poçt (profil: e-poçt təsdiqi). */
   pendingEmail?: string;
   /** Kodun göndərildiyi an (geri sayımı yenidən başlatmaq üçün). */

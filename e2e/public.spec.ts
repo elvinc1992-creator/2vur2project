@@ -34,7 +34,7 @@ test("qonaq: repetitorun ilk dərsi açıqdır (cavab yoxlanılır), qalan dərs
   await expect(page).toHaveURL(/\/onlayn-repetitor$/);
   await expect(page.getByRole("heading", { name: "İlk dərs hamıya açıqdır" })).toBeVisible();
   expect(await axe(page)).toEqual([]);
-  await page.getByRole("link", { name: "Pulsuz dərsə başla" }).click();
+  await page.getByRole("link", { name: "Ödənişsiz dərsə başla" }).click();
   await expect(page).toHaveURL(/\/onlayn-repetitor\/natural-ededler$/);
   await expect(page.getByRole("heading", { name: "Nəzəriyyə" })).toBeVisible();
   await expect(page.getByText(/Qonaq kimi cavabların yadda saxlanılmır/)).toBeVisible();

@@ -33,7 +33,7 @@ export const az = {
     },
     register: {
       title: "Hazırlığı rəqəmlərlə qur",
-      text: "Qeydiyyat pulsuzdur. Statistika və mövzu siyahıları dərhal açılır.",
+      text: "Qeydiyyat ödənişsizdir. Statistika və mövzu siyahıları dərhal açılır.",
     },
   },
   login: {
@@ -157,6 +157,7 @@ export const az = {
     passwordWeak: "Şifrədə böyük və kiçik hərf, bir də rəqəm olsun.",
     gradeRequired: "Sinfini seç.",
     targetRequired: "Hədəf imtahanı seç.",
+    guardianNameRequired: "Valideynin adını yaz.",
     termsRequired: "Davam etmək üçün şərtlərlə razılaş.",
     wrongPassword: "Şifrə yanlışdır. Yenidən yoxla.",
     notFoundEmail: "Bu e-poçtla hesab tapılmadı.",

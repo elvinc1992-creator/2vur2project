@@ -6,8 +6,8 @@ vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
 const { DAILY_PER_TOPIC, DAILY_TOPICS_PER_DAY, FREE_DAILY_PER_TOPIC } = await import("./content");
 const { dailyOverview, dailyPager, examStatus, isDailyOpen, nextDailyHref, planStatus } = await import("./logic");
-const { buildDailyCtx, pickDailySet } = await import("./daily");
-const { examQuota, periodBounds, tierOf } = await import("./plans");
+const { buildDailyCtx, pickDailySet, seededRand } = await import("./daily");
+const { canClaimExam, examQuota, freeExamsOfMonth, periodBounds, tierOf } = await import("./plans");
 const { seedState } = await import("./state");
 
 // Sual bankı: 6 mövzu, hər birində 8 sual (bir mövzuda 3).
@@ -58,6 +58,14 @@ describe("günün sualları: təsadüfi dəst", () => {
     const a = set.topics.find((t) => t.slug === "a")!;
     expect(a.ids.includes("a1") || a.ids.includes("a2")).toBe(false);
   });
+
+  it("toxumlu seçim: eyni istifadəçi və gün — eyni dəst, başqa gün — fərqli ardıcıllıq", () => {
+    const pick = (seed: string) => pickDailySet(bank, new Set(), "2026-10-14", seededRand(seed));
+    expect(pick("u:2026-10-14")).toEqual(pick("u:2026-10-14"));
+    const a = seededRand("u:2026-10-14");
+    const b = seededRand("u:2026-10-15");
+    expect([a(), a(), a()]).not.toEqual([b(), b(), b()]);
+  });
 });
 
 describe("planlar: günün sualları", () => {
@@ -103,22 +111,43 @@ describe("planlar: sınaq kvotası", () => {
     expect(periodBounds("week", now)).toEqual({ start: "2026-10-05", next: "2026-10-12" });
   });
 
-  it("Free — ayda 1, Pro — həftədə 1, Premium — hamısı", () => {
+  const at = (iso: string) => Date.parse(`${iso}T12:00:00Z`);
+  const exams = [
+    { id: "n9-1", examType: "9", status: "active", createdAt: at("2026-08-01") },
+    { id: "n9-2", examType: "9", status: "active", createdAt: at("2026-09-20") },
+    { id: "n9-3", examType: "9", status: "active", createdAt: at("2026-10-05") }, // bu ay yaradılıb
+    { id: "n9-x", examType: "9", status: "passive", createdAt: at("2026-09-25") },
+    { id: "b11-1", examType: "11", status: "active", createdAt: at("2026-10-03") },
+    { id: "b11-2", examType: "11", status: "active", createdAt: at("2026-10-07") },
+    { id: "blok-1", examType: "blok", status: "active", createdAt: at("2026-09-01") },
+  ] as Parameters<typeof freeExamsOfMonth>[0];
+
+  it("ayın Free sınaqları: hər tipdən bir, ay ərzində dəyişmir", () => {
+    // 9: ay başlamazdan əvvəlki ən yeni aktiv; 11: əvvəl yoxdur — ən köhnə aktiv.
+    expect(freeExamsOfMonth(exams, now)).toEqual(["n9-2", "b11-1"]);
+    expect(freeExamsOfMonth(exams, at("2026-10-31"))).toEqual(["n9-2", "b11-1"]);
+    expect(freeExamsOfMonth(exams, at("2026-11-02"))).toEqual(["n9-3", "b11-2"]);
+  });
+
+  it("Free — ayın sınaqları, Pro — həftədə 1, Premium — hamısı", () => {
     const free = seedState("u");
-    expect(examQuota(free, now)).toMatchObject({ kind: "month", left: 1 });
-    free.examClaims = [{ id: "1", at: Date.parse("2026-10-02T10:00:00Z") }];
-    expect(examQuota(free, now)).toMatchObject({ kind: "month", left: 0, resetsAt: "2026-11-01" });
-    free.examClaims = [{ id: "1", at: Date.parse("2026-09-30T10:00:00Z") }];
-    expect(examQuota(free, now)).toMatchObject({ left: 1 });
+    const q = examQuota(free, exams, now);
+    expect(q).toMatchObject({ kind: "month", examIds: ["n9-2", "b11-1"], left: 2, resetsAt: "2026-11-01" });
+    expect(canClaimExam(q, "n9-2")).toBe(true);
+    expect(canClaimExam(q, "n9-3")).toBe(false);
+    expect(canClaimExam(q, "blok-1")).toBe(false);
+    free.purchased.push("n9-2");
+    expect(examQuota(free, exams, now)).toMatchObject({ examIds: ["b11-1"], left: 1 });
 
     const pro = paid("pro");
     pro.examClaims = [{ id: "1", at: Date.parse("2026-10-04T10:00:00Z") }]; // keçən həftə (bazar)
-    expect(examQuota(pro, now)).toMatchObject({ kind: "week", left: 1 });
+    expect(examQuota(pro, exams, now)).toMatchObject({ kind: "week", left: 1 });
+    expect(canClaimExam(examQuota(pro, exams, now), "blok-1")).toBe(true);
     pro.examClaims.push({ id: "2", at: Date.parse("2026-10-06T10:00:00Z") });
-    expect(examQuota(pro, now)).toMatchObject({ kind: "week", left: 0, resetsAt: "2026-10-12" });
+    expect(examQuota(pro, exams, now)).toMatchObject({ kind: "week", left: 0, resetsAt: "2026-10-12" });
 
     const premium = paid("premium");
-    expect(examQuota(premium, now)).toEqual({ kind: "all" });
+    expect(examQuota(premium, exams, now)).toEqual({ kind: "all" });
     const exam = { id: "b11-3", durationMin: 90 } as Parameters<typeof examStatus>[1];
     expect(examStatus(premium, exam)).toBe("purchased");
     expect(examStatus(seedState("u"), exam)).toBe("locked");

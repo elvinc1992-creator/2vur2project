@@ -85,7 +85,7 @@ describe("səhvlərim: təkrar seansı", () => {
     expect(["q:f5", "q:f8"]).toContain(items[1].ref);
   });
 
-  it("Free planda oxşar suallar yoxdur; ümumi say limitdən çox deyil", async () => {
+  it("Free planda oxşar suallar yoxdur; səhv çox olanda hamısı daxildir, oxşar sual yoxdur", async () => {
     const pool = await practicePool();
     const free = seedState("u");
     free.daily = { f1: wrong("f1") };
@@ -94,7 +94,8 @@ describe("səhvlərim: təkrar seansı", () => {
     const s = paid();
     s.daily = Object.fromEntries(bank.map((q) => [q.id, wrong(q.id)]));
     const many = buildReview(s, pool, await listMistakes(s, pool));
-    expect(many).toHaveLength(REVIEW_MAX);
+    expect(bank.length).toBeGreaterThan(REVIEW_MAX);
+    expect(many).toHaveLength(bank.length);
     expect(many.every((i) => i.kind === "mistake")).toBe(true);
   });
 });
