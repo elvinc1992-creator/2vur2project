@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DailyStrip, DailyUpsell } from "@/components/app/daily";
-import { DemoNote } from "@/components/app/demo-note";
 import { Page, Topbar } from "@/components/app/topbar";
 import { CalcIcon, CapIcon, ChevronIcon, ClockIcon, FlameIcon, LockIcon, RetryIcon } from "@/components/icons";
 import { Card, Meter, Ring, Tag, Week, h1Class, h3Class, listClass } from "@/components/ui/display";
@@ -17,10 +16,10 @@ import {
   planStatus,
   remainingMs,
   streakInfo,
-  typeProgress,
   isExamOpenForSale,
   isExamVisible,
 } from "@/lib/demo/logic";
+import { personalByTopic } from "@/lib/demo/personal";
 import { canUseRepetitor, hasFullDaily, PLANS, tierOf } from "@/lib/demo/plans";
 import { initials } from "@/lib/demo/session";
 import { tutorOf } from "@/lib/repetitor/progress";
@@ -45,9 +44,9 @@ export default async function PanelPage() {
   const tutorTotal = (await listRepetitorTopics()).reduce((s, x) => s + x.questions.length, 0);
   const tutorDone = Object.values(tutorOf(state)).filter((p) => p.a).length;
   const activeMistakes = (await listMistakes(state, await practicePool())).filter((m) => !m.fixed).length;
-  // Tiplər üzrə proqres — bu günün ilk mövzusu üzrə.
-  const progressTopic = ctx.topics[0];
-  const progress = progressTopic ? typeProgress(state, ctx, progressTopic.slug) : [];
+  // Mövzular üzrə proqres — bu günün mövzularında düzgün cavab faizi (günün sualları + sınaqlar).
+  const personal = await personalByTopic(state);
+  const progress = ctx.topics.map((x) => ({ name: x.name, pct: Math.round((personal.get(x.name)?.pct ?? 0) * 100) }));
 
   // Vaxtı bitmiş sınaq "Davam et"-də göstərilmir.
   const exams = (await listExams()).filter((e) => isExamVisible(state, e));
@@ -163,19 +162,16 @@ export default async function PanelPage() {
             </section>
 
             <Card as="section" aria-labelledby="tp" className="grid gap-4">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className={h3Class} id="tp">
-                  {t.typesTitle}
-                </h2>
-                {progressTopic && <Tag>{progressTopic.name}</Tag>}
-              </div>
+              <h2 className={h3Class} id="tp">
+                {t.topicsTitle}
+              </h2>
               {progress.map((it) => (
-                <div key={it.type} className="grid gap-1.5">
+                <div key={it.name} className="grid gap-1.5">
                   <div className="flex items-center justify-between gap-3 text-small">
-                    <span>{it.type}</span>
+                    <span>{it.name}</span>
                     <b className="tabular">{it.pct}%</b>
                   </div>
-                  <Meter value={it.pct} label={it.type} size="lg" />
+                  <Meter value={it.pct} label={it.name} size="lg" />
                 </div>
               ))}
               <Link
@@ -280,7 +276,7 @@ export default async function PanelPage() {
                   </span>
                   <ChevronIcon />
                 </Link>
-                <Link href="/sinaqlar?f=new" className="text-ink">
+                <Link href="/sinaqlar" className="text-ink">
                   <span>
                     <b>{t.store}</b>
                     <br />
@@ -290,7 +286,6 @@ export default async function PanelPage() {
                 </Link>
               </div>
             </section>
-            <DemoNote />
           </div>
         </div>
       </Page>

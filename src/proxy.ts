@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
-import { LANDING_FILE, landingDecision, landingOnly } from "@/lib/landing-mode";
+import { landingDecision, landingOnly, staticFile } from "@/lib/landing-mode";
 
 // Optimist yoxlama: əsas giriş yoxlaması server komponentlərində və API-də aparılır.
 const { auth } = NextAuth(authConfig);
@@ -40,10 +40,12 @@ const LANDING = landingOnly();
 
 export default auth((req) => {
   const { pathname, search } = req.nextUrl;
+  // Statik səhifələr: haqqımızda, əlaqə, ödəniş nəticəsi (hər rejimdə); ana səhifə və məxfilik (yalnız ana səhifə rejimində)
+  const file = staticFile(pathname, LANDING);
+  if (file) return NextResponse.rewrite(new URL(file, req.nextUrl));
   // Sayt açılana qədər production-da yalnız ana səhifə (bax: src/lib/landing-mode.ts)
   if (LANDING) {
     const d = landingDecision(pathname);
-    if (d === "landing") return NextResponse.rewrite(new URL(LANDING_FILE, req.nextUrl));
     if (d === "redirect") {
       if (pathname.startsWith("/api/")) return new NextResponse(null, { status: 404 });
       return NextResponse.redirect(new URL("/", req.nextUrl));

@@ -21,7 +21,6 @@ export const az = {
   legalLinks: {
     terms: "İstifadə şərtləri",
     privacy: "Məxfilik siyasəti",
-    refund: "Geri qaytarma",
   },
   authAside: {
     signedInAs: (email: string) => `Hazırda ${email} hesabındasan. Başqa hesabla daxil olsan və ya yeni hesab yaratsan, bu hesabdan çıxılacaq.`,
@@ -130,10 +129,6 @@ export const az = {
     hello: (name: string) => `Salam, ${name}!`,
     placeholder: "Panel növbəti mərhələdə hazırlanacaq. Giriş işləyir.",
     logout: "Çıxış",
-  },
-  legal: {
-    updated: "Son yenilənmə: [TARİX]",
-    placeholder: "[Mətn yer tutucudur — hüquqşünas tərəfindən yazılacaq.]",
   },
   errors: {
     required: "Bu sahəni doldur.",

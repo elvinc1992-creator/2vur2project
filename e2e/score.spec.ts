@@ -69,8 +69,10 @@ test("bütün cavablar (7 gün yox); ən azı 4 mövzudan 20 sual → 200 sualda
   await expect(box.getByText("120", { exact: true })).toBeVisible();
   await expect(box.getByText("60%", { exact: true })).toBeVisible();
   await expect(box.getByText("4", { exact: true })).toBeVisible();
-  await expect(box.getByText("int(25 × 60 / 100) − 1 = 14")).toBeVisible();
-  await expect(box.getByText("int(30 × 60 / 100) − 1 = 17")).toBeVisible();
+  // Təxmin: int(25 × 60 / 100) − 1 = 14, int(30 × 60 / 100) − 1 = 17 — düstur ekranda göstərilmir
+  await expect(box.getByText("14", { exact: true })).toBeVisible();
+  await expect(box.getByText("17", { exact: true })).toBeVisible();
+  await expect(box.getByText(/int\(/)).toHaveCount(0);
   await page.screenshot({ path: "screenshots/bal-simulyatoru-netice.png", fullPage: true });
 });
 async function login(page: Page) {

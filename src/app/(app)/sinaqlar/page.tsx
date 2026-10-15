@@ -17,14 +17,16 @@ import { cn } from "@/lib/cn";
 
 export const metadata: Metadata = { title: az.app.store.title };
 
-const FILTERS = ["all", "new", "progress", "done"] as const;
+const FILTERS = ["all", "progress", "done"] as const;
 type Filter = (typeof FILTERS)[number];
 /** Tiplərin sırası (süzgəc düymələri və siyahı, hamı üçün): 11 buraxılış, 11 blok, 9 buraxılış, mövzu. */
 const TYPES = ["11", "blok", "9", "movzu"] as const satisfies ExamType[];
 type ExamTypeFilter = (typeof TYPES)[number];
+/** Mövzu süzgəcində "Tezliklə" — sınağı hazırlanan mövzular (sınaq yaradılanda adi düyməyə çevrilir). */
+const SOON_TOPICS = ["Çoxhədlinin vuruqlara ayrılması"];
 
 /** Şagird üçün vəziyyət: işlənib (nəticə var), yarımçıq (başlayıb), hələ işlənməyib. */
-type Progress = Exclude<Filter, "all">;
+type Progress = "new" | "progress" | "done";
 const progressOf = (s: ExamStatus): Progress => (s === "done" ? "done" : s === "in_progress" || s === "expired" ? "progress" : "new");
 
 const isoOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -37,31 +39,46 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
   const quota = examQuota(state, allExams);
   const t = az.app.store;
   const type = TYPES.includes(sp.tip as ExamTypeFilter) ? (sp.tip as ExamTypeFilter) : null;
-  const qs = (next: { f?: string; tip?: string | null }) => {
+  // Mövzu sınaqlarında mövzu süzgəci (yalnız sınağı olan mövzular, tədris sırası ilə — sınaq nömrəsinə görə)
+  const topicNames = [
+    ...new Set(
+      allExams
+        .filter((e) => e.examType === "movzu" && e.topicName && isExamVisible(state, e))
+        .sort((a, b) => a.number - b.number)
+        .map((e) => e.topicName!),
+    ),
+  ];
+  const topic = type === "movzu" && typeof sp.movzu === "string" && topicNames.includes(sp.movzu) ? sp.movzu : null;
+  const qs = (next: { f?: string; tip?: string | null; movzu?: string | null }) => {
     const p = new URLSearchParams();
     const ff = next.f ?? filter;
     const tt = next.tip === undefined ? type : next.tip;
+    const mm = next.movzu === undefined ? topic : next.movzu;
     if (ff !== "all") p.set("f", ff);
     if (tt) p.set("tip", tt);
+    if (tt === "movzu" && mm) p.set("movzu", mm);
     const s = p.toString();
     return s ? `/sinaqlar?${s}` : "/sinaqlar";
   };
 
-  // Ən yeni sınaq birinci (yaradılma tarixi ilə); passivlər və iştirak etmədiyin bitmiş sınaqlar görünmür.
+  // Passivlər və iştirak etmədiyin bitmiş sınaqlar görünmür.
   const visible = allExams
     .filter((e) => isExamVisible(state, e))
     .filter((e) => !type || e.examType === type)
+    .filter((e) => !topic || e.topicName === topic)
     .map((e) => {
       const status = examStatus(state, e);
       return { ...e, userStatus: status, progress: progressOf(status), ended: e.status === "finished" };
     });
-  // Sıra: 11-ci sinif buraxılış → 11-ci sinif blok → 9-cu sinif buraxılış → mövzu; tip daxilində ən yeni birinci.
+  // Sıra: 11-ci sinif buraxılış → 11-ci sinif blok → 9-cu sinif buraxılış → mövzu; tip daxilində nömrə ilə (№1, №2…).
   // Free: ayın sınaqları (götürülüb-götürülməməsindən asılı olmayaraq) hamısından əvvəl, eyni tip sırası ilə.
   const monthIds = quota.kind === "month" ? freeExamsOfMonth(allExams) : [];
   const rank = (e: ExamMeta) => (monthIds.includes(e.id) ? 0 : 10) + TYPES.indexOf(e.examType);
-  visible.sort((a, b) => rank(a) - rank(b));
-  const countOf =(f: Filter) => (f === "all" ? visible.length : visible.filter((e) => e.progress === f).length);
-  const exams = visible.filter((e) => filter === "all" || e.progress === filter);
+  visible.sort((a, b) => rank(a) - rank(b) || a.number - b.number);
+  // "Hamısı" (və tip süzgəci) — hələ başlanmayanlar: alınmamışlar və alınıb başlanmayanlar; yarımçıq və işlənənlər öz tablarındadır.
+  const matchOf = (f: Filter) => (e: CardExam) => (f === "all" ? e.progress === "new" : e.progress === f);
+  const countOf = (f: Filter) => visible.filter(matchOf(f)).length;
+  const exams = visible.filter(matchOf(filter));
 
   return (
     <>
@@ -93,7 +110,7 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
           {[null, ...TYPES].map((key) => (
             <Link
               key={key ?? "all"}
-              href={qs({ tip: key })}
+              href={qs({ f: "all", tip: key, movzu: null })}
               aria-current={type === key ? "page" : undefined}
               className={cn(
                 "inline-flex min-h-10 items-center gap-2 rounded-pill border-[1.5px] px-3.5 text-[14px] font-semibold no-underline",
@@ -105,6 +122,34 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
             </Link>
           ))}
         </nav>
+
+        {type === "movzu" && topicNames.length > 0 && (
+          <nav aria-label={t.topicsLabel} className="flex flex-wrap gap-2">
+            {[null, ...topicNames].map((name) => (
+              <Link
+                key={name ?? "all"}
+                href={qs({ movzu: name })}
+                aria-current={topic === name ? "page" : undefined}
+                className={cn(
+                  "inline-flex min-h-10 items-center rounded-pill border-[1.5px] px-3.5 text-[14px] font-semibold no-underline",
+                  topic === name ? "border-navy-900 bg-navy-050 text-navy-900" : "border-line bg-white text-ink-muted",
+                )}
+              >
+                {name ?? t.topicsAll}
+              </Link>
+            ))}
+            {SOON_TOPICS.filter((name) => !topicNames.includes(name)).map((name) => (
+              <span
+                key={name}
+                aria-disabled="true"
+                className="inline-flex min-h-10 items-center gap-2 rounded-pill border-[1.5px] border-dashed border-line bg-white px-3.5 text-[14px] font-semibold text-ink-muted opacity-80"
+              >
+                {name}
+                <Tag tone="lock">{t.topicSoon}</Tag>
+              </span>
+            ))}
+          </nav>
+        )}
 
         <Card tone={quota.kind === "all" || quota.left > 0 ? "tint" : "flat"} className="grid gap-2">
           <p className="m-0 font-semibold text-navy-900">
@@ -193,7 +238,6 @@ function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: R
 
       <div className="flex items-start justify-between gap-3">
         <div>
-          {e.topicName && <span className={cn("text-small font-semibold", EXAM_TYPE_LOOK.movzu.ink)}>{t.topicExam(e.topicName)}</span>}
           <h2 className={h3Class}>{e.title}</h2>
         </div>
         {e.userStatus === "done" && <Tag tone="solid">{t.score(result.correct, result.wrong)}</Tag>}

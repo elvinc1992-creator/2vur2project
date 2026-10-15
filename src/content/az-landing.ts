@@ -132,7 +132,7 @@ export const azLanding = {
     ],
     bookTag: "Yeni",
     bookTitle: "Hər mövzunun vərəqlənən nəzəriyyə kitabı",
-    bookText: "Qaydalar, düsturlar, həll edilmiş nümunələr və DİM-də tipik səhvlər — kitab kimi vərəqlə, telefonda da rahat oxu.",
+    bookText: "Qaydalar, düsturlar, həll edilmiş nümunələr və DİM imtahanlarında şagirdlərin tipik səhvləri — kitab kimi vərəqlə, telefonda da rahat oxu.",
     ctaFree: "İlk dərsə ödənişsiz başla",
     ctaMore: "Repetitora bax",
     planTitle: "Dərs planı",
@@ -233,7 +233,7 @@ export const azLanding = {
     site: "Sayt",
     legal: "Hüquqi",
     links: { topics: "Mövzular", stats: "Statistika", exams: "Sınaqlar", pricing: "Qiymətlər", login: "Daxil ol" },
-    legalLinks: { terms: "İstifadə şərtləri", privacy: "Məxfilik siyasəti", refund: "Geri qaytarma siyasəti" },
+    legalLinks: { terms: "İstifadə şərtləri", privacy: "Məxfilik siyasəti" },
     note: "Saytdakı bütün sualların mətni və həlləri 2vur2.az-a məxsusdur.",
   },
 } as const;

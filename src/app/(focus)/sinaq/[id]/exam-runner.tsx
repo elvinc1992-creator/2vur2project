@@ -17,6 +17,7 @@ import type { TickResult } from "@/lib/demo/exam-session";
 import { HEARTBEAT_MS } from "@/lib/demo/timer";
 import { CODE_LEN, LETTERS, type Letter } from "@/lib/demo/content";
 import type { ExamMeta, ExamQuestion } from "@/lib/exams/types";
+import type { QuestionReportSource } from "@/db/schema";
 import { cn } from "@/lib/cn";
 
 const t = az.app.exam;
@@ -60,6 +61,8 @@ export type RunnerClient = {
   writtenText?: boolean;
   /** Tab dəyişmə / pəncərədən çıxma (jurnal üçün). */
   onHidden?: (id: string) => void;
+  /** Sualdakı səhv bildirişi harada göndərilib (standart — saytın sınağı). */
+  reportSource?: QuestionReportSource;
 };
 
 const DEFAULT_CLIENT: RunnerClient = {
@@ -301,6 +304,7 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
               <ExamQuestionView
                 key={q.n}
                 examId={exam.id}
+                reportSource={api.reportSource ?? "exam"}
                 total={lastN}
                 q={q}
                 value={answers[q.n] ?? ""}
@@ -406,6 +410,7 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
 
 function ExamQuestionView({
   examId,
+  reportSource,
   total,
   q,
   value,
@@ -414,6 +419,7 @@ function ExamQuestionView({
   onFlag,
 }: {
   examId: string;
+  reportSource: QuestionReportSource;
   total: number;
   q: ExamQuestion;
   value: string;
@@ -431,6 +437,7 @@ function ExamQuestionView({
         imageUrl={q.imageUrl}
         imageAlt={q.imageAlt}
         qid={q.code}
+        report={{ code: q.code, source: reportSource, context: examId }}
         aside={
           <>
             <Tag tone={q.format === "coded" ? "coral" : q.format === "written" ? "type" : "topic"}>

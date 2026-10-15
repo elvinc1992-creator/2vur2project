@@ -14,7 +14,9 @@ export default async function AdminExams(props: PageProps<"/admin/sinaqlar">) {
   const sp = await props.searchParams;
   const [all, kinds] = await Promise.all([listExams({ all: true }), listExamKinds()]);
   const kind = kinds.find((k) => k.key === sp.tip)?.key;
-  const exams = kind ? all.filter((e) => e.kind === kind) : all;
+  // Tip sırası ilə (exam_kinds.sort_order), tip daxilində nömrə ilə (№1, №2…)
+  const kindRank = (k: string) => kinds.findIndex((x) => x.key === k);
+  const exams = (kind ? all.filter((e) => e.kind === kind) : [...all]).sort((a, b) => kindRank(a.kind) - kindRank(b.kind) || a.number - b.number);
   const tab = (key: string | undefined, label: string, n: number) => (
     <Link
       key={key ?? "all"}

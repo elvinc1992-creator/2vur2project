@@ -18,9 +18,6 @@ export function FooterLight() {
           <Link href="/mexfilik" className="text-navy-900 no-underline hover:underline">
             {az.legalLinks.privacy}
           </Link>
-          <Link href="/geri-qaytarma" className="text-navy-900 no-underline hover:underline">
-            {az.legalLinks.refund}
-          </Link>
           <span>
             {az.common.contact}:{" "}
             <a href={`mailto:${az.common.email}`} className="text-navy-900 no-underline hover:underline">

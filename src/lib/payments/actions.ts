@@ -61,12 +61,17 @@ export async function payAction(formData: FormData) {
         orderId,
         amount: purchase.amount,
         description: `2vur2.az — ${purchase.title}`,
-        successUrl: `${base}/odenis/ugurlu?o=${orderId}`,
-        errorUrl: `${base}/odenis/ugursuz?o=${orderId}`,
+        // Epoint kabinetində qeyd olunan ünvanlar (/success, /error) — sifariş nömrəsi ilə
+        successUrl: `${base}/success?o=${orderId}`,
+        errorUrl: `${base}/error?o=${orderId}`,
       },
       epointKeys()!,
+      // Abunədə kart saxlanır — növbəti dövr avtomatik ödənilir (bax: /api/cron/renew)
+      purchase.kind === "subscription",
     );
-    if (r.transaction) await db.update(paymentOrders).set({ transaction: r.transaction }).where(eqId(orderId));
+    if (r.transaction || r.cardId) {
+      await db.update(paymentOrders).set({ transaction: r.transaction, cardId: r.cardId }).where(eqId(orderId));
+    }
     target = r.redirectUrl;
   } catch (e) {
     console.error("Epoint ödəniş yaradılmadı", orderId, e);

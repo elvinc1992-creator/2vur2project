@@ -179,8 +179,8 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
             </span>
             <span className="text-small">
               {exam || once ? t.consentExam : period === "year" ? t.consentYearly : t.consentMonthly}{" "}
-              <Link href="/geri-qaytarma" target="_blank">
-                {t.refund}
+              <Link href="/sertler" target="_blank">
+                {t.terms}
               </Link>
             </span>
           </label>

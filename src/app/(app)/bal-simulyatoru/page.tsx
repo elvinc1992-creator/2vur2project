@@ -75,7 +75,6 @@ export default async function ScoreSimulatorPage() {
                       <span className="ml-1 text-lead text-on-navy-muted tabular">{t.estimateOf(e.n)}</span>
                     </p>
                     <Meter value={Math.round((e.value / e.n) * 100)} label={e.label} tone="coral" />
-                    <p className="text-small text-on-navy-muted tabular">{t.estimateFormula(e.n, pctNum, e.value)}</p>
                   </Card>
                 ))}
               </div>

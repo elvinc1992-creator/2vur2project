@@ -8,7 +8,7 @@ import { EXAM_TYPE_OF } from "./types";
 // Yeni sınaq: tip (exam_kinds) → imtahan quruluşu (exam_blueprint_sections) və ya mövzu sınağında adminin seçdiyi say;
 // mövzuların DİM tezliyi və imtahan tipləri → generateExam. Yeni sınaq passiv yaranır (saytda görünmür).
 
-export const DEFAULT_DURATION: Record<string, number> = { "buraxilis-9": 90, "buraxilis-11": 90, "qebul-11": 120, movzu: 45 };
+export const DEFAULT_DURATION: Record<string, number> = { "buraxilis-9": 90, "buraxilis-11": 90, "qebul-11": 90, movzu: 90 };
 const TITLE: Record<string, string> = {
   "buraxilis-9": "9-cu sinif buraxılış sınağı",
   "buraxilis-11": "11-ci sinif buraxılış sınağı",
@@ -83,6 +83,7 @@ export async function createExam(input: CreateExamInput) {
       .filter((t) => !isTopic || t.id === topic!.id)
       .map((t) => ({
         id: t.id,
+        slug: t.slug,
         curriculumOrder: t.curriculumOrder,
         dimFrequency: t.dimFrequency,
         examTypes: isTopic ? ["movzu"] : t.examTypes.split(",").map((x) => x.trim()),
@@ -96,7 +97,9 @@ export async function createExam(input: CreateExamInput) {
   const [last] = await db.select({ n: max(exams.number) }).from(exams).where(eq(exams.blueprintKey, kind.blueprintKey));
   const number = (last?.n ?? 0) + 1;
   const id = `${ID_PREFIX[kind.key] ?? kind.key}-${number}`;
-  const title = input.title?.trim() || (isTopic ? `Mövzu sınağı: ${topic!.name} №${number}` : `${TITLE[kind.key] ?? kind.name} №${number}`);
+  // Mövzu sınağının adında nömrə — həmin mövzunun öz sınaqları arasında (exams.number bütün mövzu sınaqları üçün ümumidir)
+  const topicNo = isTopic ? ((await db.select({ n: count() }).from(exams).where(eq(exams.topicId, topic!.id)))[0]?.n ?? 0) + 1 : 0;
+  const title = input.title?.trim() || (isTopic ? `${topic!.name} №${topicNo}` : `${TITLE[kind.key] ?? kind.name} №${number}`);
   await db.insert(exams).values({
     id,
     blueprintKey: kind.blueprintKey,

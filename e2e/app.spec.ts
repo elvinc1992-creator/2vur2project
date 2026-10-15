@@ -301,7 +301,7 @@ test("sayğac: sınaq səhifəsindən çıxanda vaxt dayanır, qayıdanda davam 
   await page.goto("/panel");
   await expect(page.getByText(/dəq qalıb · fasilədə/)).toBeVisible();
   await page.waitForTimeout(8000); // fasilə: bu vaxt sayılmamalıdır
-  await page.goto("/sinaqlar");
+  await page.goto("/sinaqlar?f=progress");
   await expect(page.getByText(/Fasilədə · \d+ dəq qalıb/)).toBeVisible();
 
   await page.goto("/sinaq/b11-1");
@@ -320,7 +320,7 @@ test("sayğac: vaxt səhifədə bitəndə sınaq avtomatik bitir və bağlanır"
   await page.goto("/sinaq/b11-1");
   await expect(page).toHaveURL(/\/sinaq\/b11-1\/netice$/);
   await expect(page.getByText(/Vaxt bitdiyi üçün sınaq avtomatik göndərildi/)).toBeVisible();
-  await page.goto("/sinaqlar");
+  await page.goto("/sinaqlar?f=done");
   await expect(page.getByText("1 düzgün · 0 yanlış")).toBeVisible();
 });
 
@@ -342,7 +342,7 @@ test("sayğac: vaxtı bitmiş sınaq aktiv deyil — davam etmək olmur", async 
   await setDemo({ startedAt: Date.now() - 200_000, elapsedMs: 90 * 60_000, lastSeenAt: null });
   await page.goto("/panel");
   await expect(page.getByText("Sınaq · yarımçıq")).toHaveCount(0);
-  await page.goto("/sinaqlar");
+  await page.goto("/sinaqlar?f=progress");
   const card = page.getByRole("article").filter({ hasText: "11-ci sinif buraxılış sınağı №1" });
   await expect(card.getByText("Vaxt bitib")).toBeVisible();
   await expect(card.getByRole("link", { name: /Davam et/ })).toHaveCount(0);
@@ -427,8 +427,11 @@ test("sınaq: Free — ayın sınağını seç → başla → cavabla → yenil�
   // Yazılı sualda şagirdin yazdığı mətn göstərilir ("Yazılıb" yox)
   await expect(page.locator("#sol-19").locator("xpath=ancestor::article")).toContainText("x · 1,21 = 242, x = 200");
 
-  await page.goto("/sinaqlar?tip=11");
+  await page.goto("/sinaqlar?f=done&tip=11");
   await expect(page.getByText("2 düzgün · 0 yanlış")).toBeVisible();
+  // Mağazada (Hamısı, tiplər) işlənən sınaq görünmür — yalnız alınmamışlar
+  await page.goto("/sinaqlar?tip=11");
+  await expect(page.getByText("2 düzgün · 0 yanlış")).toHaveCount(0);
   // 11-ci sinfin ayın sınağı işlənib — qalan 11-ci sinif sınaqları yalnız alına bilər (3 AZN)
   await expect(page.getByRole("button", { name: "Ödənişsiz götür" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Satın al · 3 AZN" })).toHaveCount(n("buraxilis-11") - 1);

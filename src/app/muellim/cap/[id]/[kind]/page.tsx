@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { PrintButton } from "@/components/teacher/print-button";
 import { MathText } from "@/components/ui/math-text";
+import { ReportQuestion } from "@/components/ui/report-question";
 import { LETTERS } from "@/lib/demo/content";
 import { itemsOf, ownTest, testGroupsOf, testKindLabel, variantsOf, type FullItem, type StudentVariant } from "@/lib/teacher/data";
 import { requireTeacher } from "@/lib/teacher/guard";
@@ -94,7 +95,7 @@ export default async function PrintPage(props: PageProps<"/muellim/cap/[id]/[kin
         variants.map((v) => (
           <Sheet key={v.userId}>
             {head(KINDS.kitabca, v.name, v.letter, tg.groupOf.get(v.userId))}
-            <Booklet v={v} items={items} />
+            <Booklet v={v} items={items} testId={id} />
           </Sheet>
         ))}
       {kind === "kart" &&
@@ -124,7 +125,7 @@ const SecT = ({ children }: { children: ReactNode }) => (
 );
 
 /** Kitabça: bölmələr (sıra şagirdin variantı ilə), qapalı suallar iki sütunda. */
-function Booklet({ v, items }: { v: StudentVariant; items: FullItem[] }) {
+function Booklet({ v, items, testId }: { v: StudentVariant; items: FullItem[]; testId: string }) {
   const shown = v.order.map((n, i) => ({ i: i + 1, it: items.find((x) => x.n === n)! }));
   return (
     <>
@@ -137,6 +138,8 @@ function Booklet({ v, items }: { v: StudentVariant; items: FullItem[] }) {
             <ol className={`m-0 list-none p-0 ${f === "closed" ? "[column-gap:28px] [column-rule:1px_solid_#ddd] sm:columns-2" : ""}`}>
               {qs.map(({ i, it }) => (
                 <li key={i} className="avoid mb-3.5">
+                  {/* Ekranda: sualda səhv bildir (çapda görünmür) */}
+                  <ReportQuestion target={{ code: it.code, source: "teacher", context: testId }} n={i} className="noprint float-right -mt-2" />
                   <b className="mr-1">{i}.</b>
                   <MathText text={it.body} />
                   {it.imageUrl && (

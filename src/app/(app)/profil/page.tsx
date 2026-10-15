@@ -8,7 +8,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, KeyValues, Tag, eyebrowClass, listClass } from "@/components/ui/display";
 import { az } from "@/content/az";
 import { db } from "@/db";
-import { oauthAccounts, users } from "@/db/schema";
+import { oauthAccounts, savedCards, users } from "@/db/schema";
 import { resetDemoAction } from "@/lib/demo/actions";
 import { CARD_LABEL } from "@/lib/demo/content";
 import { addDays, formatDate } from "@/lib/demo/logic";
@@ -34,6 +34,8 @@ export default async function ProfilePage() {
   const target = me?.targetExam ? t.targets[me.targetExam] : "—";
   const active = state.sub.status === "active";
   const paidTier = state.sub.tier ?? "premium";
+  // Avtomatik yenilənmə üçün saxlanmış kart (bax: src/lib/payments/renew.ts)
+  const card = await db.query.savedCards.findFirst({ where: eq(savedCards.userId, user.id) });
 
   return (
     <>
@@ -147,6 +149,7 @@ export default async function ProfilePage() {
                     <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{az.app.payment.planTitle(PLANS[paidTier].name, state.sub.period === "year")}</b>
                     <Tag tone="success">{t.active}</Tag>
                   </div>
+                  {card && <p className="m-0 text-small text-ink-muted">{t.autoRenew(formatDate(addDays(state.sub.periodEnd, 1)))}</p>}
                   <KeyValues
                     rows={[
                       [t.nextPayment, formatDate(addDays(state.sub.periodEnd, 1))],
@@ -156,7 +159,7 @@ export default async function ProfilePage() {
                           ? az.app.payment.perYear(priceOf(paidTier, "year"))
                           : az.app.payment.perMonth(priceOf(paidTier)),
                       ],
-                      [t.method, CARD_LABEL],
+                      [t.method, card?.cardMask ? `Kart •••• ${card.cardMask.slice(-4)}` : CARD_LABEL],
                     ]}
                   />
                   <div className="flex flex-wrap items-center gap-3">

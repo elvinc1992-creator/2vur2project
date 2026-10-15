@@ -62,7 +62,7 @@ export default async function RepetitorQuestionPage(props: PageProps<"/onlayn-re
           <Tag tone="type">{q.type}</Tag>
           <Freq count={q.freq} label={az.app.daily.inExam(q.freq)} />
         </div>
-        <QuestionCard id="tutor-q" n={Number(n)} total={topic.questions.length} text={q.text} imageUrl={q.imageUrl} imageAlt={q.imageAlt} qid={q.id} />
+        <QuestionCard id="tutor-q" n={Number(n)} total={topic.questions.length} text={q.text} imageUrl={q.imageUrl} imageAlt={q.imageAlt} qid={q.id} report={{ code: q.id, source: "tutor" }} />
         <TutorAnswer
           key={q.id}
           id={q.id}

@@ -43,7 +43,7 @@ describe("sınaq generasiyası", () => {
     expect(fitsFormat({ code: "x", topicId: 1, format: "closed", answerValue: null, hasOptions: false }, "closed")).toBe(false);
   });
 
-  it("mövzular DİM tezliyinə mütənasib, bir mövzudan ən çox 1/3; tədris sırası ilə", () => {
+  it("mövzular arasında bərabər paylanır (qayda: hər mövzudan 1, artıq yerlər növbə ilə); tədris sırası ilə", () => {
     const items = generateExam({
       sections: [{ format: "closed", count: 12, firstNo: 1 }],
       examType: "11",
@@ -52,8 +52,7 @@ describe("sınaq generasiyası", () => {
       rand: seeded(3),
     });
     const by = (id: number) => items.filter((i) => i.code.startsWith(`T${id}-`)).length;
-    expect(by(3)).toBeLessThanOrEqual(4);
-    expect(by(3)).toBeGreaterThanOrEqual(by(2));
+    expect([by(1), by(2), by(3)]).toEqual([4, 4, 4]);
     const order = items.map((i) => Number(i.code[1]));
     expect([...order].sort()).toEqual(order);
   });
@@ -74,6 +73,74 @@ describe("sınaq generasiyası", () => {
     expect(items.every((i) => i.code.startsWith("T1-C"))).toBe(true);
     // 20 qapalı sualdan 7-si bir dəfə istifadə olunub — hamısı seçilir, qalanı ikinci dəfə istifadə olunanlardan.
     expect(items.filter((i) => usage.get(i.code) === 1)).toHaveLength(7);
+  });
+
+  describe("mövzu başına sabit say", () => {
+    // 27 mövzu: 1–3 — loqarifm, limit, stereometriya; limit və 25 yalnız blokda; 21, 22 — yalnız 11 və blok
+    const SLUGS: Record<number, string> = { 1: "loqarifm-ustlu-tenlik-berabersizlik", 2: "limit-toreme-inteqral", 3: "stereometriya" };
+    const many: GenTopic[] = Array.from({ length: 27 }, (_, k) => {
+      const id = k + 1;
+      const examTypes = id === 2 || id === 25 ? ["blok"] : id === 1 || id === 3 || id === 21 || id === 22 ? ["11", "blok"] : ["9", "11", "blok"];
+      return { id, slug: SLUGS[id] ?? `m${id}`, curriculumOrder: id, dimFrequency: 0.2 + (id % 7) * 0.3, examTypes };
+    });
+    // Mövzu 27 — yalnız yazılı sualı var (isbat kimi)
+    const bank: GenTask[] = many.flatMap((t) =>
+      Array.from({ length: 6 }, (_, i) =>
+        t.id === 27
+          ? [{ code: `M${t.id}-W${i}`, topicId: t.id, format: "written", answerValue: null, hasOptions: false }]
+          : [
+              { code: `M${t.id}-C${i}`, topicId: t.id, format: "closed", answerValue: null, hasOptions: true },
+              { code: `M${t.id}-O${i}`, topicId: t.id, format: "open", answerValue: "12", hasOptions: false },
+              { code: `M${t.id}-W${i}`, topicId: t.id, format: "written", answerValue: null, hasOptions: false },
+            ],
+      ).flat(),
+    );
+    const count = (items: { code: string }[]) => {
+      const m = new Map<number, number>();
+      for (const i of items) m.set(Number(i.code.slice(1).split("-")[0]), (m.get(Number(i.code.slice(1).split("-")[0])) ?? 0) + 1);
+      return m;
+    };
+    const BLOK = [
+      { format: "closed" as const, count: 22, firstNo: 1 },
+      { format: "coded" as const, count: 5, firstNo: 23 },
+      { format: "written" as const, count: 3, firstNo: 28 },
+    ];
+    const ELEVEN = [
+      { format: "closed" as const, count: 13, firstNo: 1 },
+      { format: "coded" as const, count: 5, firstNo: 14 },
+      { format: "written" as const, count: 7, firstNo: 19 },
+    ];
+
+    it("blok: loqarifm, limit, stereometriya — 2, qalan 27 mövzudan hər biri 1 (30 sual)", () => {
+      for (let seed = 1; seed <= 20; seed++) {
+        const items = generateExam({ sections: BLOK, examType: "blok", topics: many, tasks: bank, rand: seeded(seed) });
+        expect(items).toHaveLength(30);
+        const m = count(items);
+        for (const t of many) expect(m.get(t.id) ?? 0, `seed ${seed}, mövzu ${t.id}`).toBe(t.id <= 3 ? 2 : 1);
+      }
+    });
+
+    it("11: loqarifm və stereometriya — 2, qalanlardan ən çox 1 (yer azdır — bəzi mövzular düşür)", () => {
+      for (let seed = 1; seed <= 20; seed++) {
+        const items = generateExam({ sections: ELEVEN, examType: "11", topics: many, tasks: bank, rand: seeded(seed) });
+        expect(items).toHaveLength(25);
+        const m = count(items);
+        expect(m.get(1)).toBe(2);
+        expect(m.get(3)).toBe(2);
+        expect(m.has(2)).toBe(false);
+        for (const [id, n] of m) if (id > 3) expect(n, `mövzu ${id}`).toBe(1);
+      }
+    });
+
+    it("9: hər mövzudan 1; mövzu yerdən azdırsa — artıq yerlər, ən çox 2", () => {
+      const items = generateExam({ sections: NINE, examType: "9", topics: many, tasks: bank, rand: seeded(9) });
+      expect(items).toHaveLength(25);
+      const m = count(items);
+      const nine = many.filter((t) => t.examTypes.includes("9"));
+      for (const t of nine) expect(m.get(t.id) ?? 0).toBeGreaterThanOrEqual(1);
+      expect(Math.max(...m.values())).toBeLessThanOrEqual(2);
+      expect([...m.keys()].every((id) => nine.some((t) => t.id === id))).toBe(true);
+    });
   });
 
   it("əl ilə seçilmiş suallar sınağa düşür, qalan yerlər avtomatik doldurulur; yaramayan seçim nəzərə alınmır", () => {

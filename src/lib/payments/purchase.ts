@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { paymentOrders, payments } from "@/db/schema";
+import { paymentOrders, payments, savedCards } from "@/db/schema";
 import { isExamOpenForSale, todayIso } from "@/lib/demo/logic";
 import { periodEndFrom, PLANS, priceOf, type BillingPeriod } from "@/lib/demo/plans";
 import { updateDemoState, type PaidTier } from "@/lib/demo/state";
@@ -77,7 +77,7 @@ export const purchaseOfOrder = (o: Order): Purchase =>
     ? { kind: "exam", examId: o.examId ?? "", title: o.title, amount: o.amount, amountText: priceText(o.amount) }
     : { kind: "subscription", tier: o.tier ?? "premium", period: o.period ?? "month", title: o.title, amount: o.amount, amountText: priceText(o.amount) };
 
-export type EpointResult = { status: string; transaction?: string; message?: string; cardMask?: string; amount?: number };
+export type EpointResult = { status: string; transaction?: string; message?: string; cardMask?: string; cardId?: string; amount?: number };
 
 /**
  * Epoint nəticəsini sifarişə tətbiq edir (bildiriş və status yoxlaması eyni yolla gəlir; təkrar çağırış zərərsizdir).
@@ -109,6 +109,12 @@ export async function settleOrder(orderId: string, r: EpointResult): Promise<Ord
     if (!won) return (await db.query.paymentOrders.findFirst({ where: eq(paymentOrders.id, orderId) })) ?? order;
     const method = r.cardMask ? `Kart •••• ${r.cardMask.slice(-4)}` : "Bank kartı";
     await applyPurchase(won.userId, purchaseOfOrder(won), method, receiptId);
+    // Abunə ödənişində saxlanan kart — növbəti dövrlər bu kartdan avtomatik ödənilir
+    const cardId = r.cardId ?? won.cardId;
+    if (won.kind === "subscription" && cardId) {
+      const card = { cardId, cardMask: r.cardMask ?? won.cardMask, createdAt: new Date() };
+      await db.insert(savedCards).values({ userId: won.userId, ...card }).onConflictDoUpdate({ target: savedCards.userId, set: card });
+    }
     return won;
   }
   if (r.status === "failed" || r.status === "error") {
@@ -140,6 +146,7 @@ export async function syncOrder(orderId: string, uid: string): Promise<Order | n
         transaction: order.transaction,
         message: typeof r.message === "string" ? r.message : undefined,
         cardMask: typeof r.card_mask === "string" ? r.card_mask : undefined,
+        cardId: typeof r.card_id === "string" ? r.card_id : undefined,
         amount: r.amount !== undefined && r.amount !== null && Number.isFinite(amount) ? amount : undefined,
       })) ?? order
     );

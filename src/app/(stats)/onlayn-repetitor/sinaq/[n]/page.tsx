@@ -6,6 +6,7 @@ import { CheckCircleIcon, XCircleIcon } from "@/components/icons";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, h1Class } from "@/components/ui/display";
 import { MathText } from "@/components/ui/math-text";
+import { ReportQuestion } from "@/components/ui/report-question";
 import { az } from "@/content/az";
 import { cn } from "@/lib/cn";
 import { FormAnswerFields } from "@/components/ui/form-answer";
@@ -62,10 +63,13 @@ export default async function TutorExamPage(props: PageProps<"/onlayn-repetitor/
                 return (
                   <li key={q.id}>
                     <Card className="grid gap-2">
-                      <p className="m-0">
-                        <b className="tabular">{i + 1}. </b>
-                        <MathText text={q.text} />
-                      </p>
+                      <div className="flex items-start gap-2">
+                        <p className="m-0 flex-1">
+                          <b className="tabular">{i + 1}. </b>
+                          <MathText text={q.text} />
+                        </p>
+                        <ReportQuestion target={{ code: q.id, source: "tutor", context: `sinaq-${n}` }} n={i + 1} className="-mt-2" />
+                      </div>
                       <p
                         className={cn(
                           "m-0 flex items-start gap-2 text-small font-semibold",
@@ -102,10 +106,13 @@ export default async function TutorExamPage(props: PageProps<"/onlayn-repetitor/
             <p className="text-small text-ink-muted">{t.examIntro(questions.length)}</p>
             {questions.map((q, i) => (
               <Card key={q.id} as="section" aria-labelledby={`tq-${q.id}`} className="grid gap-3">
-                <p id={`tq-${q.id}`} className="m-0">
-                  <b className="tabular">{i + 1}. </b>
-                  <MathText text={q.text} />
-                </p>
+                <div className="flex items-start gap-2">
+                  <p id={`tq-${q.id}`} className="m-0 flex-1">
+                    <b className="tabular">{i + 1}. </b>
+                    <MathText text={q.text} />
+                  </p>
+                  <ReportQuestion target={{ code: q.id, source: "tutor", context: `sinaq-${n}` }} n={i + 1} className="-mt-2" />
+                </div>
                 {q.imageUrl && (
                   <Image
                     src={q.imageUrl}

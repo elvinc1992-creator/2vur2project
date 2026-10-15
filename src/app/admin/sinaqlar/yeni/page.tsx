@@ -96,7 +96,7 @@ async function ExamForm({ kind, kindName, topicId, topicName }: { kind: string; 
         <div className="flex flex-wrap items-end gap-2">
           <label className="grid min-w-[260px] flex-1 gap-1 text-[13px] font-semibold">
             Ad (boş qalsa — avtomatik, nömrə ilə)
-            <input name="title" maxLength={120} className={input} placeholder={isTopic ? `Mövzu sınağı: ${topicName} №…` : `${kindName} sınağı №…`} />
+            <input name="title" maxLength={120} className={input} placeholder={isTopic ? `${topicName} №…` : `${kindName} sınağı №…`} />
           </label>
           <label className="grid gap-1 text-[13px] font-semibold">
             Müddət (dəq)

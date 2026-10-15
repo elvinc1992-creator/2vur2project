@@ -1,0 +1,17 @@
+# Abunələrin avtomatik yenilənməsi: hər 6 saatdan bir saytın /api/cron/renew route-unu çağırır
+# (dövrü bitən aktiv abunələr saxlanmış kartdan ödənilir). Repo secret: CRON_SECRET (Vercel-dəki ilə eyni).
+name: renew
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  renew:
+    runs-on: ubuntu-latest
+    steps:
+      - run: >-
+          curl -fsS -X POST --max-time 90
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+          https://www.2vur2.az/api/cron/renew

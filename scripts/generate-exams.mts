@@ -16,10 +16,11 @@ const TITLE: Record<string, string> = {
   "qebul-11": "11-ci sinif blok sınağı",
 };
 const PREFIX: Record<string, string> = { "buraxilis-9": "b9", "buraxilis-11": "b11", "qebul-11": "q11" };
-const DURATION: Record<string, number> = { "buraxilis-9": 90, "buraxilis-11": 90, "qebul-11": 120 };
+const DURATION: Record<string, number> = { "buraxilis-9": 90, "buraxilis-11": 90, "qebul-11": 90 };
 
-const topics = (await db.execute("select id, curriculum_order, dim_frequency, exam_types from topics")).rows.map((t) => ({
+const topics = (await db.execute("select id, slug, curriculum_order, dim_frequency, exam_types from topics")).rows.map((t) => ({
   id: Number(t.id),
+  slug: String(t.slug),
   curriculumOrder: Number(t.curriculum_order),
   dimFrequency: Number(t.dim_frequency),
   examTypes: String(t.exam_types).split(","),

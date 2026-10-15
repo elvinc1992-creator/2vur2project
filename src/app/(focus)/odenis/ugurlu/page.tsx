@@ -79,8 +79,8 @@ export default async function PaymentSuccessPage(props: PageProps<"/odenis/ugurl
             </Button>
           </form>
         ) : (
-          <ButtonLink href={isExam ? "/sinaqlar" : "/gunun-suallari"} block>
-            {isExam ? az.app.nav.exams : t.toDaily}
+          <ButtonLink href={isExam ? "/sinaqlar" : "/panel"} block>
+            {isExam ? az.app.nav.exams : t.toHome}
           </ButtonLink>
         )}
         <p className="text-center text-small text-ink-muted">{t.copySent(user.email ?? "")}</p>

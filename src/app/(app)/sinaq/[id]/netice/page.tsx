@@ -6,6 +6,7 @@ import { Alert } from "@/components/ui/alert";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, Meter, Tag, h3Class } from "@/components/ui/display";
 import { MathText } from "@/components/ui/math-text";
+import { ReportQuestion } from "@/components/ui/report-question";
 import { az } from "@/content/az";
 import { isCorrect } from "@/lib/exams/grade";
 import { findExam, getExamKeys, getExamQuestions } from "@/lib/exams/source";
@@ -90,6 +91,7 @@ export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">)
                     </h3>
                     <Tag tone="type">{az.app.exam.formats[q.format]}</Tag>
                     <Tag>{q.topicName}</Tag>
+                    <ReportQuestion target={{ code: q.code, source: "exam", context: id }} n={q.n} className="ml-auto" />
                   </div>
                   <p className="text-small leading-[1.6]">
                     <MathText text={q.text} />

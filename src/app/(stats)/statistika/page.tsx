@@ -79,7 +79,7 @@ export default async function StatsPage() {
           </div>
           <ChartFrame
             id="ranking-view"
-            summary={t.ranking.summary(ranking[0].name, fmtInt(shown(ranking[0].n)), fmtPct(ranking[0].share))}
+            summary={t.ranking.summary(ranking[0].name, fmtPct(ranking[0].share))}
             chart={
               <RankingChart
                 hrefSuffix={query}
@@ -89,7 +89,7 @@ export default async function StatsPage() {
                     slug: r.slug,
                     name: r.name,
                     n: shown(r.n),
-                    label: t.ranking.value(fmtInt(shown(r.n)), fmtPct(r.share)),
+                    label: fmtPct(r.share),
                     personal: mine ? { pct: mine.pct, label: t.ranking.personal(fmtPct(mine.pct, 0), mine.ok, mine.total) } : undefined,
                   };
                 })}

@@ -39,9 +39,6 @@ export function FooterDark() {
             <Link href="/mexfilik" className={link}>
               {t.legalLinks.privacy}
             </Link>
-            <Link href="/geri-qaytarma" className={link}>
-              {t.legalLinks.refund}
-            </Link>
           </nav>
           <div className="grid content-start gap-2.5">
             <h2 className="text-small font-bold text-white">{az.common.contact}</h2>
