@@ -9,8 +9,7 @@ import { MathText } from "@/components/ui/math-text";
 import { az } from "@/content/az";
 import { formatDate } from "@/lib/demo/logic";
 import { optionalDemo } from "@/lib/demo/session";
-import type { LessonView } from "@/lib/repetitor/plan";
-import { repetitorHref, repetitorPager, tutorContext, tutorOf } from "@/lib/repetitor/progress";
+import { canReadTheory, repetitorHref, repetitorPager, topicLessons, tutorContext, tutorOf } from "@/lib/repetitor/progress";
 import { getRepetitorTopic, getTopicTheory } from "@/lib/repetitor/source";
 
 export const metadata: Metadata = { title: az.app.tutor.title };
@@ -25,20 +24,12 @@ export default async function RepetitorTopicPage(props: PageProps<"/onlayn-repet
   const t = az.app.tutor;
   const ctx = await tutorContext(state);
   const answered = tutorOf(state);
-  const lessons: LessonView[] = ctx.view
-    ? ctx.view.lessons.filter((l) => l.topic === movzu).map((l) => (l.status === "locked" && ctx.isFree(l.questionIds[0]) ? { ...l, status: "open" } : l))
-    : ctx.curr.lessons
-        .filter((l) => l.topic === movzu)
-        .map((l) => {
-          const done = l.questionIds.filter((id) => answered[id]?.a).length;
-          const status = !ctx.isFree(l.questionIds[0]) ? "locked" : done === l.questionIds.length ? "done" : "open";
-          return { ...l, date: null, done, status };
-        });
+  const lessons = topicLessons(ctx, state, movzu);
   if (!ctx.paid && !lessons.some((l) => l.status !== "locked")) redirect("/onlayn-repetitor");
   const opened = lessons.filter((l) => l.status !== "locked");
   const firstLocked = lessons.find((l) => l.status === "locked");
   const done = ctx.view?.doneTopics.has(movzu) ?? false;
-  const theory = opened.length || !topic.questions.length ? await getTopicTheory(movzu) : null;
+  const theory = canReadTheory(topic, lessons) ? await getTopicTheory(movzu) : null;
   const pager = repetitorPager(state, topic, undefined, ctx.isOpen);
 
   return (
@@ -56,7 +47,7 @@ export default async function RepetitorTopicPage(props: PageProps<"/onlayn-repet
 
         {!topic.questions.length ? (
           <>
-            <Theory body={theory} />
+            <Theory theory={theory} slug={movzu} />
             <Card tone="tint">
               <p className="text-ink-muted">{t.soonText}</p>
             </Card>
@@ -67,7 +58,7 @@ export default async function RepetitorTopicPage(props: PageProps<"/onlayn-repet
           <Locked text={t.topicLocked(firstLocked?.date ? formatDate(firstLocked.date) : null)} />
         ) : (
           <>
-            <Theory body={theory} />
+            <Theory theory={theory} slug={movzu} />
             <section aria-labelledby="practice" className="grid gap-3">
               <h2 id="practice" className={h3Class}>
                 {t.practiceTitle}
@@ -116,23 +107,31 @@ export default async function RepetitorTopicPage(props: PageProps<"/onlayn-repet
   );
 }
 
-function Theory({ body }: { body: string | null }) {
+function Theory({ theory, slug }: { theory: { body: string; hasBook: boolean } | null; slug: string }) {
   const t = az.app.tutor;
+  const body = theory?.body.trim() ?? "";
   return (
     <section aria-labelledby="theory" className="grid gap-2 rounded-2xl bg-navy-050 p-4 lg:p-5">
       <h2 id="theory" className="flex items-center gap-2 font-bold text-navy-900">
         <BookIcon className="size-[22px]" />
         {t.theoryTitle}
       </h2>
-      {body ? (
-        body.split(/\n{2,}/).map((p, i) => (
-          <p key={i} className="m-0">
-            <MathText text={p} />
-          </p>
-        ))
-      ) : (
-        <p className="m-0 text-ink-muted">{t.theoryEmpty}</p>
+      {theory?.hasBook && (
+        <>
+          <p className="m-0">{t.theoryBookText}</p>
+          <ButtonLink href={`/onlayn-repetitor/${slug}/nezeriyye`} className="justify-self-start">
+            {t.theoryBookOpen}
+            <ArrowIcon className="size-[22px]" />
+          </ButtonLink>
+        </>
       )}
+      {body
+        ? body.split(/\n{2,}/).map((p, i) => (
+            <p key={i} className="m-0">
+              <MathText text={p} />
+            </p>
+          ))
+        : !theory?.hasBook && <p className="m-0 text-ink-muted">{t.theoryEmpty}</p>}
     </section>
   );
 }

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { epointKeys, verifyEpoint } from "@/lib/payments/epoint";
+import { settleOrder } from "@/lib/payments/purchase";
 
-// Epoint-in ödəniş nəticəsi (kabinetdə result_url: {APP_URL}/result): POST data + signature.
-// İmza private_key ilə yoxlanılır — uyğun gəlməsə, sorğu rədd edilir.
-// Sayt açılana qədər sifariş cədvəli yoxdur: düzgün imzalı bildiriş qəbul olunur və loga yazılır.
+// Epoint-in ödəniş nəticəsi (kabinetdə result_url: {APP_URL}/result): POST data + signature. İmza private_key ilə
+// yoxlanılır — uyğun gəlməsə, sorğu rədd edilir. Plan / sınaq yalnız burada və ya uğurlu səhifədəki status yoxlamasında açılır.
 
 export async function POST(req: Request) {
   const keys = epointKeys();
@@ -15,8 +15,17 @@ export async function POST(req: Request) {
   if (typeof data !== "string" || typeof signature !== "string") return NextResponse.json({ ok: false }, { status: 400 });
 
   const r = verifyEpoint(data, signature, keys.privateKey);
-  if (!r) return NextResponse.json({ ok: false }, { status: 403 });
+  if (!r || typeof r.order_id !== "string") return NextResponse.json({ ok: false }, { status: 403 });
 
-  console.info("Epoint bildirişi", { order_id: r.order_id, status: r.status, transaction: r.transaction, amount: r.amount });
+  const amount = Number(r.amount);
+  const order = await settleOrder(r.order_id, {
+    status: String(r.status ?? ""),
+    transaction: typeof r.transaction === "string" ? r.transaction : undefined,
+    message: typeof r.message === "string" ? r.message : undefined,
+    cardMask: typeof r.card_mask === "string" ? r.card_mask : undefined,
+    cardId: typeof r.card_id === "string" ? r.card_id : undefined,
+    amount: Number.isFinite(amount) && r.amount !== undefined && r.amount !== null ? amount : undefined,
+  });
+  if (!order) console.error("Epoint bildirişi: sifariş tapılmadı", r.order_id);
   return NextResponse.json({ ok: true });
 }

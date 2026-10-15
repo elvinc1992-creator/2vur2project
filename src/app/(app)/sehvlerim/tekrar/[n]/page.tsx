@@ -64,7 +64,7 @@ export default async function ReviewQuestionPage(props: PageProps<"/sehvlerim/te
           <Tag>{q.topicName}</Tag>
           <Tag tone="type">{q.type}</Tag>
         </div>
-        <QuestionCard id="review-q" n={idx + 1} total={total} text={q.text} imageUrl={q.imageUrl} imageAlt={q.imageAlt} qid={q.ref} />
+        <QuestionCard id="review-q" n={idx + 1} total={total} text={q.text} imageUrl={q.imageUrl} imageAlt={q.imageAlt} qid={q.ref} report={{ code: q.ref, source: "review" }} />
         <ReviewAnswer
           key={item.ref}
           n={idx + 1}

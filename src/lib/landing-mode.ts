@@ -7,16 +7,22 @@
 
 export const LANDING_FILE = "/ana-sehife.html";
 
-/** Hər rejimdə statik göstərilən səhifələr: ünvan → public/ faylı (ödəniş şirkətinin success / error ünvanları da). */
+/** Hər rejimdə statik göstərilən səhifələr: ünvan → public/ faylı. */
 export const STATIC_PAGES: Record<string, string> = {
   "/haqqimizda": "/haqqimizda.html",
   "/elaqe": "/elaqe.html",
+};
+
+/**
+ * Yalnız bu rejimdə statik göstərilənlər. Tam saytda: "/" və "/mexfilik" — Next səhifələri; ödəniş şirkətinin
+ * "/success" və "/error" ünvanları sifarişin qəbz / uğursuz ödəniş səhifəsinə yönləndirir (src/app/success, src/app/error).
+ */
+const LANDING_ONLY_PAGES: Record<string, string> = {
+  "/": LANDING_FILE,
+  "/mexfilik": "/mexfilik.html",
   "/success": "/success.html",
   "/error": "/error.html",
 };
-
-/** Yalnız bu rejimdə statik göstərilənlər (tam saytda bu ünvanlar Next səhifələridir). */
-const LANDING_ONLY_PAGES: Record<string, string> = { "/": LANDING_FILE, "/mexfilik": "/mexfilik.html" };
 
 /** Ünvanın statik faylı (varsa). */
 export function staticFile(pathname: string, landing: boolean): string | null {

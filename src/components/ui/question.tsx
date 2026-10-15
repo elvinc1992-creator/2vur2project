@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { Placeholder } from "@/components/ui/display";
 import { MathText } from "@/components/ui/math-text";
+import { ReportQuestion, type ReportTarget } from "@/components/ui/report-question";
 import { cn } from "@/lib/cn";
 
 /** Sual və cavab bölmələrinin başlığı (eyni üslub — "SUAL", "CAVAB VARİANTLARI", "CAVABIN"). */
@@ -22,6 +23,7 @@ export function QuestionCard({
   imageUrl,
   imageAlt,
   qid,
+  report,
   className,
 }: {
   id: string;
@@ -37,6 +39,8 @@ export function QuestionCard({
   imageAlt?: string | null;
   /** Sualın kodu (data-qid) — cavab deyil; testlər və analitika üçün. */
   qid?: string;
+  /** Sualın yanında "səhv bildir" ikonu: sualın bank kodu və harada göstərildiyi. */
+  report?: ReportTarget;
   className?: string;
 }) {
   return (
@@ -52,7 +56,12 @@ export function QuestionCard({
           </span>
           <span className="text-small font-semibold text-ink-muted tabular">/ {total}</span>
         </h2>
-        {aside && <div className="flex flex-wrap items-center gap-2">{aside}</div>}
+        {(aside || report) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {aside}
+            {report && <ReportQuestion target={report} n={n} />}
+          </div>
+        )}
       </header>
       <div className="grid gap-4 px-4 py-5 lg:px-6">
         <p className="text-[18px] leading-[1.65] text-ink">

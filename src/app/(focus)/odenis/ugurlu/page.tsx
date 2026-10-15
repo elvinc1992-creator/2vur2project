@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Page } from "@/components/app/topbar";
-import { CheckCircleIcon, ReceiptIcon } from "@/components/icons";
+import { CheckCircleIcon, ClockIcon, ReceiptIcon } from "@/components/icons";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { KeyValues, Tag } from "@/components/ui/display";
 import { EmptyState } from "@/components/ui/empty-art";
@@ -12,16 +12,32 @@ import { examStatus, formatDate } from "@/lib/demo/logic";
 import { findExam } from "@/lib/exams/source";
 import { periodEndFrom } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
+import { getDemoState } from "@/lib/demo/state";
+import { syncOrder } from "@/lib/payments/purchase";
 import { PrintButton } from "./print-button";
 
 export const metadata: Metadata = { title: az.app.payment.okTitle };
 
 export default async function PaymentSuccessPage(props: PageProps<"/odenis/ugurlu">) {
-  const { r } = await props.searchParams;
-  const { user, state } = await requireDemo("/profil");
+  const sp = await props.searchParams;
+  const t = az.app.payment;
+  const demo = await requireDemo("/profil");
+  const { user } = demo;
+  let state = demo.state;
+  let r = typeof sp.r === "string" ? sp.r : undefined;
+
+  // Epoint-dən qayıdış (?o=sifariş): nəticə bildirişi hələ gəlməyibsə, status Epoint-dən soruşulur.
+  if (typeof sp.o === "string") {
+    const order = await syncOrder(sp.o, user.id!);
+    if (!order) notFound();
+    if (order.status === "failed") redirect(`/odenis/ugursuz?o=${order.id}`);
+    if (order.status === "new") return <Pending orderId={order.id} />;
+    r = order.receiptId ?? undefined;
+    state = await getDemoState(user.id!);
+  }
+
   const p = state.payments.find((x) => x.id === r);
   if (!p) notFound();
-  const t = az.app.payment;
   const isExam = Boolean(p.examId);
   const paidExam = p.examId ? await findExam(p.examId) : undefined;
   const canStart = paidExam && examStatus(state, paidExam) === "purchased";
@@ -63,11 +79,28 @@ export default async function PaymentSuccessPage(props: PageProps<"/odenis/ugurl
             </Button>
           </form>
         ) : (
-          <ButtonLink href={isExam ? "/sinaqlar" : "/gunun-suallari"} block>
-            {isExam ? az.app.nav.exams : t.toDaily}
+          <ButtonLink href={isExam ? "/sinaqlar" : "/panel"} block>
+            {isExam ? az.app.nav.exams : t.toHome}
           </ButtonLink>
         )}
         <p className="text-center text-small text-ink-muted">{t.copySent(user.email ?? "")}</p>
+      </div>
+    </Page>
+  );
+}
+
+/** Bank ödənişi təsdiqləyib, amma nəticə hələ gəlməyib — bir neçə saniyədən sonra yeniləmək kifayətdir. */
+function Pending({ orderId }: { orderId: string }) {
+  const t = az.app.payment;
+  return (
+    <Page>
+      <div className="mx-auto grid w-full max-w-[520px] gap-4">
+        <EmptyState icon={<ClockIcon />} title={t.pendingTitle}>
+          {t.pendingText}
+        </EmptyState>
+        <ButtonLink href={`/odenis/ugurlu?o=${orderId}`} block>
+          {t.pendingRefresh}
+        </ButtonLink>
       </div>
     </Page>
   );

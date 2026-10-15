@@ -3,12 +3,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { logoutAction } from "@/app/(auth)/actions";
 import { Page, Topbar } from "@/components/app/topbar";
-import { ChevronIcon, LogoutIcon, PlusIcon, ReceiptIcon, RetryIcon } from "@/components/icons";
+import { ChevronIcon, LogoutIcon, ReceiptIcon, RetryIcon } from "@/components/icons";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, KeyValues, Tag, eyebrowClass, listClass } from "@/components/ui/display";
 import { az } from "@/content/az";
 import { db } from "@/db";
-import { oauthAccounts, users } from "@/db/schema";
+import { oauthAccounts, savedCards, users } from "@/db/schema";
 import { resetDemoAction } from "@/lib/demo/actions";
 import { CARD_LABEL } from "@/lib/demo/content";
 import { addDays, formatDate } from "@/lib/demo/logic";
@@ -17,6 +17,7 @@ import { initials, requireDemo } from "@/lib/demo/session";
 import { cn } from "@/lib/cn";
 import { CancelSubscription } from "./cancel-subscription";
 import { EmailForm, PhoneForm } from "./contact-forms";
+import { GradeExamRow, GuardianRow } from "./profile-forms";
 
 export const metadata: Metadata = { title: az.app.profile.title };
 
@@ -33,6 +34,8 @@ export default async function ProfilePage() {
   const target = me?.targetExam ? t.targets[me.targetExam] : "—";
   const active = state.sub.status === "active";
   const paidTier = state.sub.tier ?? "premium";
+  // Avtomatik yenilənmə üçün saxlanmış kart (bax: src/lib/payments/renew.ts)
+  const card = await db.query.savedCards.findFirst({ where: eq(savedCards.userId, user.id) });
 
   return (
     <>
@@ -64,29 +67,8 @@ export default async function ProfilePage() {
                     {[me?.name, me?.surname, me?.fatherName ? `(${me.fatherName})` : null].filter(Boolean).join(" ")}
                   </span>
                 </div>
-                <div>
-                  <span>
-                    <span className="text-small text-ink-muted">{t.gradeExam}</span>
-                    <br />
-                    {t.gradeExamValue(me?.grade ?? null, target)}
-                  </span>
-                </div>
-                <div>
-                  <span>
-                    <span className="text-small text-ink-muted">{t.guardian}</span>
-                    <br />
-                    {t.guardianNone}
-                  </span>
-                  <button
-                    type="button"
-                    disabled
-                    aria-label={t.guardianAdd}
-                    title={t.googleSoon}
-                    className="grid size-11 cursor-not-allowed place-items-center rounded-[12px] text-ink-muted"
-                  >
-                    <PlusIcon />
-                  </button>
-                </div>
+                <GradeExamRow grade={me?.grade ?? null} target={me?.targetExam ?? null} />
+                <GuardianRow name={me?.guardianName ?? null} email={me?.guardianEmail ?? null} />
               </div>
             </section>
 
@@ -167,6 +149,7 @@ export default async function ProfilePage() {
                     <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{az.app.payment.planTitle(PLANS[paidTier].name, state.sub.period === "year")}</b>
                     <Tag tone="success">{t.active}</Tag>
                   </div>
+                  {card && <p className="m-0 text-small text-ink-muted">{t.autoRenew(formatDate(addDays(state.sub.periodEnd, 1)))}</p>}
                   <KeyValues
                     rows={[
                       [t.nextPayment, formatDate(addDays(state.sub.periodEnd, 1))],
@@ -176,7 +159,7 @@ export default async function ProfilePage() {
                           ? az.app.payment.perYear(priceOf(paidTier, "year"))
                           : az.app.payment.perMonth(priceOf(paidTier)),
                       ],
-                      [t.method, CARD_LABEL],
+                      [t.method, card?.cardMask ? `Kart •••• ${card.cardMask.slice(-4)}` : CARD_LABEL],
                     ]}
                   />
                   <div className="flex flex-wrap items-center gap-3">

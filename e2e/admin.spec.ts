@@ -280,7 +280,7 @@ test("admin: mövzu sınağı — mövzu seçilir, suallar əl ilə seçilir, qi
   // Aktiv → saytda "Mövzu sınağı" tipi ilə, 2 AZN
   await setStatus(page, topicExamId, "active");
   await page.goto("/sinaqlar?tip=movzu");
-  const card = page.getByRole("article", { name: /^Mövzu sınağı: Natural ədədlər/ }).first();
+  const card = page.getByRole("article", { name: /^Natural ədədlər №/ }).first();
   await expect(card).toContainText("Mövzu: Natural ədədlər");
   await expect(card).toContainText("2 AZN");
 });

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Page, Topbar } from "@/components/app/topbar";
-import { ArrowIcon, BulbIcon, CheckCircleIcon, InfoIcon, RetryIcon } from "@/components/icons";
+import { ArrowIcon, BulbIcon, CheckCircleIcon, ChevronIcon, InfoIcon, RetryIcon } from "@/components/icons";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, Tag, h1Class } from "@/components/ui/display";
 import { EmptyState } from "@/components/ui/empty-art";
@@ -119,20 +119,28 @@ export default async function MistakesPage(props: PageProps<"/sehvlerim">) {
           </ButtonLink>
         )}
 
-        {[...groups].map(([topic, list]) => (
-          <section key={topic} aria-labelledby={`mg-${slug(topic)}`} className="grid gap-3">
-            <h2 id={`mg-${slug(topic)}`} className="flex items-baseline gap-2 font-display text-h3 font-bold text-navy-900">
-              {topic}
-              <span className="text-small font-semibold text-ink-muted">{t.count(list.length)}</span>
-            </h2>
-            <ul className="m-0 grid list-none gap-3 p-0 lg:grid-cols-2">
+        {/* Mövzular açılıb-bağlanır; ilk mövzu açıq gəlir. */}
+        {[...groups].map(([topic, list], i) => (
+          <details
+            key={topic}
+            open={i === 0}
+            className="group/topic rounded-2xl border border-navy-100 bg-white [&[open]>summary]:border-b [&[open]>summary]:border-navy-100"
+          >
+            <summary className="flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 marker:content-none hover:bg-navy-050 [&::-webkit-details-marker]:hidden">
+              <h2 className="m-0 flex flex-1 flex-wrap items-baseline gap-x-2 font-display text-h3 font-bold text-navy-900">
+                {topic}
+                <span className="text-small font-semibold text-ink-muted">{t.count(list.length)}</span>
+              </h2>
+              <ChevronIcon className="size-[22px] flex-none text-navy-500 transition-transform group-open/topic:rotate-90" />
+            </summary>
+            <ul className="m-0 grid list-none gap-3 p-4 lg:grid-cols-2">
               {list.map((m) => (
                 <li key={m.q.ref}>
                   <MistakeCard m={m} />
                 </li>
               ))}
             </ul>
-          </section>
+          </details>
         ))}
       </Page>
     </>
@@ -140,8 +148,6 @@ export default async function MistakesPage(props: PageProps<"/sehvlerim">) {
 }
 
 const firstOpen = (review: ReviewSession) => Math.max(0, review.items.findIndex((i) => !review.answers[i.ref]));
-
-const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
 function MistakeCard({ m }: { m: Mistake }) {
   const t = az.app.mistakes;

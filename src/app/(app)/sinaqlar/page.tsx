@@ -1,28 +1,32 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Page, Topbar } from "@/components/app/topbar";
+import { EXAM_TYPE_LOOK, ExamTypeBand } from "@/components/exam-type";
 import { CalendarIcon, CheckCircleIcon, ClockIcon, ListIcon } from "@/components/icons";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, FormatBar, Tag, h1Class, h3Class } from "@/components/ui/display";
 import { az } from "@/content/az";
 import { claimExamAction, startExamAction } from "@/lib/demo/actions";
 import { listExams } from "@/lib/exams/source";
-import { priceText, type ExamMeta } from "@/lib/exams/types";
+import { priceText, type ExamMeta, type ExamType } from "@/lib/exams/types";
 import { answeredCount, examStatus, formatDate, isExamOpenForSale, isExamVisible, remainingMs, type ExamStatus } from "@/lib/demo/logic";
-import { examQuota } from "@/lib/demo/plans";
+import { canClaimExam, examQuota, freeExamsOfMonth } from "@/lib/demo/plans";
 import { initials, requireDemo } from "@/lib/demo/session";
 import type { DemoState } from "@/lib/demo/state";
 import { cn } from "@/lib/cn";
 
 export const metadata: Metadata = { title: az.app.store.title };
 
-const FILTERS = ["all", "new", "progress", "done"] as const;
+const FILTERS = ["all", "progress", "done"] as const;
 type Filter = (typeof FILTERS)[number];
-const TYPES = ["9", "11", "blok", "movzu"] as const;
+/** Tiplərin sırası (süzgəc düymələri və siyahı, hamı üçün): 11 buraxılış, 11 blok, 9 buraxılış, mövzu. */
+const TYPES = ["11", "blok", "9", "movzu"] as const satisfies ExamType[];
 type ExamTypeFilter = (typeof TYPES)[number];
+/** Mövzu süzgəcində "Tezliklə" — sınağı hazırlanan mövzular (sınaq yaradılanda adi düyməyə çevrilir). */
+const SOON_TOPICS = ["Çoxhədlinin vuruqlara ayrılması"];
 
 /** Şagird üçün vəziyyət: işlənib (nəticə var), yarımçıq (başlayıb), hələ işlənməyib. */
-type Progress = Exclude<Filter, "all">;
+type Progress = "new" | "progress" | "done";
 const progressOf = (s: ExamStatus): Progress => (s === "done" ? "done" : s === "in_progress" || s === "expired" ? "progress" : "new");
 
 const isoOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -31,29 +35,50 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
   const sp = await props.searchParams;
   const filter: Filter = FILTERS.includes(sp.f as Filter) ? (sp.f as Filter) : "all";
   const { user, state } = await requireDemo("/sinaqlar");
-  const quota = examQuota(state);
+  const allExams = await listExams();
+  const quota = examQuota(state, allExams);
   const t = az.app.store;
   const type = TYPES.includes(sp.tip as ExamTypeFilter) ? (sp.tip as ExamTypeFilter) : null;
-  const qs = (next: { f?: string; tip?: string | null }) => {
+  // Mövzu sınaqlarında mövzu süzgəci (yalnız sınağı olan mövzular, tədris sırası ilə — sınaq nömrəsinə görə)
+  const topicNames = [
+    ...new Set(
+      allExams
+        .filter((e) => e.examType === "movzu" && e.topicName && isExamVisible(state, e))
+        .sort((a, b) => a.number - b.number)
+        .map((e) => e.topicName!),
+    ),
+  ];
+  const topic = type === "movzu" && typeof sp.movzu === "string" && topicNames.includes(sp.movzu) ? sp.movzu : null;
+  const qs = (next: { f?: string; tip?: string | null; movzu?: string | null }) => {
     const p = new URLSearchParams();
     const ff = next.f ?? filter;
     const tt = next.tip === undefined ? type : next.tip;
+    const mm = next.movzu === undefined ? topic : next.movzu;
     if (ff !== "all") p.set("f", ff);
     if (tt) p.set("tip", tt);
+    if (tt === "movzu" && mm) p.set("movzu", mm);
     const s = p.toString();
     return s ? `/sinaqlar?${s}` : "/sinaqlar";
   };
 
-  // Ən yeni sınaq birinci (yaradılma tarixi ilə); passivlər və iştirak etmədiyin bitmiş sınaqlar görünmür.
-  const visible = (await listExams())
+  // Passivlər və iştirak etmədiyin bitmiş sınaqlar görünmür.
+  const visible = allExams
     .filter((e) => isExamVisible(state, e))
     .filter((e) => !type || e.examType === type)
+    .filter((e) => !topic || e.topicName === topic)
     .map((e) => {
       const status = examStatus(state, e);
       return { ...e, userStatus: status, progress: progressOf(status), ended: e.status === "finished" };
     });
-  const countOf = (f: Filter) => (f === "all" ? visible.length : visible.filter((e) => e.progress === f).length);
-  const exams = visible.filter((e) => filter === "all" || e.progress === filter);
+  // Sıra: 11-ci sinif buraxılış → 11-ci sinif blok → 9-cu sinif buraxılış → mövzu; tip daxilində nömrə ilə (№1, №2…).
+  // Free: ayın sınaqları (götürülüb-götürülməməsindən asılı olmayaraq) hamısından əvvəl, eyni tip sırası ilə.
+  const monthIds = quota.kind === "month" ? freeExamsOfMonth(allExams) : [];
+  const rank = (e: ExamMeta) => (monthIds.includes(e.id) ? 0 : 10) + TYPES.indexOf(e.examType);
+  visible.sort((a, b) => rank(a) - rank(b) || a.number - b.number);
+  // "Hamısı" (və tip süzgəci) — hələ başlanmayanlar: alınmamışlar və alınıb başlanmayanlar; yarımçıq və işlənənlər öz tablarındadır.
+  const matchOf = (f: Filter) => (e: CardExam) => (f === "all" ? e.progress === "new" : e.progress === f);
+  const countOf = (f: Filter) => visible.filter(matchOf(f)).length;
+  const exams = visible.filter(matchOf(filter));
 
   return (
     <>
@@ -85,17 +110,46 @@ export default async function StorePage(props: PageProps<"/sinaqlar">) {
           {[null, ...TYPES].map((key) => (
             <Link
               key={key ?? "all"}
-              href={qs({ tip: key })}
+              href={qs({ f: "all", tip: key, movzu: null })}
               aria-current={type === key ? "page" : undefined}
               className={cn(
-                "grid min-h-10 place-items-center rounded-pill border-[1.5px] px-3.5 text-[14px] font-semibold no-underline",
+                "inline-flex min-h-10 items-center gap-2 rounded-pill border-[1.5px] px-3.5 text-[14px] font-semibold no-underline",
                 type === key ? "border-coral-600 bg-coral-100 text-navy-900" : "border-line bg-white text-ink-muted",
               )}
             >
+              {key && <i aria-hidden="true" className={cn("size-2.5 flex-none rounded-full bg-linear-to-br", EXAM_TYPE_LOOK[key].band)} />}
               {key ? t.types[key] : t.typesAll}
             </Link>
           ))}
         </nav>
+
+        {type === "movzu" && topicNames.length > 0 && (
+          <nav aria-label={t.topicsLabel} className="flex flex-wrap gap-2">
+            {[null, ...topicNames].map((name) => (
+              <Link
+                key={name ?? "all"}
+                href={qs({ movzu: name })}
+                aria-current={topic === name ? "page" : undefined}
+                className={cn(
+                  "inline-flex min-h-10 items-center rounded-pill border-[1.5px] px-3.5 text-[14px] font-semibold no-underline",
+                  topic === name ? "border-navy-900 bg-navy-050 text-navy-900" : "border-line bg-white text-ink-muted",
+                )}
+              >
+                {name ?? t.topicsAll}
+              </Link>
+            ))}
+            {SOON_TOPICS.filter((name) => !topicNames.includes(name)).map((name) => (
+              <span
+                key={name}
+                aria-disabled="true"
+                className="inline-flex min-h-10 items-center gap-2 rounded-pill border-[1.5px] border-dashed border-line bg-white px-3.5 text-[14px] font-semibold text-ink-muted opacity-80"
+              >
+                {name}
+                <Tag tone="lock">{t.topicSoon}</Tag>
+              </span>
+            ))}
+          </nav>
+        )}
 
         <Card tone={quota.kind === "all" || quota.left > 0 ? "tint" : "flat"} className="grid gap-2">
           <p className="m-0 font-semibold text-navy-900">
@@ -142,8 +196,8 @@ function StateDot({ progress }: { progress: Progress }) {
 type CardExam = ExamMeta & { userStatus: ExamStatus; progress: Progress; ended: boolean };
 
 /**
- * Sınaq kartı — vəziyyətə görə fərqli görünüş:
- * işlənib — yaşıl zolaq və bal; yarımçıq — narıncı zolaq və irəliləyiş; hələ işlənməyib — sadə ağ kart.
+ * Sınaq kartı. Başlıq zolağı — sınağın tipi (9-cu sinif / 11-ci sinif / blok / mövzu, hər birinin öz rəngi);
+ * vəziyyət — etiket və fon: işlənib — yaşıl fon və nəticə; yarımçıq — narıncı fon və irəliləyiş; hələ işlənməyib — ağ.
  */
 function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: ReturnType<typeof examQuota> }) {
   const t = az.app.store;
@@ -152,18 +206,21 @@ function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: R
   const done = answeredCount(attempt);
   const { closed, coded, written } = e.counts;
   const canSell = isExamOpenForSale(e);
+  // Free: ayın sınağı (9 və 11 buraxılışından bir — hamı üçün eyni).
+  const freeOfMonth = quota.kind === "month" && quota.examIds.includes(e.id);
 
   return (
     <Card
       as="article"
       aria-label={`${e.title} — ${e.progress === "done" ? t.stateDone : e.progress === "progress" ? t.stateHalf : t.stateNew}`}
       className={cn(
-        "relative grid gap-3.5 overflow-hidden border-l-[6px]",
-        e.progress === "done" && "border-l-success-700 bg-success-100/70",
-        e.progress === "progress" && "border-l-warning-700 bg-warning-100/40",
-        e.progress === "new" && "border-l-navy-200",
+        "relative grid gap-3.5 overflow-hidden",
+        e.progress === "done" && "border-success-700/40 bg-success-100/70",
+        e.progress === "progress" && "border-warning-700/40 bg-warning-100/40",
       )}
     >
+      <ExamTypeBand type={e.examType} label={t.types[e.examType] ?? e.group} />
+
       <div className="flex flex-wrap items-center gap-2">
         {e.progress === "done" && (
           <Tag tone="success" icon={<CheckCircleIcon />}>
@@ -181,11 +238,10 @@ function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: R
 
       <div className="flex items-start justify-between gap-3">
         <div>
-          <span className="text-small text-ink-muted">{e.topicName ? t.topicExam(e.topicName) : e.group}</span>
           <h2 className={h3Class}>{e.title}</h2>
         </div>
-        {e.userStatus === "done" && <Tag tone="solid">{t.score(result.score)}</Tag>}
-        {e.userStatus === "locked" && canSell && <Tag className="tabular">{priceText(e.price)}</Tag>}
+        {e.userStatus === "done" && <Tag tone="solid">{t.score(result.correct, result.wrong)}</Tag>}
+        {e.userStatus === "locked" && canSell && (freeOfMonth ? <Tag tone="success">{t.freeOfMonth}</Tag> : <Tag className="tabular">{priceText(e.price)}</Tag>)}
         {e.userStatus === "purchased" && <Tag tone="success">{t.owned}</Tag>}
       </div>
 
@@ -236,10 +292,10 @@ function ExamCard({ e, state, quota }: { e: CardExam; state: DemoState; quota: R
       )}
       {e.userStatus === "locked" &&
         canSell &&
-        (quota.kind !== "all" && quota.left > 0 ? (
+        (canClaimExam(quota, e.id) ? (
           <form action={claimExamAction.bind(null, e.id)}>
             <Button type="submit" block>
-              {t.claim(quota.kind)}
+              {t.claim(freeOfMonth ? "month" : "week")}
             </Button>
           </form>
         ) : (

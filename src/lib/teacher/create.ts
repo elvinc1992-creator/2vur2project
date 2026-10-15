@@ -138,6 +138,7 @@ export async function createTeacherTest(input: CreateInput): Promise<CreateResul
         .filter((t) => !isTopic || t.id === input.topicId)
         .map((t) => ({
           id: t.id,
+          slug: t.slug,
           curriculumOrder: t.curriculumOrder,
           dimFrequency: t.dimFrequency,
           examTypes: isTopic ? [examType] : t.examTypes.split(",").map((x) => x.trim()),

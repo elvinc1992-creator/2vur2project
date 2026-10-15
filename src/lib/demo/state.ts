@@ -87,7 +87,7 @@ export type DemoState = {
   dailyOk?: Record<string, boolean>;
   /** Bu günün sual dəsti: bankdan təsadüfi 4 mövzu × 5 sual (gün ərzində sabit qalır). */
   dailySet?: DailySet;
-  /** Plan üzrə pulsuz seçilmiş sınaqlar (Free — ayda 1, Pro — həftədə 1). */
+  /** Plan üzrə pulsuz seçilmiş sınaqlar (Free — ayın 9 və 11 buraxılış sınaqları, Pro — həftədə 1). */
   examClaims?: Array<{ id: string; at: number }>;
   /** Səhvlərim: aktiv təkrar seansı (sual ref-ləri: d:…, r:…, e:…). */
   review?: ReviewSession;

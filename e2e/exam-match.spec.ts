@@ -61,8 +61,13 @@ test("27 imtahan sualı və qarşılığı (JSON-dan); interaktiv variantlar, ş
   await exam.getByText("İmtahandakı düzgün cavab").click();
   await expect(exam.locator("details p")).toContainText("C)");
 
-  // Free istifadəçi — Premium təklifi
+  // Bizim sualın mətni imtahan sualının sözlərini təkrarlamır (rəqəmlər eyni ola bilər)
+  await expect(ours).toContainText("nöqtəsi müstəvidən");
+  await expect(ours).not.toContainText("Mailin müstəvi ilə əmələ gətirdiyi bucağı tapın");
+
+  // Free istifadəçi — Premium təklifi; əlavə suallar Onlayn repetitorda işlənir
   await expect(ours.getByRole("link", { name: "Premium ilə həll et" })).toHaveAttribute("href", "/abunelikler");
+  await expect(stereo.getByText("Bu sualları «Onlayn repetitor» bölməsində işləyə bilərsən.")).toBeVisible();
   await stereo.screenshot({ path: "screenshots/imtahan-qarsiligi-kart-1280.png" });
   const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
   expect(r.violations.filter((v) => v.impact === "critical" || v.impact === "serious").map((v) => v.id)).toEqual([]);

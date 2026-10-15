@@ -6,7 +6,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { user, state } = await requireDemo("/panel");
   const role = await roleOf(user.id);
   return (
-    <AppFrame state={state} admin={role === "admin"} teacher={role === "teacher"}>
+    <AppFrame state={state} admin={role === "admin"} teacher={role === "teacher" || role === "admin"}>
       {children}
     </AppFrame>
   );

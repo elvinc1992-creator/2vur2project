@@ -119,6 +119,8 @@ test("açıq cavab: vergüllü/kəsr yazılış; səhv cavab Səhvlərimə düş
   await page.getByRole("button", { name: "Cavabı yoxla" }).click();
   await expect(page.getByText(`Yanlışdır. Düzgün cavab: ${keys.get(NAT[1])!.answer}`)).toBeVisible();
   await page.goto("/sehvlerim");
+  // Mövzu bölmələri bağlı gələ bilər (ilki açıqdır) — hamısını açırıq.
+  await page.locator("details").evaluateAll((ds) => ds.forEach((d) => ((d as HTMLDetailsElement).open = true)));
   await expect(page.getByRole("article").filter({ hasText: "987654" })).toHaveCount(1);
 });
 

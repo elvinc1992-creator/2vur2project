@@ -67,7 +67,7 @@ describe("müəllim sınağı: variantlar", () => {
     const [v] = makeVariants(items, 1, true, seeded(5));
     const key = answerKey(v, items);
     // Açardakı cavabları yazan şagird — tam bal (yazılı 1 bal)
-    const entries = key.map((k) => (k === "yazılı" ? "1" : k));
+    const entries = key.map((k, i) => (items.find((x) => x.n === v.order[i])!.format === "written" ? "1" : k));
     const g = gradeEntries(v, items, entries);
     expect(g.every((x) => x.score === 1)).toBe(true);
     expect(g.find((x) => x.n === 1)!.given).toBe("B"); // orijinal hərfə çevrilir

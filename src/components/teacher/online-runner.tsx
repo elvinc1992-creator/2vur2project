@@ -34,6 +34,7 @@ const CLIENT: RunnerClient = {
   resultHref: (id) => `/muellim-sinaq/${id}`,
   writtenText: true,
   onHidden: (id) => event(id, "tab_hidden"),
+  reportSource: "teacher",
 };
 
 type Props = {

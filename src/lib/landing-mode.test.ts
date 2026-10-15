@@ -20,10 +20,12 @@ describe("yalnız ana səhifə rejimi", () => {
       expect(landingDecision(p), p).toBe("redirect");
   });
 
-  it("statik səhifələr: ödəniş nəticəsi, haqqımızda, əlaqə hər rejimdə; ana səhifə və məxfilik yalnız bu rejimdə", () => {
-    expect(staticFile("/success", false)).toBe("/success.html");
-    expect(staticFile("/error", false)).toBe("/error.html");
+  it("statik səhifələr: haqqımızda, əlaqə hər rejimdə; ana səhifə, məxfilik və ödəniş nəticəsi yalnız bu rejimdə", () => {
     expect(staticFile("/elaqe", false)).toBe("/elaqe.html");
+    // Tam saytda /success və /error sifarişin səhifəsinə yönləndirir (route handler)
+    expect(staticFile("/success", false)).toBeNull();
+    expect(staticFile("/error", false)).toBeNull();
+    expect(staticFile("/success", true)).toBe("/success.html");
     expect(staticFile("/", false)).toBeNull();
     expect(staticFile("/mexfilik", false)).toBeNull();
     expect(staticFile("/", true)).toBe("/ana-sehife.html");

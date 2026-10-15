@@ -6,11 +6,13 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { az } from "@/content/az";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { z } from "zod";
+import { TARGET_EXAMS, users } from "@/db/schema";
 import { confirmEmailCode, emailTakenByOther, sendEmailCode } from "@/lib/auth/email-code";
 import type { FormState } from "@/lib/auth/form-state";
 import { emailCodeSchema, emailSchema, phoneSchema } from "@/lib/auth/validation";
 import { HOUR, MINUTE, rateLimit } from "@/lib/rate-limit";
+import { refreshWeakTopics } from "@/lib/weak/data";
 
 const e = az.errors;
 const RESEND_S = 60;
@@ -60,6 +62,55 @@ export async function confirmEmailCodeAction(_prev: FormState, formData: FormDat
   }
   revalidatePath("/profil");
   return { status: "success", notice: "email_verified" };
+}
+
+const gradeExamSchema = z.object({
+  grade: z.enum(["9", "10", "11"], { error: e.gradeRequired }).transform(Number),
+  targetExam: z.enum(TARGET_EXAMS, { error: e.targetRequired }),
+});
+
+/** Sinif və imtahan. Zəif mövzular imtahan tipindən asılıdır — yenidən hesablanır. */
+export async function saveGradeExamAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await me();
+  const parsed = gradeExamSchema.safeParse({ grade: str(formData, "grade"), targetExam: str(formData, "targetExam") });
+  if (!parsed.success) {
+    const fieldErrors = Object.fromEntries(parsed.error.issues.map((i) => [String(i.path[0]), i.message]));
+    return { status: "error", fieldErrors };
+  }
+  await db.update(users).set(parsed.data).where(eq(users.id, user.id));
+  try {
+    await refreshWeakTopics(user.id);
+  } catch (err) {
+    console.error("weak topics refresh failed", err);
+  }
+  revalidatePath("/profil");
+  return { status: "success", notice: "grade_saved" };
+}
+
+const guardianSchema = z.object({
+  guardianName: z.string({ error: e.required }).trim().min(2, e.guardianNameRequired).max(80),
+  guardianEmail: z.union([z.literal(""), emailSchema]).transform((v) => v || null),
+});
+
+/** Valideyn: ad (vacib) və e-poçt (istəyə bağlı). remove=1 — silinir. */
+export async function saveGuardianAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await me();
+  if (str(formData, "remove") === "1") {
+    await db.update(users).set({ guardianName: null, guardianEmail: null }).where(eq(users.id, user.id));
+    revalidatePath("/profil");
+    return { status: "success", notice: "guardian_removed" };
+  }
+  const parsed = guardianSchema.safeParse({
+    guardianName: str(formData, "guardianName"),
+    guardianEmail: (str(formData, "guardianEmail") ?? "").trim(),
+  });
+  if (!parsed.success) {
+    const fieldErrors = Object.fromEntries(parsed.error.issues.map((i) => [String(i.path[0]), i.message]));
+    return { status: "error", fieldErrors };
+  }
+  await db.update(users).set(parsed.data).where(eq(users.id, user.id));
+  revalidatePath("/profil");
+  return { status: "success", notice: "guardian_saved" };
 }
 
 /** Telefon (+994…). Boş göndərilsə — silinir. */

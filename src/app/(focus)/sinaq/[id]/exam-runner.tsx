@@ -17,6 +17,7 @@ import type { TickResult } from "@/lib/demo/exam-session";
 import { HEARTBEAT_MS } from "@/lib/demo/timer";
 import { CODE_LEN, LETTERS, type Letter } from "@/lib/demo/content";
 import type { ExamMeta, ExamQuestion } from "@/lib/exams/types";
+import type { QuestionReportSource } from "@/db/schema";
 import { cn } from "@/lib/cn";
 
 const t = az.app.exam;
@@ -56,16 +57,20 @@ export type RunnerClient = {
   beaconPause: (id: string) => boolean;
   finish: (id: string) => Promise<unknown>;
   resultHref: (id: string) => string;
-  /** Yazılı cavabın mətni serverə göndərilsin (standart: yalnız "yazılıb" işarəsi). */
+  /** Yazılı cavabın mətni serverə göndərilsin (false — yalnız "yazılıb" işarəsi "w"). */
   writtenText?: boolean;
   /** Tab dəyişmə / pəncərədən çıxma (jurnal üçün). */
   onHidden?: (id: string) => void;
+  /** Sualdakı səhv bildirişi harada göndərilib (standart — saytın sınağı). */
+  reportSource?: QuestionReportSource;
 };
 
 const DEFAULT_CLIENT: RunnerClient = {
   ...examApi,
   finish: (id) => finishExamAction(id),
   resultHref: (id) => `/sinaq/${id}/netice`,
+  // Mətn nəticədə "Sənin cavabın" hissəsində göstərilir
+  writtenText: true,
 };
 
 function fmt(ms: number) {
@@ -194,7 +199,7 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
 
   /** Optimist yeniləmə + debounce ilə serverə yazma. Server cavab verəndə resolve olur. */
   const save = (n: number, raw: string, delay = 0) => {
-    // Yazılı: standartda serverə yalnız "yazılıb" işarəsi (mətn bu cihazda), müəllim sınağında — mətn.
+    // Yazılı: mətn serverə gedir (writtenText), əks halda yalnız "yazılıb" işarəsi.
     const written = questions.find((x) => x.n === n)?.format === "written";
     const value = written ? (api.writtenText ? raw.trim().slice(0, WRITTEN_MAX) : raw.trim() ? "w" : "") : raw;
     setAnswers((prev) => {
@@ -299,6 +304,7 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
               <ExamQuestionView
                 key={q.n}
                 examId={exam.id}
+                reportSource={api.reportSource ?? "exam"}
                 total={lastN}
                 q={q}
                 value={answers[q.n] ?? ""}
@@ -404,6 +410,7 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
 
 function ExamQuestionView({
   examId,
+  reportSource,
   total,
   q,
   value,
@@ -412,6 +419,7 @@ function ExamQuestionView({
   onFlag,
 }: {
   examId: string;
+  reportSource: QuestionReportSource;
   total: number;
   q: ExamQuestion;
   value: string;
@@ -429,6 +437,7 @@ function ExamQuestionView({
         imageUrl={q.imageUrl}
         imageAlt={q.imageAlt}
         qid={q.code}
+        report={{ code: q.code, source: reportSource, context: examId }}
         aside={
           <>
             <Tag tone={q.format === "coded" ? "coral" : q.format === "written" ? "type" : "topic"}>
@@ -456,7 +465,7 @@ function ExamQuestionView({
         <CodedInput n={q.n} value={value} onChange={(v) => onAnswer(q.n, v, 500)} onClear={() => onAnswer(q.n, "")} />
       )}
       {q.format === "written" && (
-        <WrittenInput examId={examId} n={q.n} onChange={(text) => onAnswer(q.n, text, 500)} />
+        <WrittenInput examId={examId} n={q.n} saved={value} onChange={(text) => onAnswer(q.n, text, 500)} />
       )}
     </div>
   );
@@ -568,21 +577,24 @@ function readStorage(key: string) {
   }
 }
 
-/** Yazılı cavab: mətn bu cihazda saxlanılır, serverə "yazılıb" işarəsi gedir. */
+/** Yazılı cavab: mətn bu cihazda da saxlanılır (qaralama), serverə debounce ilə gedir. */
 function WrittenInput({
   examId,
   n,
+  saved,
   onChange,
 }: {
   examId: string;
   n: number;
+  /** Serverdəki mətn (başqa cihazda açılanda); "w" — köhnə işarə, mətn deyil. */
+  saved: string;
   onChange: (text: string) => Promise<boolean>;
 }) {
   const key = writtenKey(examId, n);
   const stored = useSyncExternalStore(subscribeStorage, () => readStorage(key), () => null);
   const [draft, setDraft] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
-  const value = draft ?? stored ?? "";
+  const value = draft ?? stored ?? (saved === "w" ? "" : saved);
   const id = `written-${n}`;
 
   return (
@@ -954,21 +966,22 @@ function WrittenRow({
   examId,
   n,
   total,
-  answered,
+  saved,
   onChange,
   onGo,
 }: {
   examId: string;
   n: number;
   total: number;
-  answered: boolean;
+  saved: string;
   onChange: (text: string) => void;
   onGo: () => void;
 }) {
   const key = writtenKey(examId, n);
   const stored = useSyncExternalStore(subscribeStorage, () => readStorage(key), () => null);
   const [draft, setDraft] = useState<string | null>(null);
-  const value = draft ?? stored ?? "";
+  const value = draft ?? stored ?? (saved === "w" ? "" : saved);
+  const answered = Boolean(saved);
   return (
     <div className="flex items-start gap-3 rounded-[6px] border-[1.5px] border-[#d9cfc0] bg-white px-3 py-2.5 focus-within:border-[#1d4ed8] focus-within:outline-2 focus-within:outline-[#1d4ed8]">
       <button
@@ -1123,7 +1136,7 @@ function AnswerSheet({
                     examId={exam.id}
                     n={q.n}
                     total={total}
-                    answered={Boolean(answers[q.n])}
+                    saved={answers[q.n] ?? ""}
                     onChange={(text) => onPick(q.n, text, 500)}
                     onGo={goTo(q)}
                   />

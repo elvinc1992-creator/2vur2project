@@ -9,14 +9,14 @@ const h2 = "m-0 mb-1.5 text-[clamp(24px,3.2vw,32px)] font-black tracking-[-0.02e
 const sub = "m-0 mb-5 text-[#5b6785]";
 
 const STEPS = [
-  ["Qeydiyyat", "Yarış elan olunanda hesabına daxil olub bir dəqiqəyə qeydiyyatdan keçirsən. İştirak pulsuzdur."],
+  ["Qeydiyyat", "Yarış elan olunanda hesabına daxil olub bir dəqiqəyə qeydiyyatdan keçirsən. İştirak ödənişsizdir."],
   ["Onlayn tur", "Hamı eyni anda başlayır: DİM formatında suallar, suallar bir-bir göstərilir, geri qayıtmaq olmur."],
   ["Əyani final", "Ən yüksək nəticə göstərən iştirakçılar finala keçir. Final yalnız əyani keçirilir."],
   ["Mükafatlandırma", "Qaliblər pul mükafatı və Premium abunə alır, hər iştirakçı sertifikat və şəxsi təhlil."],
 ] as const;
 
 const RULES = [
-  ["🆓", "Pulsuz və hamı üçün eyni", "Free, Pro və Premium hesablar arasında yarışda heç bir fərq yoxdur."],
+  ["🆓", "Ödənişsiz və hamı üçün eyni", "Free, Pro və Premium hesablar arasında yarışda heç bir fərq yoxdur."],
   ["🔢", "Hər iştirakçıya fərqli suallar", "Suallar saytın sual bankından seçilir — hər iştirakçıya öz variantı düşür."],
   ["⚡", "Bal: düzgünlük + sürət", "Bərabər nəticədə daha tez bitirən irəlidə olur."],
   ["🤖", "AI və kənar kömək qadağandır", "ChatGPT, kalkulyator və başqasının köməyi qadağandır."],
@@ -24,7 +24,7 @@ const RULES = [
 
 const FAQ = [
   ["Növbəti yarış nə vaxt olacaq?", "Tarix elan olunan kimi bu səhifədə görünəcək. Hesabın varsa, qeydiyyatın açıldığını burada görəcəksən."],
-  ["İştirak pulludur?", "Xeyr. Qeydiyyatdan keçən hər kəs pulsuz iştirak edir və mükafat qazana bilir."],
+  ["İştirak pulludur?", "Xeyr. Qeydiyyatdan keçən hər kəs ödənişsiz iştirak edir və mükafat qazana bilir."],
   ["Necə hazırlaşım?", "Günün sualları, onlayn repetitor və sınaqlar yarışdakı suallarla eyni sual bankındandır — onları həll etmək ən yaxşı hazırlıqdır."],
 ] as const;
 
@@ -63,7 +63,7 @@ export function ContestSoon() {
               Günün suallarını həll et →
             </Link>
             <Link href="/onlayn-repetitor" className="inline-flex items-center gap-2 rounded-[14px] border border-white/35 bg-white/16 px-[22px] py-3.5 font-extrabold text-white no-underline">
-              Pulsuz ilk dərs
+              Ödənişsiz ilk dərs
             </Link>
           </div>
         </header>
@@ -114,7 +114,7 @@ export function ContestSoon() {
       </main>
 
       <footer className="mx-auto mt-12 max-w-[1140px] border-t border-[#e6e9f2] px-4 pt-6 pb-9 text-center text-[13px] text-[#5b6785]">
-        © 2vur2.az · Bu material 2vur2.az saytına məxsusdur
+        © 2vur2.az · Bu material 2vur2.az saytına məxsusdur · Əlaqə: info@2vur2.az
       </footer>
     </div>
   );

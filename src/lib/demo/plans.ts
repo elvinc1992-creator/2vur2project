@@ -1,10 +1,12 @@
 // Abunə planları: Free (hər daxil olan istifadəçi), Pro və Premium.
 // Hansı hissənin açıq olduğu yalnız buradan müəyyən olunur (serverdə yoxlanılır).
 //
-// Free    — günün hər mövzusundan 2 sual, Səhvlərim, Statistika, ayda 1 sınaq (özü seçir).
+// Free    — günün hər mövzusundan 2 sual, Səhvlərim, Statistika, hər ay 9-cu və 11-ci sinif buraxılışından
+//           bir sınaq (ayın sınağı — bütün Free istifadəçilər üçün eyni).
 // Pro     — günün bütün sualları, Səhvlərim, Statistika, həftədə 1 sınaq (özü seçir).
 // Premium — hər şey: bütün sınaqlar və onlayn repetitor.
 
+import type { ExamMeta, ExamType } from "@/lib/exams/types";
 import type { DemoState, PaidTier } from "./state";
 
 export type Tier = "free" | PaidTier;
@@ -78,9 +80,37 @@ export const canPracticeSimilar = (state: DemoState) => tierOf(state) !== "free"
 
 /* ---------------- Sınaq kvotası ---------------- */
 
+/**
+ * all — Premium; week — Pro (həftədə 1, özü seçir);
+ * month — Free: ayın sınaqları (9-cu və 11-ci sinif buraxılışından bir — hamı üçün eyni), examIds — hələ götürülməyənlər.
+ */
 export type ExamQuota =
   | { kind: "all" }
-  | { kind: "month" | "week"; limit: number; used: number; left: number; resetsAt: string };
+  | { kind: "week"; limit: number; used: number; left: number; resetsAt: string }
+  | { kind: "month"; examIds: string[]; left: number; resetsAt: string };
+
+/** Free planın sınaq tipləri: hər ay hər tipdən bir sınaq. */
+export const FREE_EXAM_TYPES = ["9", "11"] as const satisfies ExamType[];
+
+type FreeCandidate = Pick<ExamMeta, "id" | "examType" | "status" | "createdAt">;
+
+/**
+ * Ayın Free sınaqları (Bakı vaxtı ilə ay) — bütün Free istifadəçilər üçün eyni.
+ * Hər tip üçün: ay başlamazdan əvvəl yaradılmış ən yeni aktiv sınaq (ay ərzində dəyişmir);
+ * belə sınaq yoxdursa — ən köhnə aktiv sınaq (sonradan yaradılanlar seçimi dəyişmir).
+ */
+export function freeExamsOfMonth(exams: FreeCandidate[], now = Date.now()): string[] {
+  const start = Date.parse(`${periodBounds("month", now).start}T00:00:00+04:00`);
+  return FREE_EXAM_TYPES.flatMap((type) => {
+    const list = exams.filter((e) => e.examType === type && e.status === "active").sort((a, b) => a.createdAt - b.createdAt);
+    const pick = list.filter((e) => e.createdAt < start).at(-1) ?? list[0];
+    return pick ? [pick.id] : [];
+  });
+}
+
+/** Plan üzrə bu sınağı pulsuz götürmək olarmı (status "locked" olanda). */
+export const canClaimExam = (q: ExamQuota, id: string) =>
+  q.kind === "week" ? q.left > 0 : q.kind === "month" && q.examIds.includes(id);
 
 /** Bakı vaxtı ilə tarix hissələri. */
 function bakuParts(ms: number) {
@@ -99,15 +129,23 @@ export function periodBounds(kind: "month" | "week", now = Date.now()) {
   return { start: isoOf(y, m, d - weekday), next: isoOf(y, m, d - weekday + 7) };
 }
 
-export function examQuota(state: DemoState, now = Date.now()): ExamQuota {
+/** exams — saytın sınaqları (Free planın ayın sınaqlarını tapmaq üçün). */
+export function examQuota(state: DemoState, exams: FreeCandidate[], now = Date.now()): ExamQuota {
   const tier = tierOf(state);
   if (tier === "premium") return { kind: "all" };
-  const kind = tier === "pro" ? "week" : "month";
-  const { start, next } = periodBounds(kind, now);
+  if (tier === "free") {
+    const { next } = periodBounds("month", now);
+    // Artıq götürülən, başlanan və ya bitən sınaq yenidən təklif olunmur.
+    const examIds = freeExamsOfMonth(exams, now).filter(
+      (id) => !state.purchased.includes(id) && !state.attempts[id] && !state.results[id],
+    );
+    return { kind: "month", examIds, left: examIds.length, resetsAt: next };
+  }
+  const { start, next } = periodBounds("week", now);
   const used = (state.examClaims ?? []).filter((c) => {
     const day = bakuParts(c.at).iso;
     return day >= start && day < next;
   }).length;
   const limit = 1;
-  return { kind, limit, used, left: Math.max(0, limit - used), resetsAt: next };
+  return { kind: "week", limit, used, left: Math.max(0, limit - used), resetsAt: next };
 }

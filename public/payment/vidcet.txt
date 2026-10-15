@@ -1,0 +1,1 @@
+<iframe src="https://epoint.az/az/pay_form_widget?id=14967"  frameborder="0" allowtransparency="true" scrolling="yes" width="320" height="480"></iframe>

@@ -20,7 +20,7 @@ export function ContestFrame({ title, back, children }: { title: string; back?: 
         <h1 className="m-0 text-[clamp(22px,3vw,28px)] font-black tracking-[-0.02em]">{title}</h1>
         {children}
       </main>
-      <footer className="mx-auto max-w-[760px] px-4 pb-8 text-center text-[13px] text-[#5b6785]">© 2vur2.az · Bu material 2vur2.az saytına məxsusdur</footer>
+      <footer className="mx-auto max-w-[760px] px-4 pb-8 text-center text-[13px] text-[#5b6785]">© 2vur2.az · Bu material 2vur2.az saytına məxsusdur · Əlaqə: info@2vur2.az</footer>
     </div>
   );
 }

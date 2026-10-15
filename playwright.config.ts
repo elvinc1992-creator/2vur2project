@@ -19,6 +19,8 @@ export default defineConfig({
     command: "npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: true,
+    // Testlər demo ödənişlə işləyir — real Epoint-ə sorğu getmir.
+    env: { PAYMENT_PROVIDER: "mock" },
     timeout: 120_000,
   },
 });

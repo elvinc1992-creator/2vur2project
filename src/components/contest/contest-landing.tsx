@@ -34,7 +34,7 @@ const RULES = [
 ] as const;
 
 const FAQ = [
-  ["İştirak pulludur?", "Xeyr. Qeydiyyatdan keçən hər kəs pulsuz iştirak edir və mükafat qazana bilir. Pulsuz, Pro və Premium hesablar arasında yarışda heç bir fərq yoxdur."],
+  ["İştirak pulludur?", "Xeyr. Qeydiyyatdan keçən hər kəs ödənişsiz iştirak edir və mükafat qazana bilir. Ödənişsiz, Pro və Premium hesablar arasında yarışda heç bir fərq yoxdur."],
   ["Telefondan iştirak etmək olar?", "Bəli, amma kompüter və ya planşet daha rahatdır. Sabit internet bağlantısı olsun."],
   ["İnternet kəsilsə, nə olacaq?", "Verdiyin cavablar saxlanılır, amma vaxt sayğacı dayanmır. Bağlantı kəsildiyi müddətdə vaxt işləməyə davam edir və itən vaxt geri qaytarılmır. Bu, qəsdən çıxıb kənar kömək almağın qarşısını almaq üçündür. Yarışdan əvvəl internet bağlantını yoxla."],
   ["Final necə keçirilir?", "Final yalnız əyani keçirilir, onlayn variantı yoxdur. Vaxt və məkan barədə məlumat finalçılara ayrıca bildiriləcək."],
@@ -73,7 +73,7 @@ export async function ContestLanding({ contestId }: { contestId: string }) {
           ? "Yekun nəticələr elan olunub"
           : "Onlayn tur bitib"
         : regOpen
-          ? "Qeydiyyat açıqdır · iştirak pulsuzdur"
+          ? "Qeydiyyat açıqdır · iştirak ödənişsizdir"
           : now < c.regStartAt.getTime()
             ? `Qeydiyyat ${fmtDay(c.regStartAt)} açılır`
             : "Qeydiyyat bağlanıb";
@@ -322,7 +322,7 @@ export async function ContestLanding({ contestId }: { contestId: string }) {
                 Qeydiyyat {fmtDay(c.regEndAt)} saat {fmtTime(c.regEndAt)}-da bağlanır.
               </p>
               <ul className="mt-3 mb-0 grid gap-2 pl-[18px]">
-                <li>İştirak tamamilə pulsuzdur</li>
+                <li>İştirak tamamilə ödənişsizdir</li>
                 <li>
                   Tur {fmtDay(c.startAt)} saat {fmtTime(c.startAt)}-da başlayır
                 </li>
@@ -333,7 +333,7 @@ export async function ContestLanding({ contestId }: { contestId: string }) {
             {disabledReg ? (
               <div role="status" className="grid gap-2 rounded-[24px] border border-[#fecaca] bg-[#fef2f2] p-6 text-center text-[#991b1b]">
                 <h3 className="m-0 text-[20px] font-black">Qeydiyyatın deaktiv edilib</h3>
-                <p className="m-0">Admin bu yarışa qeydiyyatını dayandırıb. Ətraflı məlumat üçün bizimlə əlaqə saxla.</p>
+                <p className="m-0">Admin bu yarışa qeydiyyatını dayandırıb. Ətraflı məlumat üçün bizimlə əlaqə saxla: info@2vur2.az</p>
               </div>
             ) : reg ? (
               <div role="status" className="grid gap-3 rounded-[24px] border border-[#e6e9f2] bg-white p-6 text-center">
@@ -397,7 +397,7 @@ export async function ContestLanding({ contestId }: { contestId: string }) {
       </main>
 
       <footer className="mx-auto mt-12 max-w-[1140px] border-t border-[#e6e9f2] px-4 pt-6 pb-9 text-center text-[13px] text-[#5b6785]">
-        © 2vur2.az · Bu material 2vur2.az saytına məxsusdur
+        © 2vur2.az · Bu material 2vur2.az saytına məxsusdur · Əlaqə: info@2vur2.az
       </footer>
     </div>
   );

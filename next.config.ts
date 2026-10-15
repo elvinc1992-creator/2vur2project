@@ -15,7 +15,17 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@node-rs/argon2"],
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Nəzəriyyə kitabı saytın öz səhifəsində iframe-də açılır (sonrakı qayda eyni başlığı əvəz edir).
+      {
+        source: "/onlayn-repetitor/:movzu/nezeriyye/kitab",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+        ],
+      },
+    ];
   },
 };
 

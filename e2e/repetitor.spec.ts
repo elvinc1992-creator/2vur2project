@@ -66,6 +66,9 @@ test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı 
   await page.goto("/onlayn-repetitor");
   await expect(page.getByRole("heading", { level: 1, name: "Onlayn repetitor Premium planı ilə açılır" })).toBeVisible();
   await expect(page.locator("#tutor-topics + ul > li")).toHaveCount(27);
+  // Mövzular nömrələnib (tədris sırası ilə)
+  await expect(page.locator("#tutor-topics + ul > li").first()).toContainText(/^\s*1\./);
+  await expect(page.locator("#tutor-topics + ul > li").last()).toContainText(/^\s*27\./);
   const html = await (await page.request.get(`/onlayn-repetitor/${LOQ}/1`)).text();
   expect(html).not.toMatch(/"answer":"[A-E]"/);
 
@@ -100,6 +103,7 @@ test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı 
   await expect(page.getByText(/Dərs günləri: Bazar ertəsi, Çərşənbə axşamı/)).toBeVisible();
   const plan = page.locator("#curriculum + ol");
   await expect(plan.locator("li").nth(0)).toContainText(LOQ_NAME);
+  await expect(plan.locator("li").nth(0).locator("p").first()).toHaveText(new RegExp(`^\\d+\\.\\s*${LOQ_NAME.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
   await expect(plan.locator("li").nth(0)).toContainText("Açıqdır");
   await expect(plan.locator("li").nth(1)).toContainText("açılacaq");
   await expect(plan.locator("li").nth(2)).toContainText("Sınaq 1");
@@ -112,9 +116,11 @@ test("Free/Pro → kilid; Premium → qrafik, ilk mövzu, ipucu, cavab, bağlı 
   await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${SECOND}$`));
   await expect(page.getByText(/tarixində açılacaq/)).toBeVisible();
 
-  // İlk mövzu: nəzəriyyə → praktiki testlər
+  // İlk mövzu: adına klik də dərsi açır; nəzəriyyə → praktiki testlər
   await page.goto("/onlayn-repetitor");
-  await page.getByRole("link", { name: /Dərsə başla: Natural ədədlər/ }).first().click();
+  // (sətri örtən link adın üstündədir — istifadəçi kimi adın yerinə klikləyirik)
+  const name = (await page.locator("#curriculum + ol li").nth(0).locator("p").first().boundingBox())!;
+  await page.mouse.click(name.x + 20, name.y + name.height / 2);
   await expect(page).toHaveURL(new RegExp(`/onlayn-repetitor/${LOQ}$`));
   await expect(page.getByRole("heading", { name: "Nəzəriyyə" })).toBeVisible();
   await page.getByRole("link", { name: "Dərsə başla" }).click();

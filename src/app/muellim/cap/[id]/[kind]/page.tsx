@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { PrintButton } from "@/components/teacher/print-button";
 import { MathText } from "@/components/ui/math-text";
+import { ReportQuestion } from "@/components/ui/report-question";
 import { LETTERS } from "@/lib/demo/content";
 import { itemsOf, ownTest, testGroupsOf, testKindLabel, variantsOf, type FullItem, type StudentVariant } from "@/lib/teacher/data";
 import { requireTeacher } from "@/lib/teacher/guard";
@@ -94,7 +95,7 @@ export default async function PrintPage(props: PageProps<"/muellim/cap/[id]/[kin
         variants.map((v) => (
           <Sheet key={v.userId}>
             {head(KINDS.kitabca, v.name, v.letter, tg.groupOf.get(v.userId))}
-            <Booklet v={v} items={items} />
+            <Booklet v={v} items={items} testId={id} />
           </Sheet>
         ))}
       {kind === "kart" &&
@@ -124,7 +125,7 @@ const SecT = ({ children }: { children: ReactNode }) => (
 );
 
 /** Kitabça: bölmələr (sıra şagirdin variantı ilə), qapalı suallar iki sütunda. */
-function Booklet({ v, items }: { v: StudentVariant; items: FullItem[] }) {
+function Booklet({ v, items, testId }: { v: StudentVariant; items: FullItem[]; testId: string }) {
   const shown = v.order.map((n, i) => ({ i: i + 1, it: items.find((x) => x.n === n)! }));
   return (
     <>
@@ -137,6 +138,8 @@ function Booklet({ v, items }: { v: StudentVariant; items: FullItem[] }) {
             <ol className={`m-0 list-none p-0 ${f === "closed" ? "[column-gap:28px] [column-rule:1px_solid_#ddd] sm:columns-2" : ""}`}>
               {qs.map(({ i, it }) => (
                 <li key={i} className="avoid mb-3.5">
+                  {/* Ekranda: sualda səhv bildir (çapda görünmür) */}
+                  <ReportQuestion target={{ code: it.code, source: "teacher", context: testId }} n={i} className="noprint float-right -mt-2" />
                   <b className="mr-1">{i}.</b>
                   <MathText text={it.body} />
                   {it.imageUrl && (
@@ -201,15 +204,19 @@ function AnswerCard({ v, items }: { v: StudentVariant; items: FullItem[] }) {
             {coded.map(({ i }) => (
               <div key={i} className="avoid rounded-[4px] border-[1.3px] border-[#bbb] p-1.5">
                 <b className="font-mono">{i}</b>
-                <div className="grid grid-cols-6 gap-0.5">
+                <div className="mt-1 grid grid-cols-6 gap-0.5">
                   {Array.from({ length: 6 }, (_, k) => (
                     <div key={k} className="h-5 border-[1.3px] border-[#111]" />
                   ))}
                 </div>
+                {/* Dairələr: simvol mərkəzdə (leading-none), "-" və "," qalın və böyük — çapda görünsün */}
                 {CODED.map((s) => (
-                  <div key={s} className="mt-0.5 grid grid-cols-6 gap-0.5">
+                  <div key={s} className="mt-[3px] grid grid-cols-6 gap-0.5">
                     {Array.from({ length: 6 }, (_, k) => (
-                      <span key={k} className="mx-auto grid size-[15px] place-items-center rounded-full border border-[#888] text-[8px]">
+                      <span
+                        key={k}
+                        className={`mx-auto flex size-[16px] items-center justify-center rounded-full border border-[#666] font-mono leading-none text-[#333] ${s === "-" || s === "," ? "text-[12px] font-black" : "text-[9px] font-bold"}`}
+                      >
                         {s}
                       </span>
                     ))}
@@ -258,20 +265,58 @@ function KeyTable({ variants, items }: { variants: StudentVariant[]; items: Full
               </tr>
             </thead>
             <tbody>
-              {items.map((_, i) => (
-                <tr key={i}>
-                  <td className="border border-[#ccc] px-2 py-0.5 font-bold">{i + 1}</td>
-                  {keys.map((k, j) => (
-                    <td key={j} className="border border-[#ccc] px-2 py-0.5 font-mono font-bold">
-                      {k[i]}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {items.map((_, i) => {
+                // Bölmələrin sırası bütün variantlarda eynidir — format mövqeyə görə
+                const format = items.find((x) => x.n === vs[0].order[i])!.format;
+                return (
+                  <tr key={i} data-format={format}>
+                    <td className="border border-[#ccc] px-2 py-0.5 font-bold">{i + 1}</td>
+                    {keys.map((k, j) => (
+                      <td key={j} className={`border border-[#ccc] px-2 py-0.5 font-bold ${format === "written" ? "" : "font-mono"}`}>
+                        <MathText text={k[i]} />
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         );
       })}
+      <WrittenSolutions variants={variants} items={items} />
+    </>
+  );
+}
+
+/** Yazılı suallar: nümunə cavab və həll (müəllim 0 / 0,5 / 1 bal verərkən). Variantlarda nömrə fərqli ola bilər — hamısı göstərilir. */
+function WrittenSolutions({ variants, items }: { variants: StudentVariant[]; items: FullItem[] }) {
+  const written = items.filter((x) => x.format === "written");
+  if (!written.length) return null;
+  const numbersOf = (n: number) => {
+    const ns = [...new Set(variants.map((v) => v.order.indexOf(n) + 1))].sort((a, b) => a - b);
+    return ns.length > 1 ? `Variantlarda № ${ns.join(" / ")}` : `Sual № ${ns[0]}`;
+  };
+  return (
+    <>
+      <SecT>Yazılı suallar — nümunə cavab və həll</SecT>
+      <ol className="m-0 grid list-none gap-3 p-0">
+        {written.map((it) => (
+          <li key={it.n} className="avoid rounded-[4px] border-[1.3px] border-[#ccc] px-3 py-2 text-[13px]">
+            <div className="mb-1 text-[11px] font-bold tracking-[0.08em] text-[#666] uppercase">{numbersOf(it.n)}</div>
+            <MathText text={it.body} />
+            <div className="mt-1.5">
+              <b>Cavab: </b>
+              <MathText text={it.answer ?? "—"} />
+            </div>
+            {it.solution && (
+              <div className="mt-1 text-[#333]">
+                <b>Həll: </b>
+                <MathText text={it.solution} />
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
     </>
   );
 }

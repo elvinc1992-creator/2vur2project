@@ -11,6 +11,9 @@ import { activeElapsed } from "./timer";
 // /api/exam/[id] (fetch və sendBeacon) və actions.ts eyni funksiyaları istifadə edir.
 // Sınağın məlumatı (suallar, açar) bazadan əvvəlcədən yüklənir (loadExamCtx) — vəziyyət funksiyaları sinxrondur.
 
+/** Yazılı cavabın mətni (nəticədə şagirdə göstərilir). */
+export const WRITTEN_MAX = 2000;
+
 export type TickResult = { expired: false; remaining: number } | { expired: true; answered: number };
 
 export type ExamCtx = { meta: ExamMeta; questions: ExamQuestion[]; keys: Map<number, ExamKey> };
@@ -71,7 +74,7 @@ export function saveAnswer(
     v === "" ||
     (q.format === "closed" && (LETTERS as readonly string[]).includes(v)) ||
     (q.format === "coded" && /^[-−]?[\d.,]{1,6}$/.test(v)) ||
-    (q.format === "written" && v === "w");
+    (q.format === "written" && v.length <= WRITTEN_MAX);
   if (!valid) return { ok: false };
   // Davranış: cavab başqa cavabla əvəzlənibsə — dəyişiklik; vaxt — klientin ölçdüyü ümumi vaxt.
   const m = ((attempt.meta ??= {})[n] ??= { ms: 0, ch: 0 });

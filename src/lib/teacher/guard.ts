@@ -16,7 +16,8 @@ export const requireTeacher = cache(async (next = "/muellim") => {
     .from(users)
     .where(eq(users.id, session.user.id));
   if (!u || u.status === "passive") redirect("/hesab-deaktiv");
-  if (u.role !== "teacher") redirect("/muellim/muraciet");
+  // Admin də müəllim panelindən istifadə edə bilər
+  if (u.role !== "teacher" && u.role !== "admin") redirect("/muellim/muraciet");
   await db.insert(teacherAccounts).values({ userId: u.id }).onConflictDoNothing();
   const [acc] = await db.select().from(teacherAccounts).where(eq(teacherAccounts.userId, u.id));
   return { ...u, balance: acc.balance, dailyLimit: acc.dailyLimit };

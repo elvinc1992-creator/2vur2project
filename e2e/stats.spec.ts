@@ -48,9 +48,11 @@ test("qonaq: kartlar (30000+, 100+), süzgəc yoxdur, reytinqdə sual sayı 2 qa
   await expect(page.getByRole("checkbox")).toHaveCount(0);
 
   // Reytinq: Stereometriya 92 → 184 sual, faiz eyni
-  const chart = page.getByRole("img", { name: /Ən çox çıxan mövzu: Stereometriya, 184 sual, 8,7%/ });
+  const chart = page.getByRole("img", { name: /Ən çox çıxan mövzu: Stereometriya, 8,7%/ });
   await expect(chart).toBeVisible();
-  await expect(chart.locator("li").first()).toContainText("184 sual · 8,7%");
+  // Qrafikdə mövzunun qarşısında yalnız faiz
+  await expect(chart.locator("li").first()).toContainText("8,7%");
+  await expect(chart.locator("li").first()).not.toContainText("sual");
   await page.getByRole("button", { name: "Cədvəl kimi göstər" }).click();
   const table = page.getByRole("table", { name: "Mövzular üzrə imtahanda çıxan sual sayı" });
   await expect(table.getByRole("rowheader").first()).toContainText("Stereometriya");

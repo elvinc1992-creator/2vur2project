@@ -328,12 +328,14 @@ export const examBlueprintSections = sqliteTable(
   (t) => [uniqueIndex("exam_blueprint_sections_uq").on(t.blueprintKey, t.format)],
 );
 
-/** Mövzunun nəzəriyyəsi (Markdown + LaTeX). */
+/** Mövzunun nəzəriyyəsi (Markdown + LaTeX) və/və ya vərəqlənən kitab (topic_questions/theoria/kitab-<slug>.html). */
 export const tutorTheory = sqliteTable("tutor_theory", {
   topicId: integer("topic_id")
     .primaryKey()
     .references(() => topics.id),
   body: text("body").notNull(),
+  /** Hazır HTML kitab (scripts/import-theory.mts emal edir); null — yalnız mətn nəzəriyyəsi. */
+  bookHtml: text("book_html"),
 });
 
 export type User = typeof users.$inferSelect;
@@ -599,6 +601,77 @@ export const payments = sqliteTable(
       .$defaultFn(() => new Date()),
   },
   (t) => [index("payments_created_idx").on(t.createdAt), index("payments_user_idx").on(t.userId)],
+);
+
+export const PAYMENT_ORDER_STATUSES = ["new", "success", "failed"] as const;
+
+/**
+ * Epoint sifarişi: ödəniş səhifəsinə yönləndirmədən əvvəl yaranır (id = Epoint-dəki order_id).
+ * Plan / sınaq yalnız Epoint-in imzalı bildirişi (result_url) və ya status yoxlaması "success" deyəndə açılır.
+ */
+export const paymentOrders = sqliteTable(
+  "payment_orders",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["subscription", "exam"] }).notNull(),
+    title: text("title").notNull(),
+    /** AZN */
+    amount: real("amount").notNull(),
+    tier: text("tier", { enum: ["pro", "premium"] }),
+    period: text("period", { enum: ["month", "year"] }),
+    examId: text("exam_id"),
+    status: text("status", { enum: PAYMENT_ORDER_STATUSES }).notNull().default("new"),
+    /** Epoint əməliyyatı (te…) */
+    transaction: text("transaction"),
+    /** Bank cavabı / xəta mesajı (son bildirişdən) */
+    message: text("message"),
+    cardMask: text("card_mask"),
+    /** Abunə ödənişində Epoint-də saxlanan kart (card-registration-with-pay) — ödəniş uğurlu olanda saved_cards-a keçir */
+    cardId: text("card_id"),
+    /** İstifadəçinin qəbzi (state.payments[].id) — ödəniş tətbiq olunanda */
+    receiptId: text("receipt_id"),
+    createdAt: createdAt(),
+    paidAt: integer("paid_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [index("payment_orders_user_idx").on(t.userId)],
+);
+
+/** Abunənin avtomatik yenilənməsi üçün saxlanan kart (Epoint card_id) — istifadəçi başına bir, son uğurlu abunə ödənişindən. */
+export const savedCards = sqliteTable("saved_cards", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  cardId: text("card_id").notNull(),
+  cardMask: text("card_mask"),
+  createdAt: createdAt(),
+});
+
+/* ---------------- Sualdakı səhv bildirişləri ---------------- */
+
+export const QUESTION_REPORT_SOURCES = ["exam", "daily", "tutor", "review", "teacher"] as const;
+export type QuestionReportSource = (typeof QUESTION_REPORT_SOURCES)[number];
+
+/** İstifadəçinin sualdakı səhv barədə qısa rəyi (sualın yanındakı ikon) — admin "Səhv bildirişləri"ndə baxır. */
+export const questionReports = sqliteTable(
+  "question_reports",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Bankdakı sualın kodu (bank_tasks.code) */
+    code: text("code").notNull(),
+    source: text("source", { enum: QUESTION_REPORT_SOURCES }).notNull(),
+    /** Sınağın / müəllim sınağının id-si (varsa) */
+    context: text("context"),
+    text: text("text").notNull(),
+    resolved: integer("resolved", { mode: "boolean" }).notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [index("question_reports_created_idx").on(t.createdAt), index("question_reports_code_idx").on(t.code)],
 );
 
 /* ---------------- Riyaziyyat yarışı ---------------- */

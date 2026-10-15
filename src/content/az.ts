@@ -8,8 +8,10 @@ export const az = {
   landing: azLanding,
   common: {
     homeSuffix: " — ana səhifə",
-    independence: "Bu layihə müstəqildir və DİM ilə əlaqəli deyil.",
-    copyright: `© ${brand.year} ${brand.name}`,
+    independence: "Bu layihə müstəqildir və DİM-ə məxsus deyil.",
+    copyright: `© ${brand.year} ${brand.domain}`,
+    contact: "Əlaqə",
+    email: brand.email,
     or: "və ya",
     orEmail: "və ya e-poçtla",
     loading: "Gözlə…",
@@ -19,7 +21,6 @@ export const az = {
   legalLinks: {
     terms: "İstifadə şərtləri",
     privacy: "Məxfilik siyasəti",
-    refund: "Geri qaytarma",
   },
   authAside: {
     signedInAs: (email: string) => `Hazırda ${email} hesabındasan. Başqa hesabla daxil olsan və ya yeni hesab yaratsan, bu hesabdan çıxılacaq.`,
@@ -31,7 +32,7 @@ export const az = {
     },
     register: {
       title: "Hazırlığı rəqəmlərlə qur",
-      text: "Qeydiyyat pulsuzdur. Statistika və mövzu siyahıları dərhal açılır.",
+      text: "Qeydiyyat ödənişsizdir. Statistika və mövzu siyahıları dərhal açılır.",
     },
   },
   login: {
@@ -129,10 +130,6 @@ export const az = {
     placeholder: "Panel növbəti mərhələdə hazırlanacaq. Giriş işləyir.",
     logout: "Çıxış",
   },
-  legal: {
-    updated: "Son yenilənmə: [TARİX]",
-    placeholder: "[Mətn yer tutucudur — hüquqşünas tərəfindən yazılacaq.]",
-  },
   errors: {
     required: "Bu sahəni doldur.",
     nameRequired: "Adını yaz.",
@@ -155,11 +152,12 @@ export const az = {
     passwordWeak: "Şifrədə böyük və kiçik hərf, bir də rəqəm olsun.",
     gradeRequired: "Sinfini seç.",
     targetRequired: "Hədəf imtahanı seç.",
+    guardianNameRequired: "Valideynin adını yaz.",
     termsRequired: "Davam etmək üçün şərtlərlə razılaş.",
     wrongPassword: "Şifrə yanlışdır. Yenidən yoxla.",
     notFoundEmail: "Bu e-poçtla hesab tapılmadı.",
     notFoundUsername: "Bu istifadəçi adı ilə hesab tapılmadı.",
-    blocked: "Bu hesab admin tərəfindən deaktiv edilib. Ətraflı məlumat üçün bizimlə əlaqə saxla.",
+    blocked: `Bu hesab admin tərəfindən deaktiv edilib. Ətraflı məlumat üçün bizimlə əlaqə saxla: ${brand.email}`,
     googleOnly: "Bu hesab Google ilə yaradılıb. “Google ilə davam et” düyməsini seç və ya şifrə bərpası ilə şifrə qoy.",
     unverified: "E-poçtun hələ təsdiqlənməyib. Poçtuna yeni link göndərdik.",
     unverifiedCta: "Təsdiq səhifəsinə keç",

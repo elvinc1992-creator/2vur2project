@@ -83,17 +83,6 @@ export function typeStats(state: DemoState, ctx: DailyCtx, type: string) {
   return { ok: answered.filter((id) => isCorrectDaily(state, id)).length, total: answered.length };
 }
 
-/** Panel: mövzunun tipləri üzrə proqres = bankdakı həmin tipdən düzgün həll olunmuş sualların payı. */
-export function typeProgress(state: DemoState, ctx: DailyCtx, slug: string) {
-  const qs = [...ctx.byId.values()].filter((q) => q.topic === slug);
-  const types = [...new Set(qs.map((q) => q.type))];
-  return types.map((type) => {
-    const ofType = qs.filter((q) => q.type === type);
-    const ok = ofType.filter((q) => state.daily[q.id] && isCorrectDaily(state, q.id)).length;
-    return { type, pct: Math.round((ok / ofType.length) * 100) };
-  });
-}
-
 /** Ardıcıl günlər: demo-da bütün suallar "bu gün"ündür — bir cavab varsa 1 gün. */
 export function streakInfo(state: DemoState, now = new Date()) {
   const answered = Object.keys(state.daily).length;

@@ -62,13 +62,12 @@ export function makeVariants(items: TestItem[], count: number, shuffled: boolean
 /** Variantda göstərilən hərf (orijinal düzgün cavab üçün). */
 export const shownOf = (map: LetterMap | undefined, original: Letter) => (map ? LETTERS.find((l) => map[l] === original)! : original);
 
-/** Cavab açarı: variantda göstərilən i-ci sualın düzgün cavabı (hərf və ya ədəd; yazılı — "yazılı"). */
+/** Cavab açarı: variantda göstərilən i-ci sualın düzgün cavabı (hərf, ədəd; yazılı — nümunə cavab). */
 export function answerKey(v: Variant, items: TestItem[]): string[] {
   return v.order.map((n) => {
     const it = items.find((i) => i.n === n)!;
     if (it.format === "closed") return it.correct ? shownOf(v.maps[n], it.correct) : "—";
-    if (it.format === "coded") return it.answer ?? "—";
-    return "yazılı";
+    return it.answer ?? "—";
   });
 }
 

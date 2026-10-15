@@ -51,7 +51,7 @@ export default async function TourPage(props: PageProps<"/yaris/[slug]/tur">) {
       {st.kind === "disabled" && (
         <section className="grid gap-3 rounded-[24px] border border-[#fecaca] bg-[#fef2f2] p-6 text-[#991b1b]">
           <p className="m-0 text-[18px] font-bold">Qeydiyyatın admin tərəfindən deaktiv edilib.</p>
-          <p className="m-0">Ətraflı məlumat üçün bizimlə əlaqə saxla.</p>
+          <p className="m-0">Ətraflı məlumat üçün bizimlə əlaqə saxla: info@2vur2.az</p>
         </section>
       )}
       {st.kind === "closed" && (

@@ -2,7 +2,7 @@ import "server-only";
 import type { PagerItem } from "@/lib/demo/logic";
 import { canUseRepetitor } from "@/lib/demo/plans";
 import type { DemoState, TutorProgress } from "@/lib/demo/state";
-import { buildCurriculum, planView, todayIn, type Curriculum, type PlanView } from "./plan";
+import { buildCurriculum, planView, todayIn, type Curriculum, type LessonView, type PlanView } from "./plan";
 import { listRepetitorTopics, type RepetitorTopicWithQuestions } from "./source";
 import type { RepetitorQuestion } from "./types";
 
@@ -39,6 +39,24 @@ export async function tutorContext(state: DemoState, now = new Date()): Promise<
   const open = new Set([...(view?.lessons.filter((l) => l.status !== "locked").flatMap((l) => l.questionIds) ?? []), ...free]);
   return { topics, curr, view, isOpen: (id) => open.has(id), isFree: (id) => free.has(id), paid };
 }
+
+/** Mövzunun dərsləri: Premium qrafiki varsa — ona görə (pulsuz ilk dərs həmişə açıq), yoxdursa — yalnız ilk dərs açıq. */
+export function topicLessons(ctx: TutorContext, state: DemoState, slug: string): LessonView[] {
+  const answered = tutorOf(state);
+  return ctx.view
+    ? ctx.view.lessons.filter((l) => l.topic === slug).map((l) => (l.status === "locked" && ctx.isFree(l.questionIds[0]) ? { ...l, status: "open" } : l))
+    : ctx.curr.lessons
+        .filter((l) => l.topic === slug)
+        .map((l) => {
+          const done = l.questionIds.filter((id) => answered[id]?.a).length;
+          const status = !ctx.isFree(l.questionIds[0]) ? "locked" : done === l.questionIds.length ? "done" : "open";
+          return { ...l, date: null, done, status };
+        });
+}
+
+/** Nəzəriyyə açıqdır: mövzunun açıq dərsi var və ya mövzunun hələ sualı yoxdur. */
+export const canReadTheory = (topic: RepetitorTopicWithQuestions, lessons: LessonView[]) =>
+  !topic.questions.length || lessons.some((l) => l.status !== "locked");
 
 export function topicProgress(state: DemoState, topic: RepetitorTopicWithQuestions) {
   const t = tutorOf(state);

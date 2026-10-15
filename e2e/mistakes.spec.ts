@@ -77,6 +77,13 @@ test("Free: səhv → Səhvlərim → təkrar → düzəldildi", async ({ page }
   await expect(card.locator("ol li").first()).toBeVisible();
   await card.getByText("Həlli gizlət").click();
   await expect(card.locator("ol li").first()).toBeHidden();
+  // Mövzu bölməsi açılıb-bağlanır; ilk mövzu açıq gəlir
+  const topicHeading = page.getByRole("heading", { level: 2, name: /^Faiz\. Nisbət\. Tənasüb/ });
+  await expect(page.locator("details").filter({ has: topicHeading })).toHaveAttribute("open", "");
+  await topicHeading.click();
+  await expect(card).toBeHidden();
+  await topicHeading.click();
+  await expect(card).toBeVisible();
 
   // Paneldə kart
   await page.goto("/panel");

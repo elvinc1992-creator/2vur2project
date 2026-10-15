@@ -55,10 +55,13 @@ export type PaymentRequest = {
   errorUrl: string;
 };
 
-/** Ödəniş yaradır: istifadəçi qaytarılan redirectUrl-də (bankın səhifəsi) kart məlumatını daxil edir. */
-export async function createPayment(req: PaymentRequest, keys: EpointKeys) {
+/**
+ * Ödəniş yaradır: istifadəçi qaytarılan redirectUrl-də (bankın səhifəsi) kart məlumatını daxil edir.
+ * saveCard — kart gələcək ödənişlər üçün Epoint-də saxlanır (card-registration-with-pay; abunənin avtomatik yenilənməsi).
+ */
+export async function createPayment(req: PaymentRequest, keys: EpointKeys, saveCard = false) {
   const r = await call(
-    "request",
+    saveCard ? "card-registration-with-pay" : "request",
     {
       amount: req.amount,
       currency: "AZN",
@@ -73,7 +76,27 @@ export async function createPayment(req: PaymentRequest, keys: EpointKeys) {
   if (r.status !== "success" || typeof r.redirect_url !== "string") {
     throw new Error(`Epoint ödəniş yaratmadı: ${String(r.message ?? r.status ?? "naməlum xəta")}`);
   }
-  return { redirectUrl: r.redirect_url, transaction: typeof r.transaction === "string" ? r.transaction : null };
+  return {
+    redirectUrl: r.redirect_url,
+    transaction: typeof r.transaction === "string" ? r.transaction : null,
+    cardId: typeof r.card_id === "string" ? r.card_id : null,
+  };
+}
+
+/** Saxlanmış kartdan ödəniş (istifadəçi iştirak etmir) — cavab dərhal nəticədir: status success | failed. */
+export async function executePay(req: { cardId: string; orderId: string; amount: number; description: string }, keys: EpointKeys) {
+  return call(
+    "execute-pay",
+    {
+      language: "az",
+      card_id: req.cardId,
+      order_id: req.orderId,
+      amount: req.amount,
+      currency: "AZN",
+      description: req.description.slice(0, 1000),
+    },
+    keys,
+  );
 }
 
 /** Ödənişin vəziyyəti (new | success | returned | error | server_error). */

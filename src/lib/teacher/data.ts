@@ -131,7 +131,8 @@ export async function itemsOf(testId: string): Promise<FullItem[]> {
       format: r.format,
       code: r.taskCode,
       correct: b?.correct ?? null,
-      answer: r.format === "coded" ? (b?.answer ?? null) : null,
+      // Kodlaşdırılan — düzgün ədəd, yazılı — nümunə cavab (yalnız müəllimin açarında)
+      answer: r.format === "closed" ? null : (b?.answer ?? null),
       body: b?.body ?? "",
       options: b?.options ?? null,
       imageUrl: b?.imageUrl ?? null,

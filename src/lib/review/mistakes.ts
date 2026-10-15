@@ -66,15 +66,16 @@ function canOffer(state: DemoState, q: PracticeQuestion) {
   return q.source === "bank" && canPracticeSimilar(state);
 }
 
+/** Oxşar suallar üçün büdcə: səhvlər bundan azdırsa, qalan yer oxşar suallarla doldurulur. */
 export const REVIEW_MAX = 15;
 const SIMILAR_PER_MISTAKE = 2;
 
 /**
- * Təkrar seansı: hər aktiv səhvdən sonra 0–2 oxşar sual (əvvəl eyni tip, sonra eyni mövzu;
- * hələ həll olunmamışlar öndə). Ümumi say REVIEW_MAX-dan çox olmur, səhvlər prioritetdir.
+ * Təkrar seansı: bütün aktiv səhvlər, hər birindən sonra 0–2 oxşar sual (əvvəl eyni tip, sonra eyni mövzu;
+ * hələ həll olunmamışlar öndə). Oxşar suallar yalnız səhvlər REVIEW_MAX-dan az olanda əlavə olunur.
  */
 export function buildReview(state: DemoState, pool: PracticeQuestion[], mistakes: Mistake[]): ReviewSession["items"] {
-  const active = mistakes.filter((m) => !m.fixed).slice(0, REVIEW_MAX);
+  const active = mistakes.filter((m) => !m.fixed);
   const per = active.length
     ? Math.max(0, Math.min(SIMILAR_PER_MISTAKE, Math.floor((REVIEW_MAX - active.length) / active.length)))
     : 0;
