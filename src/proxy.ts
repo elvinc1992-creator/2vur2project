@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
-import { landingDecision, landingOnly, staticFile } from "@/lib/landing-mode";
+import { staticFile } from "@/lib/static-pages";
 
 // Optimist yoxlama: əsas giriş yoxlaması server komponentlərində və API-də aparılır.
 const { auth } = NextAuth(authConfig);
@@ -36,22 +36,11 @@ const PROTECTED = [
 const matches = (path: string, prefixes: string[]) =>
   prefixes.some((p) => path === p || path.startsWith(`${p}/`));
 
-const LANDING = landingOnly();
-
 export default auth((req) => {
   const { pathname, search } = req.nextUrl;
-  // Statik səhifələr: haqqımızda, əlaqə, ödəniş nəticəsi (hər rejimdə); ana səhifə və məxfilik (yalnız ana səhifə rejimində)
-  const file = staticFile(pathname, LANDING);
+  // Statik səhifələr: haqqımızda, əlaqə (public/*.html)
+  const file = staticFile(pathname);
   if (file) return NextResponse.rewrite(new URL(file, req.nextUrl));
-  // Sayt açılana qədər production-da yalnız ana səhifə (bax: src/lib/landing-mode.ts)
-  if (LANDING) {
-    const d = landingDecision(pathname);
-    if (d === "redirect") {
-      if (pathname.startsWith("/api/")) return new NextResponse(null, { status: 404 });
-      return NextResponse.redirect(new URL("/", req.nextUrl));
-    }
-    return NextResponse.next();
-  }
   if (pathname.startsWith("/api/")) return NextResponse.next();
   const user = req.auth?.user;
 
@@ -64,6 +53,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  // API də daxildir — "yalnız ana səhifə" rejimində API-lər (gözləmə siyahısından başqa) bağlanır.
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.[a-z0-9]+$).*)"],
 };
