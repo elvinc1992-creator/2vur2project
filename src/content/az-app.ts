@@ -714,6 +714,7 @@ export const azApp = {
     ],
     providerPlaceholder: "Ödəniş provayderinin kart forması (iframe / yönləndirmə — yer tutucu)",
     discount: "Endirim",
+    oldPrice: "Endirimsiz qiymət",
     total: "Cəmi",
     consentMonthly: "Abunənin hər ay avtomatik yenilənməsi ilə razıyam.",
     consentYearly: "Abunənin hər il avtomatik yenilənməsi ilə razıyam.",
