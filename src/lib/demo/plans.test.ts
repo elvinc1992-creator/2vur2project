@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { periodEndFrom, priceOf, yearlyPerMonth, yearlySavingPct } from "./plans";
+import { discountOf, periodEndFrom, priceOf, yearlyPerMonth, yearlySavingPct } from "./plans";
+
+describe("ödənişdəki endirim", () => {
+  it("aylıq — əvvəlki qiymətdən, illik — 12 aylıq ödənişdən", () => {
+    expect(discountOf("pro", "month")).toEqual({ was: "11.90 AZN", off: "5.00 AZN", pct: 42 });
+    expect(discountOf("premium", "month")).toEqual({ was: "21.90 AZN", off: "9.00 AZN", pct: 41 });
+    expect(discountOf("pro", "year")).toEqual({ was: "82.80 AZN", off: "32.90 AZN", pct: 40 });
+    expect(discountOf("premium", "year")).toEqual({ was: "154.80 AZN", off: "64.90 AZN", pct: 42 });
+  });
+});
 
 describe("ödəniş dövrü", () => {
   it("aylıq — 30 gün, illik — 12 ay (eyni tarix, gələn il)", () => {

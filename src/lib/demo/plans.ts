@@ -52,6 +52,17 @@ export const EXAM_PRICE = "3 AZN";
 export const priceOf = (kind: "exam" | PaidTier, period: BillingPeriod = "month") =>
   kind === "exam" ? EXAM_PRICE : ((period === "year" ? PLANS[kind].yearlyPrice : PLANS[kind].price) ?? "");
 
+/**
+ * Ödənişdəki endirim: aylıq — əvvəlki qiymətdən (oldPrice), illik — 12 aylıq ödənişdən.
+ * was — endirimsiz qiymət, off — endirim məbləği, pct — faiz. Endirim yoxdursa null.
+ */
+export function discountOf(tier: PaidTier, period: BillingPeriod): { was: string; off: string; pct: number } | null {
+  const now = amount(priceOf(tier, period));
+  const was = period === "year" ? amount(PLANS[tier].price) * 12 : amount(PLANS[tier].oldPrice);
+  if (!Number.isFinite(now) || !Number.isFinite(was) || was <= now) return null;
+  return { was: fmtAzn(was), off: fmtAzn(was - now), pct: Math.round(((was - now) / was) * 100) };
+}
+
 /** Dövrün sonu: aylıq — +30 gün, illik — +12 ay (eyni tarix, gələn il). YYYY-MM-DD. */
 export function periodEndFrom(startIso: string, period: BillingPeriod): string {
   const d = new Date(`${startIso}T12:00:00Z`);

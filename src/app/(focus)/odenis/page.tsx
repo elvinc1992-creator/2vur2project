@@ -11,7 +11,7 @@ import { payAction } from "@/lib/payments/actions";
 import { paymentMode } from "@/lib/payments/mode";
 import { findExam } from "@/lib/exams/source";
 import { priceText } from "@/lib/exams/types";
-import { BILLING_PERIODS, PLANS, priceOf, tierOf, yearlySavingPct, type BillingPeriod } from "@/lib/demo/plans";
+import { BILLING_PERIODS, discountOf, PLANS, priceOf, tierOf, yearlySavingPct, type BillingPeriod } from "@/lib/demo/plans";
 import { requireDemo } from "@/lib/demo/session";
 import type { PaidTier } from "@/lib/demo/state";
 import { cn } from "@/lib/cn";
@@ -34,6 +34,8 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
   const title = exam ? exam.title : t.planTitle(PLANS[tier].name, period === "year");
   const price = exam ? priceText(exam.price) : priceOf(tier, period);
   const perPeriod = (p: string) => (period === "year" ? t.perYear(p) : t.perMonth(p));
+  const discounts = { pro: discountOf("pro", period), premium: discountOf("premium", period) };
+  const discount = exam ? null : discounts[tier];
   const mode = paymentMode();
   // Epoint ödənişi birdəfəlikdir (kart yadda saxlanmır) — abunə avtomatik yenilənmir.
   const once = mode !== "mock";
@@ -85,7 +87,15 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
                     <b className="font-display text-lg leading-6 font-extrabold text-navy-900">{PLANS[x].name}</b>
                     {current === x && <Tag tone="success">{t.current}</Tag>}
                   </span>
-                  <b className="text-navy-900 tabular">{perPeriod(priceOf(x, period))}</b>
+                  <span className="flex flex-wrap items-baseline gap-x-2">
+                    <b className="text-navy-900 tabular">{perPeriod(priceOf(x, period))}</b>
+                    {discounts[x] && (
+                      <s className="text-small text-ink-muted tabular">
+                        <span className="sr-only">{t.oldPrice}: </span>
+                        {perPeriod(discounts[x].was)}
+                      </s>
+                    )}
+                  </span>
                   <ul className="m-0 grid list-none gap-1 p-0 text-small text-ink">
                     {t.planFeatures[x].map((f) => (
                       <li key={f} className="flex items-start gap-1.5">
@@ -157,8 +167,11 @@ export default async function PaymentPage(props: PageProps<"/odenis">) {
           <div className="grid gap-2 rounded-lg border border-line bg-white p-5">
             <KeyValues
               rows={[
-                [title, price],
-                [t.discount, "—"],
+                [title, discount?.was ?? price],
+                [
+                  discount ? `${t.discount} (−${discount.pct}%)` : t.discount,
+                  discount ? <span className="text-success-700">−{discount.off}</span> : "—",
+                ],
               ]}
             />
             <hr className="my-1 w-full border-0 border-t border-dashed border-control-border" />
