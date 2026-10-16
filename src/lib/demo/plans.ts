@@ -18,9 +18,8 @@ export const BILLING_PERIODS: BillingPeriod[] = ["month", "year"];
 /** price — aylıq; oldPrice — endirimdən əvvəlki aylıq (üstündən xətt çəkilir); yearlyPrice — 12 ay. */
 export const PLANS: Record<Tier, { name: string; price: string | null; oldPrice?: string; yearlyPrice?: string }> = {
   free: { name: "Free", price: null },
-  // MÜVƏQQƏTİ (Epoint testi): əsl qiymətlər — Pro 6.90 / 49.90 AZN, Premium 12.90 / 89.90 AZN.
-  pro: { name: "Pro", price: "0.10 AZN", oldPrice: "11.90 AZN", yearlyPrice: "0.10 AZN" },
-  premium: { name: "Premium", price: "0.10 AZN", oldPrice: "21.90 AZN", yearlyPrice: "0.10 AZN" },
+  pro: { name: "Pro", price: "6.90 AZN", oldPrice: "11.90 AZN", yearlyPrice: "49.90 AZN" },
+  premium: { name: "Premium", price: "12.90 AZN", oldPrice: "21.90 AZN", yearlyPrice: "89.90 AZN" },
 };
 
 const amount = (s: string | null | undefined) => Number.parseFloat(s ?? "");
