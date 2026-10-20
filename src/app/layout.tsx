@@ -19,6 +19,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  // og:image və s. üçün mütləq URL-lərin bazası.
+  metadataBase: new URL(`https://${brand.domain}`),
   title: { default: brand.name, template: `%s · ${brand.name}` },
   description: "İmtahanda nə çıxıb, nəyi işləməlisən — rəqəmlərlə.",
 };
