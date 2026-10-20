@@ -211,6 +211,34 @@ export const RetryIcon = icon(
 export const SparkleIcon = icon(
   <path d="M12 3.5c.6 4 2.5 6 6.5 6.5-4 .6-5.9 2.5-6.5 6.5-.6-4-2.5-5.9-6.5-6.5 4-.5 5.9-2.5 6.5-6.5Z" />,
 );
+export const DatabaseIcon = icon(
+  <>
+    <ellipse cx="12" cy="6" rx="7" ry="2.5" />
+    <path d="M5 6v6c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6" />
+    <path d="M5 12v6c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-6" />
+  </>,
+);
+export const ChipIcon = icon(
+  <>
+    <rect x="6.5" y="6.5" width="11" height="11" rx="2" />
+    <path d="M10 10h4v4h-4z" />
+    <path d="M9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3" />
+  </>,
+);
+export const TrendIcon = icon(
+  <>
+    <path d="M4 19.5h16" />
+    <path d="m4.5 15 4.5-4.5 3.5 3L19 7" />
+    <path d="M15 7h4v4" />
+  </>,
+);
+export const PlanIcon = icon(
+  <>
+    <rect x="5" y="4" width="14" height="16.5" rx="2" />
+    <path d="M9 4V3h6v1" />
+    <path d="m8.5 10 1.5 1.5L12.5 9M14.5 10.5h1.5M8.5 15.5l1.5 1.5 2.5-2.5M14.5 16h1.5" />
+  </>,
+);
 export const PlusIcon = icon(<path d="M12 5v14M5 12h14" />);
 export const LogoutIcon = icon(
   <>

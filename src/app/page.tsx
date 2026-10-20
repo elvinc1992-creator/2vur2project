@@ -2,7 +2,25 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { EXAM_TYPE_LOOK, ExamTypeBand } from "@/components/exam-type";
-import { AngleDeco, ArrowIcon, BagIcon, CameraIcon, CapIcon, ChartIcon, CheckIcon, ChevronIcon, LockIcon, SendIcon } from "@/components/icons";
+import {
+  ArrowIcon,
+  BagIcon,
+  CameraIcon,
+  CapIcon,
+  CheckIcon,
+  ChevronIcon,
+  ChipIcon,
+  DatabaseIcon,
+  LockIcon,
+  PlanIcon,
+  SendIcon,
+  SparkleIcon,
+  TrendIcon,
+} from "@/components/icons";
+import { CountUp } from "@/components/landing/count-up";
+import { LazyVideo } from "@/components/landing/lazy-video";
+import { MilliNetBanner } from "@/components/landing/millinet-banner";
+import { NeuralNet } from "@/components/landing/neural-net";
 import { FooterDark } from "@/components/landing/footer-dark";
 import { SampleCard, type SampleQuestion } from "@/components/landing/sample-card";
 import { DEFAULT_DURATION } from "@/lib/exams/create";
@@ -22,7 +40,7 @@ import { brand, socialUrl } from "@/config/brand";
 import { az } from "@/content/az";
 import { cn } from "@/lib/cn";
 import { examFormatOf } from "@/lib/exams/blueprint";
-import { fmtInt, fmtPct } from "@/lib/format";
+import { fmtInt } from "@/lib/format";
 import { DEFAULT_FILTERS } from "@/lib/stats/filters";
 import { shownCount } from "@/lib/stats/display";
 import { getFilterOptions, getOverview, getRanking, type Overview, type RankingRow } from "@/lib/stats/queries";
@@ -30,10 +48,41 @@ import { getFilterOptions, getOverview, getRanking, type Overview, type RankingR
 const t = az.landing;
 
 // Kök səhifədə layout-un title.template işləmir — brend adını özümüz əlavə edirik.
+const title = `${brand.domain} — ${t.meta.title}`;
 export const metadata: Metadata = {
-  title: { absolute: `${brand.name} — ${t.meta.title}` },
+  title: { absolute: title },
   description: t.meta.description,
+  openGraph: {
+    type: "website",
+    locale: "az_AZ",
+    siteName: brand.domain,
+    url: "/",
+    title,
+    description: t.meta.description,
+    images: [{ url: "/img/og-cover.jpg", width: 1200, height: 630, alt: t.meta.ogAlt }],
+  },
+  twitter: { card: "summary_large_image", title, description: t.meta.description, images: ["/img/og-cover.jpg"] },
 };
+
+/** "İmtahan qarşılığı" bazadan gəlmədikdə statik nümunə (cavab yoxdur — yalnız sual və variantlar). */
+const STATIC_PAIR = {
+  // Uydurma il/nömrə yazmırıq — yalnız tip nümunəsi.
+  meta: "Nümunə · DİM tipli sual",
+  oursMeta: "Faiz. Nisbət. Tənasüb · Ardıcıl faiz dəyişməsi",
+  exam: {
+    question: "Malın qiyməti əvvəlcə $20\\%$ artırıldı, sonra yeni qiymət $20\\%$ azaldıldı. Malın son qiyməti ilkin qiymətdən neçə faiz fərqlənir?",
+    options: { A: "$0\\%$", B: "$2\\%$", C: "$4\\%$", D: "$5\\%$", E: "$8\\%$" },
+  },
+  ours: {
+    question: "Kitabın qiyməti əvvəlcə $25\\%$ artırıldı, sonra yeni qiymət $20\\%$ azaldıldı. Kitabın son qiyməti ilkin qiymətdən neçə faiz fərqlənir?",
+    options: { A: "$0\\%$", B: "$1\\%$", C: "$5\\%$", D: "$10\\%$", E: "$45\\%$" },
+  },
+} satisfies Record<"exam" | "ours", MatchQuestion> & { meta: string; oursMeta: string };
+
+const INTRO_VIDEO = process.env.INTRO_VIDEO;
+const INTRO_POSTER = process.env.INTRO_POSTER || undefined;
+
+const HOW_ICONS = [DatabaseIcon, ChipIcon, TrendIcon, PlanIcon];
 
 // Rəqəmlər bazadan gəlir; səhifə statikdir və 10 dəqiqədən bir yenilənir.
 export const revalidate = 600;
@@ -116,35 +165,43 @@ export default async function HomePage() {
         {/* ---------- Hero ---------- */}
         <section aria-labelledby="hero-title" className="relative overflow-hidden bg-notebook pt-8 pb-12 md:pb-[72px] lg:pt-14 lg:pb-[88px]">
           <div className="relative mx-auto grid w-full max-w-content gap-10 px-4 md:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16">
-            <AngleDeco className="absolute -top-4 right-0 hidden text-navy-200 lg:block" />
             <div className="relative grid gap-5">
               <Welcome />
-              <Tag tone="coral" icon={<ChartIcon />} className="justify-self-start">
-                {t.hero.eyebrow}
-              </Tag>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                <MilliNetBanner className="aspect-[200/103] h-14 overflow-hidden rounded-md shadow-card md:h-16" />
+                <span className="inline-flex items-center gap-2 rounded-pill border border-success-700/30 bg-success-100 px-3 py-1 text-small font-bold text-success-700">
+                  <i aria-hidden="true" className="live-dot size-2 rounded-full bg-success-700" />
+                  {t.hero.badge}
+                </span>
+              </div>
               <h1 id="hero-title" className="font-display text-display font-extrabold text-navy-900 lg:text-display-lg">
-                {t.hero.titleA} <span className="text-coral-600">{t.hero.titleB}</span>
+                {t.hero.titleA}{" "}
+                <span className="bg-linear-to-r from-violet-700 to-pink-600 bg-clip-text text-transparent">{t.hero.titleB}</span> {t.hero.titleC}
               </h1>
               <p className="max-w-[34rem] text-lead text-ink-muted">{t.hero.lead}</p>
               <div className="grid gap-3 md:flex md:flex-wrap">
-                {telegram ? (
-                  <a href={telegram} target="_blank" rel="noopener noreferrer" className={buttonClass({ variant: "primary" })}>
-                    <SendIcon />
-                    {t.hero.telegram}
-                  </a>
-                ) : (
-                  <ButtonLink href="/statistika" variant="primary">
-                    <ChartIcon />
-                    {t.hero.stats}
-                  </ButtonLink>
-                )}
-                <a href="#numune" className={buttonClass({ variant: "secondary" })}>
-                  {t.hero.sample}
+                <ButtonLink href="/qeydiyyat" variant="primary">
+                  {t.hero.start}
+                  <ArrowIcon className="size-[22px]" />
+                </ButtonLink>
+                <a href="#nece-isleyir" className={buttonClass({ variant: "secondary" })}>
+                  {t.hero.how}
                 </a>
               </div>
-              <p className="text-small text-ink-muted">{t.hero.note}</p>
             </div>
-            {ranking.length > 0 && overview && <RankPreview rows={ranking} />}
+            <NeuralNet className="hidden md:grid" />
+          </div>
+        </section>
+
+        {/* ---------- Rəqəmlər zolağı ---------- */}
+        <section aria-label={t.stats.label} className="bg-notebook pb-12 md:pb-[72px]">
+          <div className="mx-auto w-full max-w-content px-4 md:px-8">
+            <dl className="m-0 grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
+              <Stat value={<CountUp to={30000} suffix="+" />} label={t.stats.questions} />
+              <Stat value={<CountUp to={100} suffix="+" />} label={t.stats.exams} />
+              <Stat value={<CountUp to={overview?.topics || ranking.length || 27} />} label={t.stats.topics} />
+              <Stat value="9 · 11 · Blok" label={t.stats.types} small />
+            </dl>
           </div>
         </section>
 
@@ -212,44 +269,87 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ---------- Rəqəmlər ---------- */}
-        {overview && (
-          <Section tone="tint" labelledBy="stats-title">
-            <Head eyebrow={t.stats.eyebrow} title={t.stats.title} id="stats-title" />
-            <dl className="m-0 grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-              <Stat value="30000+" label={t.stats.questions} />
-              <Stat value="100+" label={t.stats.years("2016–2026")} />
-              <Stat value={fmtInt(overview.topics)} label={t.stats.topics} />
-              <Stat value={fmtPct(overview.found2025 / overview.questions)} label={t.stats.found} />
-            </dl>
-          </Section>
-        )}
-
-        {/* ---------- Necə işləyir ---------- */}
-        <Section id="nece-isleyir" labelledBy="how-title">
+        {/* ---------- Süni intellekt necə işləyir ---------- */}
+        <Section id="nece-isleyir" tone="tint" labelledBy="how-title">
           <Head eyebrow={t.how.eyebrow} title={t.how.title} id="how-title" />
-          <ol className="m-0 grid list-none gap-4 p-0 md:grid-cols-3">
-            {t.how.steps.map((s, i) => (
-              <li key={s.title}>
-                <Card tone="flat" className="grid h-full grid-cols-[48px_1fr] items-start gap-4">
-                  <span
-                    aria-hidden="true"
-                    className="grid size-12 place-items-center rounded-md bg-navy-900 font-display text-xl font-extrabold text-white"
-                  >
-                    {i + 1}
-                  </span>
-                  <div className="grid gap-1">
+          <ol className="m-0 grid list-none gap-10 p-0 lg:grid-cols-4 lg:gap-8">
+            {t.how.steps.map((s, i) => {
+              const Icon = HOW_ICONS[i];
+              const last = i === t.how.steps.length - 1;
+              return (
+                <li key={s.title} className="relative">
+                  <Card tone="flat" className="grid h-full content-start gap-3">
+                    <span className="flex items-center justify-between">
+                      <span
+                        aria-hidden="true"
+                        className="grid size-12 place-items-center rounded-md bg-linear-to-br from-violet-700 to-pink-600 text-white"
+                      >
+                        <Icon className="size-6" />
+                      </span>
+                      <span aria-hidden="true" className="font-display text-[32px] leading-none font-extrabold text-navy-100">
+                        {i + 1}
+                      </span>
+                    </span>
                     <h3 className="font-display text-lg leading-6 font-bold text-navy-900">
                       <span className="sr-only">{i + 1}. </span>
                       {s.title}
                     </h3>
-                    <p className="text-ink-muted">{s.text(topicCount)}</p>
-                  </div>
-                </Card>
-              </li>
-            ))}
+                    <p className="m-0 text-ink-muted">{s.text}</p>
+                  </Card>
+                  {!last && (
+                    <ArrowIcon
+                      className="absolute -bottom-8 left-1/2 size-6 -translate-x-1/2 rotate-90 text-violet-700 lg:top-1/2 lg:-right-7 lg:bottom-auto lg:left-auto lg:translate-x-0 lg:-translate-y-1/2 lg:rotate-0"
+                    />
+                  )}
+                </li>
+              );
+            })}
           </ol>
         </Section>
+
+        {/* ---------- İmtahan qarşılığı ---------- */}
+        <Section id="imtahan-qarsiligi" labelledBy="match-title">
+          <Head eyebrow={t.match.eyebrow} title={t.match.title} id="match-title">
+            <p className="max-w-[44rem] text-ink-muted">{t.match.lead}</p>
+          </Head>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {extra.pair ? (
+              <>
+                <MatchCard
+                  label={t.match.examLabel}
+                  meta={t.match.exam(extra.pair.year, extra.pair.exam, extra.pair.questionNo)}
+                  q={extra.pair.examQuestion}
+                  tone="exam"
+                />
+                <MatchCard label={t.match.oursLabel} meta={`${extra.pair.topicName} · ${extra.pair.type}`} q={extra.pair.counterparts[0]} tone="ours" />
+              </>
+            ) : (
+              <>
+                <MatchCard label={t.match.examLabel} meta={STATIC_PAIR.meta} q={STATIC_PAIR.exam} tone="exam" />
+                <MatchCard label={t.match.oursLabel} meta={STATIC_PAIR.oursMeta} q={STATIC_PAIR.ours} tone="ours" />
+              </>
+            )}
+          </div>
+          <p className="mt-4 flex items-start gap-2 font-semibold text-violet-800">
+            <SparkleIcon className="mt-0.5 size-5 flex-none" />
+            {t.match.ai}
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
+            <ButtonLink href="/imtahan-qarsiligi" variant="primary">
+              {t.match.cta}
+              <ArrowIcon className="size-[22px]" />
+            </ButtonLink>
+            {extra.pairs > 0 && <span className="text-small text-ink-muted">{t.match.stat(extra.pairs, extra.pairTopics)}</span>}
+          </div>
+        </Section>
+
+        {/* ---------- Video (fayl varsa) ---------- */}
+        {INTRO_VIDEO && (
+          <Section labelledBy="video-title">
+            <Head eyebrow={t.video.eyebrow} title={t.video.title} id="video-title" />
+            <LazyVideo src={INTRO_VIDEO} poster={INTRO_POSTER} label={t.video.label} />
+          </Section>
+        )}
 
         {/* ---------- Nümunə kart ---------- */}
         <Section id="numune" tone="tint" labelledBy="sample-title">
@@ -415,31 +515,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ---------- İmtahan qarşılığı ---------- */}
-        {extra.pair && (
-          <Section id="imtahan-qarsiligi" tone="tint" labelledBy="match-title">
-            <Head eyebrow={t.match.eyebrow} title={t.match.title} id="match-title">
-              <p className="max-w-[44rem] text-ink-muted">{t.match.lead}</p>
-            </Head>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <MatchCard
-                label={t.match.examLabel}
-                meta={t.match.exam(extra.pair.year, extra.pair.exam, extra.pair.questionNo)}
-                q={extra.pair.examQuestion}
-                tone="exam"
-              />
-              <MatchCard label={t.match.oursLabel} meta={`${extra.pair.topicName} · ${extra.pair.type}`} q={extra.pair.counterparts[0]} tone="ours" />
-            </div>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-              <ButtonLink href="/imtahan-qarsiligi" variant="primary">
-                {t.match.cta}
-                <ArrowIcon className="size-[22px]" />
-              </ButtonLink>
-              <span className="text-small text-ink-muted">{t.match.stat(extra.pairs, extra.pairTopics)}</span>
-            </div>
-          </Section>
-        )}
-
         {/* ---------- Qiymətlər ---------- */}
         <Section id="qiymetler" labelledBy="pricing-title">
           <Head eyebrow={t.pricing.eyebrow} title={t.pricing.title} id="pricing-title">
@@ -555,15 +630,20 @@ function Head({ eyebrow, title, id, children }: { eyebrow: string; title: string
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
-  // "94,7%" → faiz işarəsi kiçik və coral (dizayn: .b-stat__n small)
-  const pct = value.endsWith("%");
+function Stat({ value, label, small }: { value: ReactNode; label: string; small?: boolean }) {
   return (
-    <div className="grid content-start gap-1 rounded-lg border border-line bg-surface p-5 lg:p-7">
+    <div className="grid content-start gap-1 rounded-lg border border-line bg-surface p-4 shadow-card md:p-5 lg:p-6">
       <dt className="order-2 text-[15px] leading-[22px] text-ink-muted">{label}</dt>
-      <dd className="order-1 m-0 font-display text-[40px] leading-[48px] font-extrabold tracking-[-0.02em] whitespace-nowrap text-navy-900 tabular md:text-[44px] lg:text-[56px] lg:leading-[60px]">
-        {pct ? value.slice(0, -1) : value}
-        {pct && <small className="ml-0.5 text-[26px] text-coral-600">%</small>}
+      <dd
+        className={cn(
+          "order-1 m-0 font-display font-extrabold tracking-[-0.02em] text-navy-900 tabular",
+          // "9 · 11 · Blok" dar mobildə iki sətrə keçə bilər; rəqəmlər bir sətirdə qalır.
+          small
+            ? "text-[22px] leading-[28px] md:text-[32px] md:leading-[48px] lg:text-[36px] lg:leading-[52px]"
+            : "text-[28px] leading-[28px] whitespace-nowrap md:text-[40px] md:leading-[48px] lg:text-[44px] lg:leading-[52px]",
+        )}
+      >
+        {value}
       </dd>
     </div>
   );
@@ -663,60 +743,6 @@ function MiniBook() {
 // Uzun mövzu adlarında "/" sonrası sətir keçidinə icazə (dar mobil kartlar üçün).
 const breakable = (name: string) => name.replaceAll("/", "/​");
 
-/** Hero-dakı canlı reytinq: ən çox sual çıxan 5 mövzu. */
-function RankPreview({ rows }: { rows: RankingRow[] }) {
-  const top = rows.slice(0, 5);
-  const max = top[0]?.n || 1;
-  return (
-    <Card as="article" aria-labelledby="rank-title" className="relative grid gap-4 shadow-raised!">
-      <div className="grid gap-1">
-        <span className="inline-flex items-center gap-2 text-caption font-bold tracking-[0.06em] text-success-700 uppercase">
-          <i aria-hidden="true" className="size-2 rounded-full bg-success-700" />
-          {t.hero.rankEyebrow}
-        </span>
-        <h2 id="rank-title" className={h3Class}>
-          {t.hero.rankTitle}
-        </h2>
-        <p className="text-small text-ink-muted">{t.hero.rankNote("30000+", "2016–2026")}</p>
-      </div>
-      <ol className="m-0 grid list-none gap-1 p-0">
-        {top.map((r, i) => (
-          <li key={r.slug}>
-            <Link
-              href={`/statistika/${r.slug}`}
-              className="-mx-2 grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 rounded-md px-2 py-2 text-inherit no-underline hover:bg-navy-050"
-            >
-              <span
-                className={cn(
-                  "grid size-7 place-items-center rounded-[8px] font-display text-small font-extrabold tabular",
-                  i === 0 ? "bg-coral-100 text-coral-700" : "bg-navy-100 text-navy-900",
-                )}
-              >
-                {i + 1}
-              </span>
-              <span className="font-semibold [overflow-wrap:anywhere] text-navy-900">{breakable(r.name)}</span>
-              <span className="text-right font-display font-extrabold text-navy-900 tabular">
-                {r.n}
-                <span className="sr-only"> sual, {fmtPct(r.share)}</span>
-              </span>
-              <span aria-hidden="true" className="col-span-2 col-start-2 h-1.5 overflow-hidden rounded-pill bg-navy-100">
-                <i
-                  className={cn("block h-full rounded-pill", i === 0 ? "bg-coral-600" : "bg-navy-900")}
-                  style={{ width: `${(r.n / max) * 100}%` }}
-                />
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ol>
-      <Link href="/statistika" className="inline-flex items-center gap-1.5 justify-self-start font-semibold text-navy-500 underline underline-offset-3">
-        {t.hero.rankLink}
-        <ArrowIcon className="size-[18px]" />
-      </Link>
-    </Card>
-  );
-}
-
 function TopicTile({ row, max }: { row: RankingRow; max: number }) {
   return (
     <Link
@@ -742,8 +768,11 @@ function TopicTile({ row, max }: { row: RankingRow; max: number }) {
   );
 }
 
+/** Kartda yalnız sual və variantlar — düzgün cavab heç vaxt render olunmur (server komponenti, brauzerə getmir). */
+type MatchQuestion = Pick<ExamQuestionView, "question" | "options">;
+
 /** İmtahan sualı və ya bizim qarşılığı — variantlarla (cavab göstərilmir). */
-function MatchCard({ label, meta, q, tone }: { label: string; meta: string; q: ExamQuestionView; tone: "exam" | "ours" }) {
+function MatchCard({ label, meta, q, tone }: { label: string; meta: string; q: MatchQuestion; tone: "exam" | "ours" }) {
   return (
     <Card as="article" aria-label={label} className={cn("grid content-start gap-3 border-t-4", tone === "exam" ? "border-t-navy-900" : "border-t-coral-600")}>
       <div className="flex flex-wrap items-center gap-2">

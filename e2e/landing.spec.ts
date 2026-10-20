@@ -18,20 +18,27 @@ const stat = (page: Page, label: string | RegExp) =>
 
 test("desktop: rəqəmlər bazadan, bölmələr və linklər", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("İmtahanda nə çıxıb, nəyi işləməlisən");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("DİM imtahanlarına süni intellektlə hazırlıq");
+  await expect(page).toHaveTitle("2vur2.az — DİM imtahanlarına süni intellektlə hazırlıq");
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /\/img\/og-cover\.jpg$/);
 
-  // Rəqəmlər: 30000+ sual, 100+ imtahan (2016–2026), 27 mövzu, 997 / 1 053 = 94,7%
-  await expect(stat(page, "imtahan sualı analiz olunub")).toHaveText("30000+");
-  await expect(stat(page, "imtahan: 2016–2026")).toHaveText("100+");
-  await expect(stat(page, "mövzu üzrə təsnifat")).toHaveText("27");
-  await expect(stat(page, /test toplularında/)).toHaveText("94,7%");
+  // Hero: düymələr və neyron şəbəkə
+  await expect(page.getByRole("link", { name: "Pulsuz başla" })).toHaveAttribute("href", "/qeydiyyat");
+  await expect(page.getByRole("link", { name: "Necə işləyir?" })).toHaveAttribute("href", "#nece-isleyir");
+  await expect(page.getByRole("img", { name: /Neyron şəbəkə/ })).toBeVisible();
 
-  // Hero reytinqi: ilk yer — Stereometriya (92 × 2 = 184), link mövzu səhifəsinə
-  const rank = page.getByRole("article", { name: "Ən çox sual çıxan mövzular" });
-  await expect(rank.getByRole("listitem")).toHaveCount(5);
-  await expect(rank.getByRole("link").first()).toHaveAttribute("href", "/statistika/stereometriya");
-  await expect(rank.getByRole("link").first()).toContainText("184");
-  await expect(rank.getByText("30000+ sual · 2016–2026")).toBeVisible();
+  // Rəqəmlər zolağı: 0-dan sayır, sonda son qiymət
+  await expect(stat(page, "analiz olunmuş sual")).toHaveText("30 000+");
+  await expect(stat(page, "DİM imtahanı")).toHaveText("100+");
+  await expect(stat(page, /^mövzu$/)).toHaveText("27");
+  await expect(stat(page, "buraxılış və blok qəbul")).toHaveText("9 · 11 · Blok");
+
+  // Necə işləyir: 4 addım; imtahan qarşılığı: iki kart + AI qeydi
+  await expect(page.locator("#nece-isleyir").getByRole("listitem")).toHaveCount(4);
+  const match = page.locator("#imtahan-qarsiligi");
+  await expect(match.getByRole("heading", { level: 2 })).toHaveText("Suallarımız təsadüfi deyil!");
+  await expect(match.getByRole("article")).toHaveCount(2);
+  await expect(match).toContainText("Bu sual tipi AI tərəfindən əvvəlcədən müəyyənləşdirilmişdi.");
 
   // Mövzular: 8 kart + bütün mövzular düyməsi
   const topics = page.locator("#movzular");
