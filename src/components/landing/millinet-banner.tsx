@@ -4,7 +4,8 @@ import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 
 const SRC = "https://millinet.az/banner.js?id=624";
-const LINK = "https://millinet.az";
+/** Rəsmi kod ümumi millinet.az-a aparır — bizim müsabiqə səhifəmizə yönləndiririk. */
+const LINK = "https://millinet.az/az/musabiqeler/musabiqe2026/2vur2az";
 const IMG = "https://millinet.az/images/participant.png?v=2";
 
 /**
@@ -22,6 +23,11 @@ export function MilliNetBanner({ className }: { className?: string }) {
     if (written) {
       // Rəsmi kodun şəklində alt yoxdur (əlçatanlıq).
       if (!written.alt) written.alt = "MilliNet2026 iştirakçısı";
+      const link = written.closest("a");
+      if (link) {
+        link.href = LINK;
+        link.rel = "noopener";
+      }
       return;
     }
     const a = document.createElement("a");
