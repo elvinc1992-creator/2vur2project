@@ -1,6 +1,11 @@
+import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DailyStrip, DailyUpsell } from "@/components/app/daily";
+import { ExamCountdown } from "@/components/exam-countdown";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { examTypeOf } from "@/lib/exam-dates";
 import { Page, Topbar } from "@/components/app/topbar";
 import { CalcIcon, CapIcon, ChevronIcon, ClockIcon, FlameIcon, LockIcon, RetryIcon } from "@/components/icons";
 import { Card, Meter, Ring, Tag, Week, h1Class, h3Class, listClass } from "@/components/ui/display";
@@ -47,6 +52,9 @@ export default async function PanelPage() {
   // Mövzular üzrə proqres — bu günün mövzularında düzgün cavab faizi (günün sualları + sınaqlar).
   const personal = await personalByTopic(state);
   const progress = ctx.topics.map((x) => ({ name: x.name, pct: Math.round((personal.get(x.name)?.pct ?? 0) * 100) }));
+  // Geri sayım: profildəki sinif və hədəf imtahana görə.
+  const [profile] = await db.select({ grade: users.grade, targetExam: users.targetExam }).from(users).where(eq(users.id, user.id!)).limit(1);
+  const examType = examTypeOf(profile ?? { grade: null, targetExam: null });
 
   // Vaxtı bitmiş sınaq "Davam et"-də göstərilmir.
   const exams = (await listExams()).filter((e) => isExamVisible(state, e));
@@ -87,6 +95,8 @@ export default async function PanelPage() {
                     : t.allDone}
               </p>
             </div>
+
+            <ExamCountdown types={[examType]} mode="banner" />
 
             {!paid && <DailyUpsell locked={daily.locked} />}
 

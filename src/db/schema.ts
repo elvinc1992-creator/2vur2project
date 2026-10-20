@@ -1149,3 +1149,33 @@ export const waitlist = sqliteTable("waitlist", {
   consent: integer("consent", { mode: "boolean" }).notNull(),
   createdAt: createdAt(),
 });
+
+/* ---------------- İmtahan tarixləri (geri sayım) ---------------- */
+
+export const EXAM_DATE_TYPES = ["buraxilis_9", "buraxilis_11", "blok"] as const;
+export type ExamDateType = (typeof EXAM_DATE_TYPES)[number];
+
+/**
+ * DİM imtahan tarixləri — ana səhifədəki və paneldəki geri sayım üçün. Admin paneldən daxil edilir
+ * (DİM rəsmi tarixi elan edəndə yenilənir). Vaxt Asia/Baku (UTC+4) ilə daxil edilir, UTC ms saxlanılır.
+ */
+export const examDates = sqliteTable(
+  "exam_dates",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    examType: text("exam_type", { enum: EXAM_DATE_TYPES }).notNull(),
+    title: text("title").notNull(),
+    examDate: integer("exam_date", { mode: "timestamp_ms" }).notNull(),
+    /** Rəsmi elan olunmayıb — keçən ilə görə təxmini tarix. */
+    isEstimated: integer("is_estimated", { mode: "boolean" }).notNull().default(false),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdateFn(() => new Date()),
+  },
+  (t) => [index("exam_dates_type_idx").on(t.examType, t.isActive)],
+);
