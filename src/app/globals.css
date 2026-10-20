@@ -191,10 +191,20 @@
     box-shadow: 0 0 0 8px rgba(20, 108, 65, 0);
   }
 }
+/* Geri sayım: 30 gündən az qalanda kart yüngülcə "nəfəs alır" */
+.countdown-pulse {
+  animation: countdown-pulse 2.4s ease-in-out infinite;
+}
+@keyframes countdown-pulse {
+  50% {
+    box-shadow: 0 0 0 6px rgba(180, 35, 24, 0.12);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .nn-flow {
     display: none;
   }
+  .countdown-pulse,
   .nn-pulse,
   .live-dot {
     animation: none;

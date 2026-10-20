@@ -13,6 +13,7 @@ const ITEMS = [
   { href: "/admin/sual-bildirisleri", label: "Səhv bildirişləri" },
   { href: "/admin/sinaqlar", label: "Sınaqlar" },
   { href: "/admin/sinaq-strukturu", label: "Sınaq strukturu" },
+  { href: "/admin/imtahan-tarixleri", label: "İmtahan tarixləri" },
   { href: "/admin/yaris", label: "Yarış" },
   { href: "/admin/muellimler", label: "Müəllimlər" },
   { href: "/admin/gozleme-siyahisi", label: "Gözləmə siyahısı" },

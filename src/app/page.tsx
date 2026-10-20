@@ -17,6 +17,7 @@ import {
   SparkleIcon,
   TrendIcon,
 } from "@/components/icons";
+import { ExamCountdown } from "@/components/exam-countdown";
 import { CountUp } from "@/components/landing/count-up";
 import { LazyVideo } from "@/components/landing/lazy-video";
 import { MilliNetBanner } from "@/components/landing/millinet-banner";
@@ -192,6 +193,16 @@ export default async function HomePage() {
             <NeuralNet className="hidden md:grid" />
           </div>
         </section>
+
+        {/* ---------- İmtahana geri sayım ---------- */}
+        <ExamCountdown
+          types={["buraxilis_9", "buraxilis_11", "blok"]}
+          title={
+            <h2 id="countdown-title" className={eyebrowClass}>
+              {t.countdown.label}
+            </h2>
+          }
+        />
 
         {/* ---------- Rəqəmlər zolağı ---------- */}
         <section aria-label={t.stats.label} className="bg-notebook pb-12 md:pb-[72px]">
