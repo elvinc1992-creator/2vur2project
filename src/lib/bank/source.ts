@@ -22,6 +22,8 @@ export type ExamPairView = {
   exam: string;
   questionNo: number;
   type: string;
+  /** Toplu istinadı: "II h. səh.257 №26" (2025). */
+  toplu: string;
   /** "EYNİ" | "Çox yaxın" — imtahan sualı ilə qarşılığın yaxınlığı. */
   matchLevel: string;
   examQuestion: ExamQuestionView;
@@ -61,6 +63,7 @@ export const listExamPairs = cache(async (): Promise<ExamPairView[]> => {
       exam: s.exam,
       questionNo: s.questionNo,
       type: s.type,
+      toplu: s.toplu,
       matchLevel: s.matchLevel,
       examQuestion: { question: s.question, options: toOptions(s.options), answer: s.answer as Letter },
       counterparts: cps

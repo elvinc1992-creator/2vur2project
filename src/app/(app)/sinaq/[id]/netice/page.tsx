@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Page, Topbar } from "@/components/app/topbar";
+import { AiBadge } from "@/components/ai-badge";
 import { BookIcon, CheckIcon, CloseIcon } from "@/components/icons";
 import { Alert } from "@/components/ui/alert";
 import { ButtonLink } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Card, Meter, Tag, h3Class } from "@/components/ui/display";
 import { MathText } from "@/components/ui/math-text";
 import { ReportQuestion } from "@/components/ui/report-question";
 import { az } from "@/content/az";
+import { aiInsights } from "@/lib/ai";
 import { isCorrect } from "@/lib/exams/grade";
 import { findExam, getExamKeys, getExamQuestions } from "@/lib/exams/source";
 import { requireDemo } from "@/lib/demo/session";
@@ -25,6 +27,7 @@ export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">)
   if (!r) redirect(`/sinaq/${id}`);
   const t = az.app.result;
   const [questions, keys] = await Promise.all([getExamQuestions(id), getExamKeys(id)]);
+  const ai = await aiInsights(questions.map((q) => q.code));
 
   return (
     <>
@@ -93,6 +96,7 @@ export default async function ResultPage(props: PageProps<"/sinaq/[id]/netice">)
                     <Tag>{q.topicName}</Tag>
                     <ReportQuestion target={{ code: q.code, source: "exam", context: id }} n={q.n} className="ml-auto" />
                   </div>
+                  <AiBadge ai={ai[q.code]} />
                   <p className="text-small leading-[1.6]">
                     <MathText text={q.text} />
                   </p>

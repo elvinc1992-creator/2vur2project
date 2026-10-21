@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { AiBadge } from "@/components/ai-badge";
 import { Page, Topbar } from "@/components/app/topbar";
 import { CheckCircleIcon, XCircleIcon } from "@/components/icons";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { MathText } from "@/components/ui/math-text";
 import { az } from "@/content/az";
 import { db } from "@/db";
 import { topics, weakPracticeSets } from "@/db/schema";
+import { aiInsights } from "@/lib/ai";
 import { cn } from "@/lib/cn";
 import { FormAnswerFields } from "@/components/ui/form-answer";
 import { checkAnswer, isLetter } from "@/lib/bank/check";
@@ -39,7 +41,7 @@ export default async function PracticeSetPage(props: PageProps<"/zeif-movzular/m
   const items = JSON.parse(set.s.questionIds) as SetItem[];
   const questions = (await Promise.all(items.map((it) => findRepetitorQuestion(it.code)))).map((q, i) => ({ q, it: items[i] }));
   const done = Boolean(set.s.finishedAt);
-  const keys = done ? await getRepetitorKeys(items.map((i) => i.code)) : null;
+  const [keys, ai] = await Promise.all([done ? getRepetitorKeys(items.map((i) => i.code)) : null, aiInsights(items.map((i) => i.code))]);
   const answers = JSON.parse(set.s.answers) as Record<string, string>;
   const title = set.s.kind === "fix" ? t.setFix(set.topic) : t.setRecheck(set.topic);
   const passed = done && items.length > 0 && (set.s.correct ?? 0) / items.length >= GROWING_BELOW;
@@ -72,6 +74,7 @@ export default async function PracticeSetPage(props: PageProps<"/zeif-movzular/m
           {questions.map(({ q, it }, i) =>
             q ? (
               <Card key={it.code} as="section" aria-labelledby={`wq-${it.code}`} className="grid gap-3">
+                <AiBadge ai={ai[it.code]} />
                 <p id={`wq-${it.code}`} className="m-0">
                   <b className="tabular">{i + 1}. </b>
                   <MathText text={q.text} />

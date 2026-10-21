@@ -211,6 +211,424 @@
   }
 }
 
+/*
+ * AI pipeline (/suni-intellekt). Dövr 10s: hər addım 2s işıqlanır (--i — sıra), "məlumat paketi" xətt boyunca
+ * addımdan addıma axır və hər addımda dayanır. Hər addımın öz mini-animasiyası var (SVG).
+ */
+.aip-step {
+  animation: aip-step 10s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 2s - 0.2s);
+}
+@keyframes aip-step {
+  0%,
+  18% {
+    border-color: #8b5cf6;
+    background: #faf5ff;
+    box-shadow: 0 16px 34px -18px rgba(109, 40, 217, 0.75);
+    transform: translateY(-3px);
+  }
+  23%,
+  100% {
+    border-color: var(--line);
+    background: #fff;
+    box-shadow: none;
+    transform: none;
+  }
+}
+.aip-num {
+  animation: aip-num 10s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 2s - 0.2s);
+}
+@keyframes aip-num {
+  0%,
+  18% {
+    background: #7c3aed;
+    color: #fff;
+    box-shadow: 0 0 0 6px rgba(124, 58, 237, 0.18);
+  }
+  23%,
+  100% {
+    background: #ede9fe;
+    color: #5b21b6;
+    box-shadow: none;
+  }
+}
+/* Xəttin dolması (keçilmiş hissə) və paket */
+.aip-fill {
+  animation: aip-fill-y 10s ease-in-out infinite;
+}
+.aip-packet {
+  animation: aip-packet-y 10s ease-in-out infinite;
+}
+@keyframes aip-packet-y {
+  0%,
+  12% { top: 0%; opacity: 1; }
+  20%,
+  32% { top: 25%; }
+  40%,
+  52% { top: 50%; }
+  60%,
+  72% { top: 75%; }
+  80%,
+  94% { top: 100%; opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+@keyframes aip-fill-y {
+  0%,
+  12% { height: 0%; opacity: 1; }
+  20%,
+  32% { height: 25%; }
+  40%,
+  52% { height: 50%; }
+  60%,
+  72% { height: 75%; }
+  80%,
+  94% { height: 100%; opacity: 1; }
+  100% { height: 100%; opacity: 0; }
+}
+@media (min-width: 768px) {
+  .aip-fill {
+    animation-name: aip-fill-x;
+  }
+  .aip-packet {
+    animation-name: aip-packet-x;
+  }
+}
+@keyframes aip-packet-x {
+  0%,
+  12% { left: 0%; opacity: 1; }
+  20%,
+  32% { left: 25%; }
+  40%,
+  52% { left: 50%; }
+  60%,
+  72% { left: 75%; }
+  80%,
+  94% { left: 100%; opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+@keyframes aip-fill-x {
+  0%,
+  12% { width: 0%; opacity: 1; }
+  20%,
+  32% { width: 25%; }
+  40%,
+  52% { width: 50%; }
+  60%,
+  72% { width: 75%; }
+  80%,
+  94% { width: 100%; opacity: 1; }
+  100% { width: 100%; opacity: 0; }
+}
+
+/* Mini-animasiyalar (SVG elementləri öz qutusuna görə çevrilir) */
+.aip-art * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* 1. Toplama: vərəqlər yuxarıdan yığına düşür */
+.aip-drop {
+  animation: aip-drop 2.4s ease-in infinite;
+  animation-delay: calc(var(--d) * 0.35s);
+}
+@keyframes aip-drop {
+  0% { transform: translateY(-22px) rotate(-8deg); opacity: 0; }
+  35%,
+  80% { transform: none; opacity: 1; }
+  100% { transform: none; opacity: 0; }
+}
+/* 2. Emal: skan xətti vərəq boyunca keçir, rəqəmlər yanıb-sönür */
+.aip-scan {
+  animation: aip-scan 2s ease-in-out infinite alternate;
+}
+@keyframes aip-scan {
+  from { transform: translateY(0); }
+  to { transform: translateY(30px); }
+}
+.aip-blink {
+  animation: aip-blink 2s ease-in-out infinite;
+  animation-delay: calc(var(--d) * 0.4s);
+}
+@keyframes aip-blink {
+  0%,
+  100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+/* 3. Təsnifat: suallar mərkəzdən öz qutusuna gedir */
+.aip-sort {
+  animation: aip-sort 2.4s cubic-bezier(0.5, 0, 0.3, 1) infinite;
+  animation-delay: calc(var(--d) * 0.3s);
+}
+@keyframes aip-sort {
+  0% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  15% { transform: translate(0, 0) scale(1); opacity: 1; }
+  60%,
+  85% { transform: translate(var(--x), 18px) scale(1); opacity: 1; }
+  100% { transform: translate(var(--x), 18px) scale(1); opacity: 0; }
+}
+/* 4. Tezlik: sütunlar böyüyür */
+.aip-bar {
+  transform-origin: bottom !important;
+  animation: aip-bar 2.4s ease-out infinite;
+  animation-delay: calc(var(--d) * 0.15s);
+}
+@keyframes aip-bar {
+  0% { transform: scaleY(0.1); }
+  45%,
+  85% { transform: scaleY(1); }
+  100% { transform: scaleY(0.1); }
+}
+/* 5. Tövsiyə: hədəf döyünür, işarə çəkilir */
+.aip-ring {
+  animation: aip-ring 2.4s ease-out infinite;
+}
+@keyframes aip-ring {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.aip-check {
+  stroke-dasharray: 40;
+  animation: aip-check 2.4s ease-in-out infinite;
+}
+@keyframes aip-check {
+  0%,
+  20% { stroke-dashoffset: 40; }
+  55%,
+  90% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 40; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aip-step,
+  .aip-num,
+  .aip-fill,
+  .aip-art * {
+    animation: none !important;
+  }
+  .aip-packet {
+    display: none;
+  }
+  .aip-check {
+    stroke-dashoffset: 0;
+  }
+  .aip-sort {
+    transform: translate(var(--x), 18px);
+  }
+}
+/*
+ * "Modelin içində" (/suni-intellekt): neyron şəbəkə, öyrənmə, qruplaşdırma, modelin cavabı (.mv-*).
+ * SVG elementləri öz qutusuna görə çevrilir; reduced-motion — son vəziyyət statik.
+ */
+@property --mv-n {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+@property --mv-l {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 8;
+}
+.mv-node,
+.mv-out,
+.mv-prob,
+.mv-point {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* Neyron şəbəkə: siqnal kənarlar boyunca axır, neyronlar növbə ilə aktivləşir, ehtimallar dolur */
+.mv-flow {
+  stroke-dasharray: 16 120;
+  stroke-dashoffset: 16;
+  animation: mv-flow 3s ease-in infinite;
+  animation-delay: var(--d);
+}
+@keyframes mv-flow {
+  0% { stroke-dashoffset: 16; opacity: 0; }
+  5% { opacity: 1; }
+  40% { stroke-dashoffset: -100; opacity: 1; }
+  41%,
+  100% { stroke-dashoffset: -100; opacity: 0; }
+}
+.mv-node {
+  animation: mv-node 3s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+@keyframes mv-node {
+  0%,
+  100% { transform: scale(1); fill: #fff; }
+  15% { transform: scale(1.4); fill: #a78bfa; }
+  35% { transform: scale(1); fill: #ede9fe; }
+}
+.mv-out {
+  animation: mv-out 3s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+@keyframes mv-out {
+  0%,
+  100% { transform: scale(1); }
+  15% { transform: scale(1.3); }
+}
+.mv-prob {
+  transform-origin: left center;
+  animation: mv-prob 3s ease-out infinite;
+  animation-delay: 1.9s;
+}
+@keyframes mv-prob {
+  0% { transform: scaleX(0); }
+  30%,
+  85% { transform: scaleX(1); }
+  100% { transform: scaleX(0); }
+}
+/* Öyrənmə: əyrilər çəkilir, sayğaclar artır (epoxa, tipə bağlanma), xəta azalır */
+.mv-curve {
+  stroke-dasharray: 100;
+  animation: mv-curve 6s ease-out infinite;
+}
+@keyframes mv-curve {
+  0% { stroke-dashoffset: 100; opacity: 1; }
+  65%,
+  90% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+.mv-count {
+  counter-reset: mv-n var(--mv-n);
+  animation: mv-count 6s ease-out infinite;
+}
+.mv-count::after {
+  content: counter(mv-n);
+}
+.mv-pct::after {
+  content: counter(mv-n) "%";
+}
+@keyframes mv-count {
+  0% { --mv-n: 0; }
+  65%,
+  100% { --mv-n: var(--to); }
+}
+.mv-loss {
+  counter-reset: mv-l var(--mv-l);
+  animation: mv-loss 6s ease-out infinite;
+}
+.mv-loss::after {
+  content: "0." counter(mv-l, decimal-leading-zero);
+}
+@keyframes mv-loss {
+  0% { --mv-l: 99; }
+  65%,
+  100% { --mv-l: 8; }
+}
+/* Qruplaşdırma: səpələnmiş boz nöqtələr qruplara toplanır, rənglənir, sərhədlər görünür */
+.mv-point {
+  fill: var(--c);
+  animation: mv-point 7s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+  animation-delay: var(--d);
+}
+@keyframes mv-point {
+  0% { transform: translate(var(--sx), var(--sy)); fill: #cbd5e1; opacity: 0; }
+  8%,
+  18% { transform: translate(var(--sx), var(--sy)); fill: #cbd5e1; opacity: 1; }
+  50% { transform: none; fill: #cbd5e1; }
+  60%,
+  92% { transform: none; fill: var(--c); opacity: 1; }
+  100% { transform: none; fill: var(--c); opacity: 0; }
+}
+.mv-boundary,
+.mv-label {
+  animation: mv-reveal 7s ease-in-out infinite;
+}
+@keyframes mv-reveal {
+  0%,
+  55% { opacity: 0; }
+  66%,
+  92% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* Modelin cavabı: sətirlər yazı kimi bir-bir çıxır, kursor yanıb-sönür */
+@keyframes mv-line-0 {
+  0%,
+  0% { clip-path: inset(0 100% 0 0); opacity: 1; }
+  8%,
+  88% { clip-path: inset(0 0 0 0); opacity: 1; }
+  95%,
+  100% { clip-path: inset(0 0 0 0); opacity: 0; }
+}
+.mv-line:nth-child(1) {
+  animation: mv-line-0 8s steps(28, end) infinite;
+}
+@keyframes mv-line-1 {
+  0%,
+  11% { clip-path: inset(0 100% 0 0); opacity: 1; }
+  19%,
+  88% { clip-path: inset(0 0 0 0); opacity: 1; }
+  95%,
+  100% { clip-path: inset(0 0 0 0); opacity: 0; }
+}
+.mv-line:nth-child(2) {
+  animation: mv-line-1 8s steps(28, end) infinite;
+}
+@keyframes mv-line-2 {
+  0%,
+  22% { clip-path: inset(0 100% 0 0); opacity: 1; }
+  30%,
+  88% { clip-path: inset(0 0 0 0); opacity: 1; }
+  95%,
+  100% { clip-path: inset(0 0 0 0); opacity: 0; }
+}
+.mv-line:nth-child(3) {
+  animation: mv-line-2 8s steps(28, end) infinite;
+}
+@keyframes mv-line-3 {
+  0%,
+  33% { clip-path: inset(0 100% 0 0); opacity: 1; }
+  41%,
+  88% { clip-path: inset(0 0 0 0); opacity: 1; }
+  95%,
+  100% { clip-path: inset(0 0 0 0); opacity: 0; }
+}
+.mv-line:nth-child(4) {
+  animation: mv-line-3 8s steps(28, end) infinite;
+}
+@keyframes mv-line-4 {
+  0%,
+  44% { clip-path: inset(0 100% 0 0); opacity: 1; }
+  52%,
+  88% { clip-path: inset(0 0 0 0); opacity: 1; }
+  95%,
+  100% { clip-path: inset(0 0 0 0); opacity: 0; }
+}
+.mv-line:nth-child(5) {
+  animation: mv-line-4 8s steps(28, end) infinite;
+}
+.mv-caret {
+  animation: mv-caret 1s steps(2, start) infinite;
+}
+@keyframes mv-caret {
+  to { visibility: hidden; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mv-flow {
+    display: none;
+  }
+  .mv-node,
+  .mv-out,
+  .mv-prob,
+  .mv-curve,
+  .mv-count,
+  .mv-loss,
+  .mv-point,
+  .mv-boundary,
+  .mv-label,
+  .mv-line,
+  .mv-caret {
+    animation: none !important;
+  }
+  .mv-curve {
+    stroke-dasharray: none;
+  }
+  .mv-count {
+    --mv-n: var(--to);
+  }
+}
 /* Səhv variant: qısa titrəyiş (İmtahan qarşılığı) */
 @keyframes shake {
   25% {

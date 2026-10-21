@@ -20,6 +20,8 @@ const PROTECTED = [
   "/abune",
   "/abunelikler",
   "/imtahan-qarsiligi",
+  // AI analiz: "Necə işləyir" və "Sual tipləri" hamıya (münsiflər daxil) açıqdır, şəxsi analiz — yalnız daxil olana.
+  "/suni-intellekt/menim",
   "/zeif-movzular",
   "/admin",
   "/muellim",

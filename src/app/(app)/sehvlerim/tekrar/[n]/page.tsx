@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { AiBadge } from "@/components/ai-badge";
 import { DailyPager } from "@/components/app/daily";
 import { Page, Topbar } from "@/components/app/topbar";
 import { RetryIcon } from "@/components/icons";
 import { Tag } from "@/components/ui/display";
 import { QuestionCard } from "@/components/ui/question";
 import { az } from "@/content/az";
+import { aiInsight } from "@/lib/ai";
 import { feedbackOf } from "@/lib/bank/check";
 import type { PagerItem } from "@/lib/demo/logic";
 import { requireDemo } from "@/lib/demo/session";
@@ -24,7 +26,7 @@ export default async function ReviewQuestionPage(props: PageProps<"/sehvlerim/te
   if (!item) notFound();
 
   const q = (await practicePool()).find((x) => x.ref === item.ref);
-  const key = await getPracticeKey(item.ref);
+  const [key, ai] = await Promise.all([getPracticeKey(item.ref), aiInsight(item.ref.replace(/^[qdr]:/, ""))]);
   if (!q || !key) notFound();
 
   const t = az.app.mistakes;
@@ -64,7 +66,7 @@ export default async function ReviewQuestionPage(props: PageProps<"/sehvlerim/te
           <Tag>{q.topicName}</Tag>
           <Tag tone="type">{q.type}</Tag>
         </div>
-        <QuestionCard id="review-q" n={idx + 1} total={total} text={q.text} imageUrl={q.imageUrl} imageAlt={q.imageAlt} qid={q.ref} report={{ code: q.ref, source: "review" }} />
+        <QuestionCard id="review-q" n={idx + 1} total={total} text={q.text} imageUrl={q.imageUrl} imageAlt={q.imageAlt} qid={q.ref} report={{ code: q.ref, source: "review" }} ai={<AiBadge ai={ai} />} />
         <ReviewAnswer
           key={item.ref}
           n={idx + 1}

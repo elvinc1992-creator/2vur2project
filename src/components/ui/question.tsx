@@ -24,6 +24,7 @@ export function QuestionCard({
   imageAlt,
   qid,
   report,
+  ai,
   className,
 }: {
   id: string;
@@ -41,6 +42,8 @@ export function QuestionCard({
   qid?: string;
   /** Sualın yanında "səhv bildir" ikonu: sualın bank kodu və harada göstərildiyi. */
   report?: ReportTarget;
+  /** Sualın "AI analizi" nişanı (AiBadge) — başlıq zolağının altında. */
+  ai?: ReactNode;
   className?: string;
 }) {
   return (
@@ -64,6 +67,7 @@ export function QuestionCard({
         )}
       </header>
       <div className="grid gap-4 px-4 py-5 lg:px-6">
+        {ai}
         <p className="text-[18px] leading-[1.65] text-ink">
           <MathText text={text} />
         </p>

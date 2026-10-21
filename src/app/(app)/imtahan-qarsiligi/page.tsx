@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Page, Topbar } from "@/components/app/topbar";
+import { AiBadge } from "@/components/ai-badge";
 import { ArrowIcon } from "@/components/icons";
 import { TopicIcon } from "@/components/landing/topic-icon";
 import { MathText } from "@/components/ui/math-text";
 import { TikzFigure } from "@/components/ui/tikz-figure";
 import { az } from "@/content/az";
+import { aiInsightForExam } from "@/lib/ai";
+import type { AiInsight } from "@/lib/ai/analysis";
 import { listExamPairs, type ExamPairView, type ExamQuestionView } from "@/lib/bank/source";
 import { cn } from "@/lib/cn";
 import { LETTERS } from "@/lib/demo/content";
@@ -21,6 +24,7 @@ const t = az.app.examMatch;
 export default async function ExamMatchPage() {
   const { user, state } = await requireDemo("/imtahan-qarsiligi");
   const pairs = await listExamPairs();
+  const ai = await Promise.all(pairs.map((p) => aiInsightForExam(p.topicSlug, p.toplu, p.type)));
   const premium = canUseRepetitor(state);
   const topicsTotal = new Set(pairs.map((p) => p.topicSlug)).size;
   const topicsReady = new Set(pairs.filter((p) => p.bankReady).map((p) => p.topicSlug)).size;
@@ -90,9 +94,9 @@ export default async function ExamMatchPage() {
 
           {/* ---------- Cütlər ---------- */}
           <ol className="m-0 grid list-none gap-7 p-0">
-            {pairs.map((p) => (
+            {pairs.map((p, i) => (
               <li key={p.n}>
-                <PairCard p={p} premium={premium} />
+                <PairCard p={p} premium={premium} ai={ai[i]} />
               </li>
             ))}
           </ol>
@@ -104,7 +108,7 @@ export default async function ExamMatchPage() {
   );
 }
 
-function PairCard({ p, premium }: { p: ExamPairView; premium: boolean }) {
+function PairCard({ p, premium, ai }: { p: ExamPairView; premium: boolean; ai: AiInsight | null }) {
   const level = t.level(p.matchLevel);
   return (
     <article
@@ -121,6 +125,7 @@ function PairCard({ p, premium }: { p: ExamPairView; premium: boolean }) {
         </h2>
         <span className="rounded-pill bg-indigo-50 px-3 py-1.5 text-[12.5px] font-semibold text-indigo-700">{p.type}</span>
       </div>
+      <AiBadge ai={ai} className="mb-4" />
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)]">
         {/* İmtahan */}

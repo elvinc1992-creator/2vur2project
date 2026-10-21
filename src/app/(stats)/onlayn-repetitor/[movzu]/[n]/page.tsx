@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { AiBadge } from "@/components/ai-badge";
 import { DailyPager } from "@/components/app/daily";
 import { Page, Topbar } from "@/components/app/topbar";
 import { ChartIcon } from "@/components/icons";
 import { Freq, Tag } from "@/components/ui/display";
 import { QuestionCard } from "@/components/ui/question";
 import { az } from "@/content/az";
+import { aiInsight } from "@/lib/ai";
 import { feedbackOf } from "@/lib/bank/check";
 import { optionalDemo } from "@/lib/demo/session";
 import { nextRepetitorHref, repetitorPager, tutorContext, tutorOf } from "@/lib/repetitor/progress";
@@ -26,7 +28,7 @@ export default async function RepetitorQuestionPage(props: PageProps<"/onlayn-re
   if (!ctx.isOpen(q.id)) redirect(`/onlayn-repetitor/${movzu}`);
 
   const t = az.app.tutor;
-  const key = (await getRepetitorKey(q.id))!;
+  const [key, ai] = await Promise.all([getRepetitorKey(q.id).then((k) => k!), aiInsight(q.id)]);
   const p = tutorOf(state)[q.id];
   const pager = repetitorPager(state, topic, q.id, ctx.isOpen);
   const done = pager.filter((s) => s.status !== "open").length;
@@ -60,9 +62,19 @@ export default async function RepetitorQuestionPage(props: PageProps<"/onlayn-re
             {t.highChance}
           </Tag>
           <Tag tone="type">{q.type}</Tag>
-          <Freq count={q.freq} label={az.app.daily.inExam(q.freq)} />
+          {ai && ai.shown > 0 && <Freq count={ai.shown} label={az.app.daily.inExam(ai.shown)} />}
         </div>
-        <QuestionCard id="tutor-q" n={Number(n)} total={topic.questions.length} text={q.text} imageUrl={q.imageUrl} imageAlt={q.imageAlt} qid={q.id} report={{ code: q.id, source: "tutor" }} />
+        <QuestionCard
+          id="tutor-q"
+          n={Number(n)}
+          total={topic.questions.length}
+          text={q.text}
+          imageUrl={q.imageUrl}
+          imageAlt={q.imageAlt}
+          qid={q.id}
+          report={{ code: q.id, source: "tutor" }}
+          ai={<AiBadge ai={ai} />}
+        />
         <TutorAnswer
           key={q.id}
           id={q.id}
