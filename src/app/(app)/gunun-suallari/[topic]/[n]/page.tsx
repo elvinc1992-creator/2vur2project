@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { AiBadge } from "@/components/ai-badge";
 import { DailyPager } from "@/components/app/daily";
 import { Page, Topbar } from "@/components/app/topbar";
 import { ArrowIcon, LockIcon } from "@/components/icons";
@@ -11,6 +12,7 @@ import { az } from "@/content/az";
 import { requireDaily } from "@/lib/demo/daily";
 import { feedbackOf } from "@/lib/bank/check";
 import { dailyPager, dailyTopic, isDailyOpen, nextDailyHref, typeStats } from "@/lib/demo/logic";
+import { aiInsight } from "@/lib/ai";
 import { getRepetitorKey } from "@/lib/repetitor/source";
 import { DailyAnswer } from "./daily-answer";
 
@@ -33,7 +35,8 @@ export default async function DailyQuestionPage(props: PageProps<"/gunun-suallar
   const open = isDailyOpen(state, ctx, q.id);
   const chosen = open ? state.daily[q.id] : undefined;
   // Cavab yalnız sual cavablanandan sonra brauzerə gedir.
-  const key = chosen ? await getRepetitorKey(q.id) : null;
+  // AI analizi yalnız təsnifatdır (cavabsız) — kilidli sualda da tezlik göstərilir.
+  const [key, ai] = await Promise.all([chosen ? getRepetitorKey(q.id) : null, aiInsight(q.id)]);
   const initial =
     chosen && key
       ? {
@@ -63,7 +66,7 @@ export default async function DailyQuestionPage(props: PageProps<"/gunun-suallar
         <div className="flex flex-wrap items-center gap-2">
           <Tag icon={<TopicIcon name={name} />}>{name}</Tag>
           <Tag tone="type">{q.type}</Tag>
-          <Freq count={q.freq} label={t.inExam(q.freq)} />
+          {ai && ai.shown > 0 && <Freq count={ai.shown} label={t.inExam(ai.shown)} />}
         </div>
 
         {open ? (
@@ -77,6 +80,7 @@ export default async function DailyQuestionPage(props: PageProps<"/gunun-suallar
               imageAlt={q.imageAlt}
               qid={q.id}
               report={{ code: q.id, source: "daily" }}
+              ai={<AiBadge ai={ai} />}
             />
             <DailyAnswer key={q.id} id={q.id} q={q} refText={q.ref} initial={initial} />
           </>

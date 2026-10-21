@@ -6,6 +6,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, FormatBar, h3Class } from "@/components/ui/display";
 import { EmptyState } from "@/components/ui/empty-art";
 import { az } from "@/content/az";
+import { aiInsights } from "@/lib/ai";
 import { claimExamAction, startExamAction } from "@/lib/demo/actions";
 import { answeredCount, examStatus, formatDate, isExamVisible, remainingMs, todayIso } from "@/lib/demo/logic";
 import { findExam, getExamQuestions, listExams } from "@/lib/exams/source";
@@ -78,10 +79,12 @@ export default async function ExamPage(props: PageProps<"/sinaq/[id]">) {
   // Vaxt bitib — sınaq aktiv deyil, davam etmək olmur.
   if (status === "expired") return <ExpiredExam examId={id} answered={answeredCount(attempt)} />;
 
+  const questions = await getExamQuestions(id);
   return (
     <ExamRunner
       exam={exam}
-      questions={await getExamQuestions(id)}
+      questions={questions}
+      ai={await aiInsights(questions.map((q) => q.code))}
       initialAnswers={attempt.answers}
       initialFlags={attempt.flags}
       remaining={remainingMs(attempt, exam)}

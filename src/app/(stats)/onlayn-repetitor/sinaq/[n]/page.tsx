@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
+import { AiBadge } from "@/components/ai-badge";
 import { Page, Topbar } from "@/components/app/topbar";
 import { CheckCircleIcon, XCircleIcon } from "@/components/icons";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Card, h1Class } from "@/components/ui/display";
 import { MathText } from "@/components/ui/math-text";
 import { ReportQuestion } from "@/components/ui/report-question";
 import { az } from "@/content/az";
+import { aiInsights } from "@/lib/ai";
 import { cn } from "@/lib/cn";
 import { FormAnswerFields } from "@/components/ui/form-answer";
 import { givenText, isLetter } from "@/lib/bank/check";
@@ -35,7 +37,7 @@ export default async function TutorExamPage(props: PageProps<"/onlayn-repetitor/
   const questions = exam.questionIds.map((id) => byId.get(id)!).filter(Boolean);
   const record = state.tutorExams?.[examKey(n)];
   // Açarlar yalnız sınaq bitəndən sonra brauzerə gedir.
-  const keys = record ? await getRepetitorKeys(exam.questionIds) : null;
+  const [keys, ai] = await Promise.all([record ? getRepetitorKeys(exam.questionIds) : null, aiInsights(exam.questionIds)]);
   const [a, b] = exam.topics;
 
   return (
@@ -63,6 +65,7 @@ export default async function TutorExamPage(props: PageProps<"/onlayn-repetitor/
                 return (
                   <li key={q.id}>
                     <Card className="grid gap-2">
+                      <AiBadge ai={ai[q.id]} />
                       <div className="flex items-start gap-2">
                         <p className="m-0 flex-1">
                           <b className="tabular">{i + 1}. </b>
@@ -106,6 +109,7 @@ export default async function TutorExamPage(props: PageProps<"/onlayn-repetitor/
             <p className="text-small text-ink-muted">{t.examIntro(questions.length)}</p>
             {questions.map((q, i) => (
               <Card key={q.id} as="section" aria-labelledby={`tq-${q.id}`} className="grid gap-3">
+                <AiBadge ai={ai[q.id]} />
                 <div className="flex items-start gap-2">
                   <p id={`tq-${q.id}`} className="m-0 flex-1">
                     <b className="tabular">{i + 1}. </b>

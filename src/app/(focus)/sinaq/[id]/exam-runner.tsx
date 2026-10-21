@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type KeyboardEvent } from "react";
 import { ArrowIcon, BackIcon, CheckIcon, ClockIcon, CloseIcon, FlagIcon, GridIcon, ListIcon } from "@/components/icons";
+import { AiBadge } from "@/components/ai-badge";
 import { Alert } from "@/components/ui/alert";
 import { AnswerOptions } from "@/components/ui/answer-options";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import type { TickResult } from "@/lib/demo/exam-session";
 import { HEARTBEAT_MS } from "@/lib/demo/timer";
 import { CODE_LEN, LETTERS, type Letter } from "@/lib/demo/content";
 import type { ExamMeta, ExamQuestion } from "@/lib/exams/types";
+import type { AiInsight } from "@/lib/ai/analysis";
 import type { QuestionReportSource } from "@/db/schema";
 import { cn } from "@/lib/cn";
 
@@ -40,6 +42,8 @@ type Props = {
   studentName: string;
   today: string;
   client?: RunnerClient;
+  /** Sualların "AI analizi" (kod → təsnifat; cavabsız). */
+  ai?: Record<string, AiInsight>;
 };
 
 const writtenKey = (examId: string, n: number) => `exam:${examId}:w:${n}`;
@@ -83,7 +87,7 @@ function fmt(ms: number) {
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-export function ExamRunner({ exam, questions, initialAnswers, initialFlags, remaining, studentName, today, client }: Props) {
+export function ExamRunner({ exam, questions, initialAnswers, initialFlags, remaining, studentName, today, client, ai }: Props) {
   const router = useRouter();
   const api = client ?? DEFAULT_CLIENT;
   const total = questions.length;
@@ -305,6 +309,7 @@ export function ExamRunner({ exam, questions, initialAnswers, initialFlags, rema
                 key={q.n}
                 examId={exam.id}
                 reportSource={api.reportSource ?? "exam"}
+                ai={ai?.[q.code]}
                 total={lastN}
                 q={q}
                 value={answers[q.n] ?? ""}
@@ -417,6 +422,7 @@ function ExamQuestionView({
   flagged,
   onAnswer,
   onFlag,
+  ai,
 }: {
   examId: string;
   reportSource: QuestionReportSource;
@@ -426,6 +432,7 @@ function ExamQuestionView({
   flagged: boolean;
   onAnswer: (n: number, value: string, delay?: number) => Promise<boolean>;
   onFlag: () => void;
+  ai?: AiInsight;
 }) {
   return (
     <div className="grid gap-4">
@@ -438,6 +445,7 @@ function ExamQuestionView({
         imageAlt={q.imageAlt}
         qid={q.code}
         report={{ code: q.code, source: reportSource, context: examId }}
+        ai={<AiBadge ai={ai} />}
         aside={
           <>
             <Tag tone={q.format === "coded" ? "coral" : q.format === "written" ? "type" : "topic"}>
